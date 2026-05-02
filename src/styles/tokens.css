@@ -1,0 +1,30 @@
+@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap');
+
+:root {
+  --color-bg:     #FDF6E3;
+  --color-canvas: #FFFFFF;
+  --color-text:   #2C2C2C;
+  --color-border: #2C2C2C;
+  --color-cta:    #FFE600;
+  --color-danger: #FF5A5F;
+  --color-hunger: #F5A623;
+  --color-happy:  #E8534A;
+  --color-energy: #2196F3;
+  --color-grid:   rgba(0, 0, 0, 0.05);
+
+  --font-pixel: 'Press Start 2P', monospace;
+  --font-retro: 'VT323', monospace;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-family: var(--font-pixel);
+  margin: 0;
+  padding: 0;
+  image-rendering: pixelated;
+}

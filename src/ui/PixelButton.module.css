@@ -1,0 +1,71 @@
+.btn {
+  font-family: var(--font-pixel);
+  border: 2px solid var(--color-border);
+  border-radius: 0;
+  cursor: pointer;
+  display: inline-block;
+  line-height: 1;
+}
+
+/* variants */
+.primary {
+  background: #fff;
+  color: var(--color-text);
+  box-shadow: 3px 3px 0 var(--color-border);
+}
+
+.secondary {
+  background: #f0f0f0;
+  color: #666;
+  box-shadow: 3px 3px 0 var(--color-border);
+}
+
+.cta {
+  background: var(--color-cta);
+  color: var(--color-text);
+  box-shadow: 5px 5px 0 var(--color-border);
+}
+
+/* sizes */
+.sm {
+  font-size: 6px;
+  padding: 6px 10px;
+}
+
+.md {
+  font-size: 8px;
+  padding: 8px 14px;
+}
+
+.lg {
+  font-size: 10px;
+  padding: 12px 20px;
+}
+
+/* active */
+.primary:active,
+.secondary:active {
+  transform: translate(2px, 2px);
+  box-shadow: 1px 1px 0 var(--color-border);
+}
+
+.cta:active {
+  transform: translate(2px, 2px);
+  box-shadow: 3px 3px 0 var(--color-border);
+}
+
+/* disabled */
+.disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.disabled:active {
+  transform: none;
+  box-shadow: 3px 3px 0 var(--color-border);
+}
+
+.disabled.cta:active {
+  transform: none;
+  box-shadow: 5px 5px 0 var(--color-border);
+}

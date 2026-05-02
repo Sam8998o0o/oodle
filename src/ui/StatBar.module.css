@@ -1,0 +1,52 @@
+.row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.label {
+  font-size: 14px;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.track {
+  position: relative;
+  height: 8px;
+  background: #fff;
+  border: 2px solid #2C2C2C;
+  border-radius: 0;
+  overflow: visible;
+  flex-shrink: 0;
+}
+
+.fill {
+  height: 100%;
+  border-radius: 0;
+}
+
+.tick {
+  position: absolute;
+  top: 0;
+  width: 1px;
+  height: 100%;
+  background: #2C2C2C;
+  opacity: 0.3;
+}
+
+.number {
+  font-size: 12px;
+  font-family: var(--font-pixel);
+  min-width: 24px;
+  text-align: right;
+  flex-shrink: 0;
+}
+
+@keyframes blink {
+  0%   { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+.blink {
+  animation: blink 0.5s steps(2) infinite;
+}

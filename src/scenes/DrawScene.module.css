@@ -1,0 +1,253 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 12px;
+  padding: 24px 20px 100px;
+  background: var(--color-bg);
+}
+
+.titleBlock {
+  text-align: center;
+  margin-bottom: 4px;
+}
+
+.title {
+  font-family: var(--font-pixel);
+  font-size: 28px;
+  color: #2C2C2C;
+  margin: 0 0 8px;
+  letter-spacing: 2px;
+}
+
+.sub {
+  font-size: 16px;
+  color: #999;
+  margin: 0;
+  font-family: var(--font-retro);
+  letter-spacing: 1px;
+}
+
+.canvasArea {
+  padding: 0;
+  background: transparent;
+}
+
+.ctaBtn {
+  font-family: var(--font-pixel);
+  font-size: 13px;
+  background: #FFE600;
+  color: #2C2C2C;
+  border: 2px solid #2C2C2C;
+  box-shadow: 4px 4px 0 #2C2C2C;
+  padding: 14px 28px;
+  cursor: pointer;
+  letter-spacing: 1px;
+}
+
+.ctaBtn:active:not(:disabled) {
+  transform: translate(2px, 2px);
+  box-shadow: 2px 2px 0 #2C2C2C;
+}
+
+.ctaBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.particle {
+  position: fixed;
+  pointer-events: none;
+  font-size: 18px;
+  animation: flyOut 0.9s steps(6) forwards;
+  transform-origin: center;
+  z-index: 9999;
+}
+
+@keyframes flyOut {
+  0% {
+    transform: translate(-50%, -50%) rotate(0deg) translateX(0);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(-50%, -50%) rotate(var(--angle)) translateX(var(--dist));
+    opacity: 0;
+  }
+}
+
+.parade {
+  width: 100%;
+  max-width: 600px;
+  height: 56px;
+  border-top: 2px solid #eee;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 12px;
+  overflow-x: auto;
+  background: var(--color-bg);
+}
+
+.paradeItem {
+  position: relative;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.paradePet {
+  display: block;
+  image-rendering: pixelated;
+  width: 40px;
+  height: 40px;
+}
+
+.heart {
+  position: absolute;
+  top: -20px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 16px;
+  color: #E91E63;
+  animation: floatUp 1s steps(8) forwards;
+  pointer-events: none;
+}
+
+@keyframes floatUp {
+  0%   { opacity: 1; transform: translateX(-50%) translateY(0); }
+  100% { opacity: 0; transform: translateX(-50%) translateY(-30px); }
+}
+
+.paradeEmpty {
+  font-family: var(--font-retro);
+  font-size: 14px;
+  color: #bbb;
+}
+
+.onnxLabel {
+  font-family: var(--font-retro);
+  font-size: 16px;
+  margin: 0;
+  letter-spacing: 1px;
+  text-align: center;
+}
+
+.brushSlider {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  max-width: 320px;
+}
+
+.brushLabel {
+  font-size: 16px;
+}
+
+.slider {
+  flex: 1;
+  height: 4px;
+  accent-color: #2C2C2C;
+  cursor: pointer;
+}
+
+.brushPreview {
+  display: block;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.markHint {
+  font-family: system-ui, sans-serif;
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  margin: 0;
+  text-align: center;
+}
+
+.accessoryRow {
+  width: 100%;
+  max-width: 340px;
+}
+
+.accessoryLabel {
+  font-family: var(--font-pixel);
+  font-size: 9px;
+  color: #2C2C2C;
+  display: block;
+  margin-bottom: 6px;
+  letter-spacing: 1px;
+}
+
+.accessoryGrid {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.accessoryBtn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 8px 10px;
+  background: #fff;
+  border: 2px solid #ddd;
+  border-radius: 8px;
+  cursor: pointer;
+  min-width: 60px;
+  position: relative;
+}
+
+.accessoryBtn:hover {
+  border-color: #2196F3;
+}
+
+.accessorySelected {
+  border-color: #2C2C2C !important;
+  background: #FFF9E6;
+  box-shadow: 3px 3px 0 #2C2C2C;
+}
+
+.accessoryLocked {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.accessoryName {
+  font-size: 10px;
+  color: #666;
+  font-family: system-ui, sans-serif;
+}
+
+.lockIcon {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  font-size: 10px;
+}
+
+.nameRow {
+  width: 100%;
+  max-width: 340px;
+}
+
+.nameInput {
+  width: 100%;
+  font-family: system-ui, sans-serif;
+  font-size: 15px;
+  padding: 10px 14px;
+  border: 2px solid #2C2C2C;
+  border-radius: 0;
+  background: #fff;
+  color: #2C2C2C;
+  box-shadow: 3px 3px 0 #2C2C2C;
+  outline: none;
+  margin-top: 4px;
+}
+
+.nameInput:focus {
+  border-color: #4CAF50;
+  box-shadow: 3px 3px 0 #4CAF50;
+}

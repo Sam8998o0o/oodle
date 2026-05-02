@@ -1,0 +1,80 @@
+.wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+}
+
+.canvasWrap {
+  background-color: var(--color-canvas);
+  border: 2px solid #ddd;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+  line-height: 0;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.canvas {
+  display: block;
+  width: 320px;
+  height: 320px;
+  cursor: crosshair;
+}
+
+.palette {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 6px;
+  justify-content: center;
+  max-width: 420px;
+}
+
+.swatch {
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  cursor: pointer;
+  border: 2px solid transparent;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.swatch:hover {
+  transform: scale(1.15);
+}
+
+.tools {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.toolBtn {
+  font-family: system-ui, sans-serif;
+  font-size: 14px;
+  font-weight: 500;
+  padding: 10px 20px;
+  background: #fff;
+  border: 1.5px solid #ddd;
+  border-radius: 8px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+  cursor: pointer;
+  color: #2C2C2C;
+  transition: background 0.1s;
+}
+
+.toolBtn:hover {
+  background: #f5f5f5;
+}
+
+.toolBtn:active {
+  transform: scale(0.97);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+.toolBtn.active {
+  background: var(--color-cta);
+  border-color: #C8A800;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
+}
