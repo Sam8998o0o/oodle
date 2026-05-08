@@ -9,9 +9,6 @@ export interface PetAnimData {
 
 export type PetState = 'idle' | 'walk' | 'eat' | 'play' | 'sleep' | 'sad'
 
-const EYE_W_FRAC = 0.16
-const EYE_H_FRAC = 0.12
-
 export class PetAnimator {
   private canvas: HTMLCanvasElement
   private ctx: CanvasRenderingContext2D
@@ -148,15 +145,6 @@ export class PetAnimator {
       }
     }
 
-    // 影子跟著 translateY
-    ctx.save()
-    ctx.globalAlpha = 0.08
-    ctx.fillStyle = '#000'
-    ctx.beginPath()
-    ctx.ellipse(size/2, size - 6, size*0.28, 3, 0, 0, Math.PI*2)
-    ctx.fill()
-    ctx.restore()
-
     // 身體 + 眼睛全在同一個 transform 裡
     ctx.save()
     ctx.globalAlpha = alpha
@@ -173,11 +161,13 @@ export class PetAnimator {
     // 畫身體
     ctx.drawImage(src, 2, 2, size-4, size-4)
 
-    // 眨眼邏輯
+    // 眨眼邏輯 — 只用 drawEye 的 blink flag，完全移除 compressEyes
+    // compressEyes 會在身體圖上挖方塊造成方形殘影，不再使用
     let blink = false
     if (state === 'sleep') {
-      this.compressEyes(0, 0.0, coords, size, src)
-      blink = true
+      blink = true  // sleep = 眼睛一直閉著
+    } else if (state === 'sad') {
+      blink = true  // sad = 半閉眼效果由 drawEye 處理
     } else {
       this.blinkTimer += 0.028
       if (this.blinkTimer >= this.blinkCycle) {
@@ -189,14 +179,9 @@ export class PetAnimator {
         this.blinkFrame++
         if (this.blinkFrame <= 6) {
           blink = true
-          this.compressEyes(0, 0.15, coords, size, src)
         } else {
           this.isBlinking = false
         }
-      }
-      if (state === 'sad') {
-        blink = true
-        this.compressEyes(0, 0.4, coords, size, src)
       }
     }
 
@@ -209,6 +194,15 @@ export class PetAnimator {
       this.drawEye(ctx, data.eyeStyle, ex + eyeSize*1.3, ey, eyeSize, blink)
     }
 
+    ctx.restore()
+
+    // 影子跟著 translateY 偏移，貼在寵物底部
+    ctx.save()
+    ctx.globalAlpha = 0.18
+    ctx.fillStyle = '#000'
+    ctx.beginPath()
+    ctx.ellipse(size / 2, size - 6 + translateY, size * 0.30, 5, 0, 0, Math.PI * 2)
+    ctx.fill()
     ctx.restore()
 
     if (state === 'sleep') this.drawZzz(ctx, size)
@@ -278,35 +272,6 @@ export class PetAnimator {
     ctx.restore()
   }
 
-  private compressEyes(
-    bob: number, heightFraction: number,
-    coords: PetCoords, size: number, src: HTMLCanvasElement,
-  ): void {
-    const { ctx } = this
-    const sw = src.width, sh = src.height
-    const scaleX = (size-4)/sw
-    const scaleY = (size-4)/sh
-    const offX = 2, offY = 2 + bob
-
-    for (const eye of coords.eyes) {
-      const srcW = sw * EYE_W_FRAC, srcH = sh * EYE_H_FRAC
-      const srcX = Math.max(0, eye.x*sw - srcW/2)
-      const srcY = Math.max(0, eye.y*sh - srcH/2)
-      const dstX = Math.round(srcX*scaleX + offX)
-      const dstY = Math.round(srcY*scaleY + offY)
-      const dstW = Math.max(1, Math.round(srcW*scaleX))
-      const dstH = Math.max(1, Math.round(srcH*scaleY))
-      ctx.clearRect(dstX, dstY, dstW, dstH)
-      if (heightFraction > 0) {
-        const squishH = Math.max(1, Math.round(dstH*heightFraction))
-        const squishY = dstY + Math.round((dstH-squishH)/2)
-        ctx.drawImage(src,
-          Math.round(srcX), Math.round(srcY),
-          Math.round(srcW), Math.round(srcH),
-          dstX, squishY, dstW, squishH)
-      }
-    }
-  }
 
   private zzzT = 0
   private drawZzz(ctx: CanvasRenderingContext2D, size: number): void {

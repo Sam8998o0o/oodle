@@ -132,15 +132,13 @@ export default function DrawScene({ onPetCreated }: DrawSceneProps) {
   const [onnxScore, setOnnxScore]     = useState<number | null>(null)
   const [particles, setParticles]     = useState<Particle[]>([])
   const [storedPets, setStoredPets]   = useState<StoredPet[]>([])
-  const [hearts, setHearts]           = useState<{ id: number; petId: string }[]>([])
   const [step, setStep]               = useState<Step>('draw')
   const [selectedEye, setSelectedEye] = useState<Accessory>(EYES[0])
   const [eyePos, setEyePos]           = useState<{x:number,y:number}>({ x:0.5, y:0.3 })
   const [dragging, setDragging]       = useState<'eye'|null>(null)
   const [petName, setPetName]         = useState('')
 
-  const blinkRef   = useRef({ timer:0, cycle:3.5, frame:0, blinking:false })
-
+  const blinkRef = useRef({ timer:0, cycle:3.5, frame:0, blinking:false })
 
   useEffect(() => {
     try {
@@ -149,63 +147,57 @@ export default function DrawScene({ onPetCreated }: DrawSceneProps) {
     } catch { /**/ }
   }, [])
 
-  // 預覽動畫（只有眼睛，靜止顯示）
-useEffect(() => {
-  if (step !== 'decorate' || !petDataURL) return
-  const canvas = previewRef.current
-  if (!canvas) return
-  const ctx = canvas.getContext('2d')!
-  ctx.imageSmoothingEnabled = false
+  // 預覽動畫
+  useEffect(() => {
+    if (step !== 'decorate' || !petDataURL) return
+    const canvas = previewRef.current
+    if (!canvas) return
+    const ctx = canvas.getContext('2d')!
+    ctx.imageSmoothingEnabled = false
 
-  const img = new Image()
-  img.src = petDataURL
-  img.onload = () => {
-    let bobT = 0
-    const b = blinkRef.current
+    const img = new Image()
+    img.src = petDataURL
+    img.onload = () => {
+      let bobT = 0
+      const b = blinkRef.current
 
-    const loop = () => {
-      ctx.clearRect(0, 0, CANVAS_DISPLAY, CANVAS_DISPLAY)
+      const loop = () => {
+        ctx.clearRect(0, 0, CANVAS_DISPLAY, CANVAS_DISPLAY)
 
-      // 去除白色背景
-      const offscreen = document.createElement('canvas')
-      offscreen.width = img.width; offscreen.height = img.height
-      const oc = offscreen.getContext('2d')!
-      oc.drawImage(img, 0, 0)
-      const id = oc.getImageData(0, 0, img.width, img.height)
-      for (let i=0; i<id.data.length; i+=4) {
-        if(id.data[i]>240&&id.data[i+1]>240&&id.data[i+2]>240) id.data[i+3]=0
+        const offscreen = document.createElement('canvas')
+        offscreen.width = img.width; offscreen.height = img.height
+        const oc = offscreen.getContext('2d')!
+        oc.drawImage(img, 0, 0)
+        const id = oc.getImageData(0, 0, img.width, img.height)
+        for (let i=0; i<id.data.length; i+=4) {
+          if(id.data[i]>240&&id.data[i+1]>240&&id.data[i+2]>240) id.data[i+3]=0
+        }
+        oc.putImageData(id, 0, 0)
+
+        bobT += 0.055
+        const bob = Math.round(Math.sin(bobT) * 2)
+        ctx.drawImage(offscreen, 2, 2+bob, CANVAS_DISPLAY-4, CANVAS_DISPLAY-12)
+
+        b.timer += 0.028
+        if (b.timer >= b.cycle) {
+          b.blinking=true; b.frame=0; b.timer=0
+          b.cycle=3.5+(Math.random()-0.5)*3
+        }
+        const blink = b.blinking && b.frame <= 6
+        if (b.blinking) { b.frame++; if(b.frame>6) b.blinking=false }
+
+        const eyeSize = CANVAS_DISPLAY * 0.08
+        const ex = eyePos.x * CANVAS_DISPLAY
+        const ey = eyePos.y * CANVAS_DISPLAY + bob
+        drawEyeStyle(ctx, selectedEye.id, ex-eyeSize*1.2, ey, eyeSize, blink)
+        drawEyeStyle(ctx, selectedEye.id, ex+eyeSize*1.2, ey, eyeSize, blink)
+
+        rafRef.current = requestAnimationFrame(loop)
       }
-      oc.putImageData(id, 0, 0)
-
-      // 輕微呼吸感，不搖擺
-      bobT += 0.055
-      const bob = Math.round(Math.sin(bobT) * 2)
-
-      // 靜止顯示寵物
-      ctx.drawImage(offscreen, 2, 2+bob, CANVAS_DISPLAY-4, CANVAS_DISPLAY-12)
-
-      // 眨眼
-      b.timer += 0.028
-      if (b.timer >= b.cycle) {
-        b.blinking=true; b.frame=0; b.timer=0
-        b.cycle=3.5+(Math.random()-0.5)*3
-      }
-      const blink = b.blinking && b.frame <= 6
-      if (b.blinking) { b.frame++; if(b.frame>6) b.blinking=false }
-
-      // 眼睛
-      const eyeSize = CANVAS_DISPLAY * 0.08
-      const ex = eyePos.x * CANVAS_DISPLAY
-      const ey = eyePos.y * CANVAS_DISPLAY + bob
-      drawEyeStyle(ctx, selectedEye.id, ex-eyeSize*1.2, ey, eyeSize, blink)
-      drawEyeStyle(ctx, selectedEye.id, ex+eyeSize*1.2, ey, eyeSize, blink)
-
       rafRef.current = requestAnimationFrame(loop)
     }
-    rafRef.current = requestAnimationFrame(loop)
-  }
-  return () => cancelAnimationFrame(rafRef.current)
-}, [step, petDataURL, selectedEye, eyePos])
+    return () => cancelAnimationFrame(rafRef.current)
+  }, [step, petDataURL, selectedEye, eyePos])
 
   const handleComplete = useCallback(async (url: string) => {
     setPetDataURL(url)
@@ -229,8 +221,9 @@ useEffect(() => {
 
   const handleMakeItLife = useCallback(() => {
     if (!petDataURL) return
+    if (onnxScore === null || onnxScore < 0.6) return
     setStep('decorate')
-  }, [petDataURL])
+  }, [petDataURL, onnxScore])
 
   const handlePreviewMouseDown = useCallback((e: React.MouseEvent) => {
     const rect = previewRef.current!.getBoundingClientRect()
@@ -266,13 +259,12 @@ useEffect(() => {
     }
 
     localStorage.setItem('oodle_eye_style', selectedEye.id)
-    // 清除舊的腳款式
     localStorage.removeItem('oodle_leg_style')
 
     const newPet: StoredPet = {
       id: crypto.randomUUID(),
       pixelData: petDataURL,
-      name: finalName
+      name: finalName,
     }
     const updated = [...storedPets, newPet].slice(-20)
     setStoredPets(updated)
@@ -283,12 +275,6 @@ useEffect(() => {
     onPetCreated(petDataURL, coords, finalName)
   }, [petName, eyePos, selectedEye, petDataURL, storedPets, spawnParticles, onPetCreated])
 
-  const handlePetClick = useCallback((petId: string) => {
-    const id = Date.now()
-    setHearts(h => [...h, {id, petId}])
-    setTimeout(() => setHearts(h => h.filter(x => x.id!==id)), 1000)
-  }, [])
-
   return (
     <div className={styles.page}>
       <div className={styles.titleBlock}>
@@ -296,7 +282,6 @@ useEffect(() => {
         <p className={styles.sub}>draw a pet. make it life.</p>
       </div>
 
-      {/* 畫圖階段 */}
       {step === 'draw' && (
         <>
           {onnxScore !== null && (
@@ -320,7 +305,6 @@ useEffect(() => {
         </>
       )}
 
-      {/* 裝飾階段 — 只有眼睛，沒有腳 */}
       {step === 'decorate' && (
         <>
           <p className={styles.markHint} style={{ color:'#2196F3' }}>
@@ -343,7 +327,6 @@ useEffect(() => {
             </p>
           </div>
 
-          {/* 眼睛選擇 */}
           <div className={styles.accessoryRow}>
             <span className={styles.accessoryLabel}>👁 EYES</span>
             <div className={styles.accessoryGrid}>
@@ -362,7 +345,6 @@ useEffect(() => {
             </div>
           </div>
 
-          {/* 名字輸入 */}
           <div className={styles.nameRow}>
             <span className={styles.accessoryLabel}>🏷 NAME YOUR PET</span>
             <input
@@ -385,7 +367,6 @@ useEffect(() => {
         </>
       )}
 
-      {/* 粒子 */}
       {particles.map(p => (
         <span key={p.id} className={styles.particle} style={{
           left:p.x, top:p.y,
@@ -395,42 +376,6 @@ useEffect(() => {
           {p.char}
         </span>
       ))}
-
-      {/* 底部遊行 */}
-      <div className={styles.parade}>
-        {storedPets.length === 0
-          ? <span className={styles.paradeEmpty}>your pets will walk here</span>
-          : storedPets.map(pet => (
-            <div key={pet.id} className={styles.paradeItem} onClick={() => handlePetClick(pet.id)}>
-              <ParadePet pixelData={pet.pixelData} name={pet.name} />
-              {hearts.some(h => h.petId===pet.id) && (
-                <span className={styles.heart}>♥</span>
-              )}
-            </div>
-          ))
-        }
-      </div>
-    </div>
-  )
-}
-
-function ParadePet({ pixelData, name }: { pixelData: string; name: string }) {
-  const ref = useRef<HTMLCanvasElement>(null)
-  useEffect(() => {
-    const canvas = ref.current
-    if (!canvas) return
-    const ctx = canvas.getContext('2d')!
-    ctx.imageSmoothingEnabled = false
-    const img = new Image()
-    img.src = pixelData
-    img.onload = () => ctx.drawImage(img, 0, 0, 40, 40)
-  }, [pixelData])
-  return (
-    <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:2 }}>
-      <canvas ref={ref} width={40} height={40} className={styles.paradePet} />
-      <span style={{ fontSize:7, color:'#999', fontFamily:'var(--font-pixel)', whiteSpace:'nowrap' }}>
-        {name}
-      </span>
     </div>
   )
 }

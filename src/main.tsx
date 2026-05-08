@@ -1,3 +1,4 @@
+console.log('SUPABASE URL:', import.meta.env.VITE_SUPABASE_URL)
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import './styles/tokens.css'

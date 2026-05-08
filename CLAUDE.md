@@ -6,8 +6,8 @@
 
 ## 一句話描述
 
-像 drawafish.com 一樣極簡的首頁：用戶畫一隻像素寵物 → ONNX 即時驗證是否像生物 →
-按 MAKE IT LIVE → Claude Vision 識別眼睛/腿座標 → 寵物動起來住進自己的小家。
+像 drawafish.com 一樣極簡的首頁：用戶畫一隻像素寵物 → 像素分析即時驗證是否像物體 →
+按 MAKE IT LIFE → 選眼睛款式 → 寵物動起來住進自己的小家。
 
 ---
 
@@ -18,16 +18,17 @@
 | 前端 | React 18 + Vite + TypeScript |
 | 樣式 | CSS Modules（禁止用 Tailwind） |
 | 畫布 | 純 HTML5 Canvas 2D |
-| AI 驗證 | ONNX Runtime Web（瀏覽器內，免費即時） |
-| AI 識別 | Anthropic Claude Vision API（後端，一次性） |
+| AI 驗證 | 純像素分析（Canvas pixel analysis，免費即時，無需模型） |
+| AI 識別 | Google Gemini 2.0 Flash（識別眼睛座標） |
 | 狀態管理 | Zustand |
-| 後端 | Node.js + Express |
-| 資料庫 | Supabase（PostgreSQL） |
-| 桌面 | Electron 28（後期） |
+| 後端 | Node.js + Express（port 3001） |
+| 資料庫 | Supabase（PostgreSQL + Realtime） |
+| 認證 | Supabase Anonymous Auth（自動靜默，不需註冊） |
+| 桌面 | Electron 28（Week 3-4，待做） |
 
 ---
 
-## 專案結構（必須遵守）
+## 專案結構（當前實際狀態）
 
 ```
 oodle/
@@ -36,48 +37,39 @@ oodle/
 ├── vite.config.ts
 ├── tsconfig.json
 ├── index.html
+├── .env                              ← VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY
 ├── public/
-│   └── models/
-│       └── pet_validator.onnx        ← ONNX 模型放這裡
+│   ├── room-bg.png                   ← South Park 風格臥室背景
+│   └── plaza-bg.png                  ← South Park 風格城市廣場背景
 ├── src/
 │   ├── main.tsx
-│   ├── App.tsx
+│   ├── App.tsx                       ← 頂層，initAuth() + <AuthButton />
 │   ├── styles/
-│   │   └── tokens.css                ← 所有 CSS 變數
-│   ├── engine/                       ← 動畫引擎（純 TS，無 React）
+│   │   └── tokens.css
+│   ├── engine/
 │   │   ├── PetAnimator.ts
-│   │   ├── PixelRenderer.ts
-│   │   └── OnnxValidator.ts
-│   ├── pets/
-│   │   ├── petTypes.ts
-│   │   ├── petStore.ts
-│   │   └── petUtils.ts
+│   │   └── OnnxValidator.ts          ← 純像素分析，不需要 .onnx 模型檔案
+│   ├── lib/                          ← Supabase 相關
+│   │   ├── supabase.ts               ← createClient singleton
+│   │   ├── auth.ts                   ← initAuth / linkGoogle / signOut
+│   │   ├── petService.ts             ← savePet / fetchAllPets / likePet / getAllLikeCounts
+│   │   └── realtimeService.ts        ← subscribeToNewPets
 │   ├── scenes/
-│   │   ├── DrawScene.tsx             ← 首頁（畫圖 + MAKE IT LIVE）
+│   │   ├── DrawScene.tsx             ← 畫圖 + 像素驗證 + 眼睛裝飾
 │   │   ├── DrawScene.module.css
-│   │   ├── RoomScene.tsx             ← 寵物的家
+│   │   ├── RoomScene.tsx             ← 寵物的家 + 能量系統 + 門過場動畫
 │   │   ├── RoomScene.module.css
-│   │   ├── PlazaScene.tsx            ← 公共廣場
+│   │   ├── PlazaScene.tsx            ← 廣場 + Supabase 即時同步 + 障礙物避開
 │   │   └── PlazaScene.module.css
+│   ├── components/
+│   │   ├── AuthButton.tsx            ← 匿名/Google 登入按鈕（左下角，不顯眼）
+│   │   └── AuthButton.module.css
 │   ├── ui/
-│   │   ├── PixelCanvas.tsx           ← 像素繪圖畫布元件
+│   │   ├── PixelCanvas.tsx
 │   │   ├── PixelCanvas.module.css
-│   │   ├── StatBar.tsx
-│   │   ├── StatBar.module.css
-│   │   ├── PixelButton.tsx
-│   │   ├── PixelButton.module.css
-│   │   └── SpeechBubble.tsx
+│   │   └── StatBar.tsx
 │   └── api/
-│       ├── supabase.ts
-│       ├── petStorage.ts
-│       ├── plazaApi.ts
-│       └── aiRecognize.ts            ← Claude Vision API 呼叫
-├── server/
-│   ├── index.ts                      ← Express 後端
-│   ├── routes/
-│   │   ├── pets.ts
-│   │   └── recognize.ts              ← Claude Vision 端點
-│   └── supabase.ts
+│       └── aiRecognize.ts
 └── supabase/
     └── schema.sql
 ```
@@ -88,16 +80,16 @@ oodle/
 
 ### 顏色
 ```css
---color-bg:        #FDF6E3;   /* 溫暖奶油色頁面背景 */
---color-canvas:    #FFFFFF;   /* 畫布純白 */
---color-text:      #2C2C2C;   /* 近黑文字 */
---color-border:    #2C2C2C;   /* 像素邊框 */
---color-cta:       #FFE600;   /* MAKE IT LIVE 按鈕 */
---color-danger:    #FF5A5F;   /* 低狀態警告 */
---color-hunger:    #F5A623;   /* 飢餓條橙色 */
---color-happy:     #E8534A;   /* 心情條珊瑚 */
---color-energy:    #2196F3;   /* 體力條藍色 */
---color-grid:      rgba(0,0,0,0.05); /* 畫布格線 */
+--color-bg:        #FDF6E3;
+--color-canvas:    #FFFFFF;
+--color-text:      #2C2C2C;
+--color-border:    #2C2C2C;
+--color-cta:       #FFE600;
+--color-danger:    #FF5A5F;
+--color-hunger:    #F5A623;
+--color-happy:     #E8534A;
+--color-energy:    #2196F3;
+--color-grid:      rgba(0,0,0,0.05);
 ```
 
 ### 字體（Google Fonts）
@@ -115,143 +107,119 @@ VT323          — 對話泡泡、提示文字、次要說明
 
 ---
 
-## 動畫引擎規範
+## 已完成功能 ✅
 
-- **所有動畫邏輯禁止在 React 元件裡** → 全部放 `src/engine/`
-- 元件只負責：掛載 canvas ref、傳參數給 engine、處理 UI 事件
-- `useEffect` 必須有 cleanup（`return () => animator.stop()`）
-- 所有 canvas：`image-rendering: pixelated`，`ctx.imageSmoothingEnabled = false`
-- 所有座標：`Math.round()` 取整，禁止小數像素
-- 動畫驅動：**只用 `requestAnimationFrame`**，禁止 `setInterval`
+### DrawScene（首頁）
+- 自由畫布（400px，圓形筆刷，流暢線條）
+- 12 色板 + 筆刷大小滑桿
+- Draw / Erase / Fill / Undo / Clear 工具
+- **像素分析驗證**（coverage + colorFill + enclosure，分數 >= 0.6 才能進下一步）
+- 按 MAKE IT LIFE 進入裝飾步驟
+- 粒子特效
+- 底部寵物遊行已移除
 
-### 關鍵動畫數值
-```
-眨眼週期：  3.5 ± 1.5 秒（每隻隨機偏移）
-眨眼持續：  80–100ms
-浮動幅度：  ±2px，sin 波，週期 2 秒
-腿擺幅：    ±5px，左右反相
-地面陰影：  橢圓，opacity 0.10–0.20
-走路速度：  0.5px/frame（房間），0.4px/frame（廣場）
-```
+### 裝飾步驟（DrawScene decorate）
+- 選眼睛款式（6 種：Round / Happy / Sleepy 免費，Star / Heart / X 付費鎖定）
+- 拖放眼睛位置
+- 預覽動畫（呼吸 + 眨眼）
+- 命名（最多 16 字）
+- BRING IT TO LIFE 確認
+
+### RoomScene（寵物的家）
+- South Park 風格臥室背景（room-bg.png）
+- 寵物走路動畫
+- 自動睡眠（energy < 25）
+- 狀態條（飢餓 / 心情 / 體力），每 30 秒自動下降
+- DAY 計數器
+- **能量系統**：打字 100 下 = 1 點能量，手動轉化成小果實（5 點）/ 大果實（30 點）
+- **食物背包**：小果實上限 10 / 大果實上限 5，存房間內
+- **FEED 按鈕**：消耗背包果實（小 +10 飢餓 / 大 +20），一天上限 5 次
+- **離線衰減**：超過 8 小時沒打字，每小時飢餓 -10
+- **週末模式**：衰減減半，寵物偶爾跳 play 慶祝
+- **晝夜系統**：晚上 22:00–06:00 背景變暗，自動睡眠
+- **Room → Plaza 開門過場動畫**（門板展開 → 寵物走向門口消失）
+- savePet() 存 Supabase
+
+### PlazaScene（廣場）
+- South Park 城市廣場背景（plaza-bg.png）
+- **Supabase 即時同步**：所有用戶寵物即時出現，localStorage fallback
+- **Realtime**：subscribeToNewPets，新寵物加入自動更新
+- 寵物在廣場隨機 Y 位置自由走動
+- **障礙物避開**：7 個 OBSTACLE_ZONES（椅子、路燈、垃圾桶），碰到反向
+- **自己寵物閃光**：進廣場後閃黃色光暈 8 秒
+- 點擊寵物彈出資訊卡（名字 / 加入日期 / ❤️ likes）
+- Like 功能（Supabase + localStorage）
+- **晝夜系統**：夜間遮罩 + 月亮星星
+- ← MY ROOM 返回按鈕
+
+### 認證系統
+- Supabase Anonymous Auth（自動靜默，不需註冊）
+- AuthButton（左下角，匿名顯示「SIGN IN TO SAVE」，登入後顯示帳號）
+- Google OAuth 升級（匿名 → 正式帳號，資料保留）
 
 ---
 
-## ONNX 驗證規範
+## OnnxValidator 規範（現為純像素分析）
 
 ```typescript
 // src/engine/OnnxValidator.ts
-// 功能：在瀏覽器內即時跑模型，判斷畫的東西像不像生物
-// 觸發：每次 mouseup（每筆畫結束後）
-// 回傳：{ score: number, label: string }
-// 反饋：score >= 0.6 → 畫布背景色漸變為淡綠，< 0.3 → 淡紅
-// 模型路徑：/public/models/pet_validator.onnx
-// 注意：模型檔案 MVP 階段用 MobileNetV2 替代，後期換自訓練模型
+// 不需要任何模型檔案，純 Canvas pixel analysis
+// 三個條件加權：
+//   coverage   0.25 — 畫了多少面積
+//   colorFill  0.50 — 有沒有上色（非白非透明）
+//   enclosure  0.25 — 輪廓是否封閉（flood fill 測試）
+// score >= 0.6 → creature（通過）
+// score >= 0.3 → maybe
+// score <  0.3 → unknown（拒絕）
 ```
 
 ---
 
-## Claude Vision API 規範
+## 能量系統常數（RoomScene）
 
 ```typescript
-// src/api/aiRecognize.ts
-// 觸發：用戶按下 MAKE IT LIVE
-// 只呼叫一次，結果存進 Supabase pets.ai_coords
-
-interface PetCoords {
-  eyes:      { x: number; y: number }[];   // 0.0–1.0 百分比座標
-  legs:      { x: number; y: number }[];
-  center:    { x: number; y: number };
-  has_eyes:  boolean;
-  has_legs:  boolean;
-}
-
-// 失敗時的預設值（fallback）
-const DEFAULT_COORDS: PetCoords = {
-  eyes:     [{ x: 0.35, y: 0.28 }, { x: 0.65, y: 0.28 }],
-  legs:     [{ x: 0.25, y: 0.85 }, { x: 0.45, y: 0.85 },
-             { x: 0.55, y: 0.85 }, { x: 0.75, y: 0.85 }],
-  center:   { x: 0.5, y: 0.5 },
-  has_eyes: false,
-  has_legs: false,
-};
+const KEYS_PER_ENERGY  = 100   // 100 下按鍵 = 1 點能量
+const ENERGY_FOR_SMALL = 5     // 小果實成本
+const ENERGY_FOR_BIG   = 30    // 大果實成本
+const SMALL_MAX        = 10    // 背包小果實上限
+const BIG_MAX          = 5     // 背包大果實上限
+const SMALL_HUNGER     = 10    // 小果實補飢餓
+const BIG_HUNGER       = 20    // 大果實補飢餓
+const DAILY_EAT_LIMIT  = 5     // 一天最多吃幾次
+const IDLE_HOURS       = 8     // 幾小時沒打字開始衰減
+const IDLE_DECAY       = 10    // 每小時扣飢餓
 ```
 
 ---
 
-## 資料庫 Schema
+## 廣場走路規範（PlazaScene）
+
+```typescript
+const LEFT_BOUND  = 80         // 左邊界
+const RIGHT_PAD   = 80         // 右邊距
+const WALK_Y_MIN  = 0.80       // walkway 上邊界（room 高度 %）
+const WALK_Y_MAX  = 0.88       // walkway 下邊界
+// 出生點：Math.random() 全寬隨機，不用 lane 系統
+// 走路：碰到障礙物或邊界就反向
+```
+
+---
+
+## 資料庫 Schema（當前）
 
 ```sql
 -- supabase/schema.sql
-
-create table pets (
-  id           uuid primary key default gen_random_uuid(),
-  user_id      uuid references auth.users,
-  name         text not null default 'My Pet',
-  pixel_data   text not null,        -- base64 dataURL
-  ai_coords    jsonb,                -- PetCoords JSON
-  stats        jsonb default '{"hunger":80,"happy":80,"energy":80}',
-  day_count    integer default 1,
-  votes        integer default 0,
-  last_fed_at  timestamptz default now(),
-  created_at   timestamptz default now()
-);
-
-create table interactions (
-  id           uuid primary key default gen_random_uuid(),
-  from_pet_id  uuid references pets,
-  to_pet_id    uuid references pets,
-  type         text check (type in ('vote','pat','feed')),
-  created_at   timestamptz default now()
-);
+-- pets 表：user_id 綁定 Supabase Auth（包括匿名用戶）
+-- likes 表：UNIQUE(pet_id, user_id) 防止重複 like
+-- RLS：任何登入用戶（包括匿名）可讀寫
+-- Realtime 已開啟 pets 表
 ```
-
----
-
-## 首頁規範（DrawScene）
-
-像 drawafish.com 一樣極簡，由上到下只有：
-
-```
-1. OODLE 大標題（Press Start 2P）
-2. 副標語：draw a pet. make it live.
-3. 240×240 像素畫布（白底，8px 格子，預載示例寵物）
-4. 12 色塊顏色板
-5. ERASE + CLEAR 工具按鈕
-6. ▶ MAKE IT LIVE 按鈕（鮮黃，最搶眼）
-7. 底部寵物遊行橫條（56px，所有寵物走動）
-```
-
-**禁止加入任何導航、說明、登入牆、教學彈窗。**
-
----
-
-## 寵物的家規範（RoomScene）
-
-- 按 MAKE IT LIVE 後，**不換頁**，在畫布下方滑順展開
-- 像素室內場景（牆、木地板、窗、書架、盆栽）
-- 三條狀態條 + 三個行動按鈕（FEED / PLAY / SLEEP）
-- 右上角 DAY 計數器
-- 所有狀態存 localStorage（MVP 不依賴後端）
 
 ---
 
 ## 型別規範
 
 ```typescript
-// src/pets/petTypes.ts
-
-export interface Pet {
-  id:         string;
-  name:       string;
-  pixelData:  string;        // base64 dataURL
-  aiCoords:   PetCoords;
-  stats:      PetStats;
-  dayCount:   number;
-  votes:      number;
-  lastFedAt:  Date;
-  createdAt:  Date;
-}
-
 export interface PetStats {
   hunger:  number;  // 0–100
   happy:   number;  // 0–100
@@ -269,30 +237,26 @@ export interface PetCoords {
 
 ---
 
-## 禁止事項
+## 下一步路線圖
 
-- 禁止用 `any` 型別（用 `unknown` + type guard）
-- 禁止在 React 元件裡寫動畫邏輯（全部在 `engine/`）
-- 禁止在 `useEffect` 依賴陣列裡放 object 直接比較
-- 禁止在動畫 loop 裡呼叫 `setState`
-- 禁止用 `alert()` / `confirm()`（做像素風格 modal）
-- 禁止用 CSS `transition` 做遊戲動畫
-- 禁止用 `border-radius`（像素風格）
+### Week 3-4（待做）
+- [ ] Vercel + Railway 部署上線
+- [ ] 道具商店（付費眼睛款式解鎖）
+- [ ] Electron 桌面寵物（全局鍵盤監聽，跨 App 累積能量）
+
+### 已知問題
+- 廣場 Y 位置需根據實際畫面微調 WALK_Y_MIN / WALK_Y_MAX
+- 障礙物座標為估算值，可能需要根據實際背景圖微調
 
 ---
 
-## 開發順序（Week 1 目標）
+## 禁止事項
 
-```
-Step 1 → src/styles/tokens.css          CSS 變數 + Google Fonts 載入
-Step 2 → src/ui/PixelButton.tsx          可複用像素按鈕
-Step 3 → src/ui/PixelCanvas.tsx          像素繪圖畫布（核心）
-Step 4 → src/engine/OnnxValidator.ts     ONNX 即時驗證
-Step 5 → src/api/aiRecognize.ts          Claude Vision API
-Step 6 → src/engine/PetAnimator.ts       動畫引擎
-Step 7 → src/scenes/DrawScene.tsx        首頁整合
-Step 8 → src/ui/StatBar.tsx              狀態條元件
-Step 9 → src/scenes/RoomScene.tsx        寵物的家
-```
-
-每完成一步，在瀏覽器確認效果正確，再繼續下一步。
+- 禁止用 `any` 型別
+- 禁止在 React 元件裡寫動畫邏輯（全部在 `engine/`）
+- 禁止在 `useEffect` 依賴陣列裡放 object 直接比較
+- 禁止在動畫 loop 裡呼叫 `setState`
+- 禁止用 `alert()` / `confirm()`
+- 禁止用 CSS `transition` 做遊戲動畫
+- 禁止用 `border-radius`
+- 禁止強制登入（遊戲必須能在匿名狀態下完整玩）

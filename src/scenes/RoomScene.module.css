@@ -17,125 +17,28 @@
   background-repeat: no-repeat;
 }
 
-.wall {
+/* ── night overlay ────────────────────────────────────── */
+.nightOverlay {
   position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 60%;
-  background: #D4C5B0;
-  background-image: repeating-linear-gradient(
-    90deg,
-    transparent 0px,
-    transparent 39px,
-    rgba(0, 0, 0, 0.04) 39px,
-    rgba(0, 0, 0, 0.04) 40px
-  );
+  inset: 0;
+  background: rgba(10, 20, 60, 0.55);
+  pointer-events: none;
+  z-index: 5;
 }
 
-.floor {
+/* ── top-left group: HUD + food shelf ────────────────── */
+.topLeft {
   position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  height: 40%;
-  background: #8B6914;
-  background-image: repeating-linear-gradient(
-    90deg,
-    transparent 0px,
-    transparent 29px,
-    rgba(0, 0, 0, 0.10) 29px,
-    rgba(0, 0, 0, 0.10) 30px
-  );
-}
-
-/* ── window ───────────────────────────────────────────── */
-.window {
-  position: absolute;
-  left: 20px;
-  top: 28px;
-  width: 40px;
-  height: 60px;
-  background: #1a1a2e;
-  border: 3px solid #5a4a3a;
-}
-
-.window::before {
-  content: '';
-  position: absolute;
-  left: 50%;
-  top: 0;
-  width: 2px;
-  height: 100%;
-  background: #5a4a3a;
-  transform: translateX(-50%);
-}
-
-.window::after {
-  content: '';
-  position: absolute;
-  left: 0;
-  top: 50%;
-  width: 100%;
-  height: 2px;
-  background: #5a4a3a;
-  transform: translateY(-50%);
-}
-
-.windowStar {
-  position: absolute;
-  top: 5px;
-  left: 5px;
-  width: 2px;
-  height: 2px;
-  background: #fff;
-  box-shadow: 16px 6px #fff, 5px 24px #fff, 22px 32px #fff;
-}
-
-/* ── bookshelf ────────────────────────────────────────── */
-.bookshelf {
-  position: absolute;
-  right: 16px;
-  top: 14px;
-  width: 56px;
-  background: #6D4C41;
-  border: 2px solid #5a4a3a;
-  padding: 2px;
+  top: 12px;
+  left: 12px;
   display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.shelf {
-  height: 22px;
-  background: #8B6914;
-  border-bottom: 3px solid #5a4a3a;
-  display: flex;
-  align-items: flex-end;
-  gap: 2px;
-  padding: 2px 2px 3px;
-}
-
-.book {
-  width: 8px;
-  height: 15px;
-  border: 1px solid rgba(0, 0, 0, 0.25);
-  flex-shrink: 0;
-}
-
-/* ── plant ────────────────────────────────────────────── */
-.plant {
-  position: absolute;
-  right: 14px;
-  bottom: 40%;
-  transform: translateY(50%);
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 8px;
 }
 
 /* ── HUD ──────────────────────────────────────────────── */
 .hud {
-  position: absolute;
-  top: 12px;
-  left: 12px;
   background: rgba(255, 255, 255, 0.9);
   border: 2px solid #2C2C2C;
   box-shadow: 3px 3px 0 #2C2C2C;
@@ -143,6 +46,38 @@
   display: flex;
   flex-direction: column;
   gap: 6px;
+}
+
+/* ── food shelf ───────────────────────────────────────── */
+.foodShelf {
+  background: rgba(255, 255, 255, 0.9);
+  border: 2px solid #2C2C2C;
+  box-shadow: 3px 3px 0 #2C2C2C;
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  min-width: 60px;
+}
+
+.foodShelfLabel {
+  font-family: var(--font-pixel);
+  font-size: 8px;
+  color: #2C2C2C;
+  white-space: nowrap;
+}
+
+.foodShelfItems {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px;
+  justify-content: center;
+}
+
+.foodItem {
+  font-size: 18px;
+  line-height: 1;
 }
 
 /* ── day counter ──────────────────────────────────────── */
@@ -159,7 +94,23 @@
   color: #2C2C2C;
 }
 
-/* ── pet ──────────────────────────────────────────────── */
+/* ── pet name ─────────────────────────────────────────── */
+.petNameDisplay {
+  position: absolute;
+  top: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-family: var(--font-pixel);
+  font-size: 9px;
+  color: #2C2C2C;
+  background: rgba(255,255,255,0.9);
+  border: 2px solid #2C2C2C;
+  box-shadow: 3px 3px 0 #2C2C2C;
+  padding: 6px 12px;
+  white-space: nowrap;
+}
+
+/* ── pet wrapper ──────────────────────────────────────── */
 .petWrapper {
   position: absolute;
   bottom: 18%;
@@ -168,6 +119,13 @@
   background: transparent;
 }
 
+.petWrapper canvas {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+
+/* ── speech bubble ────────────────────────────────────── */
 .bubble {
   position: absolute;
   bottom: 54px;
@@ -180,6 +138,7 @@
   font-size: 14px;
   white-space: nowrap;
   pointer-events: none;
+  z-index: 10;
 }
 
 .bubble::after {
@@ -209,6 +168,194 @@
   100% { transform: translateX(-50%) translateY(-40px); opacity: 0; }
 }
 
+/* ── energy panel ─────────────────────────────────────── */
+.energyPanel {
+  position: absolute;
+  bottom: 12px;
+  right: 12px;
+  background: rgba(255, 255, 255, 0.9);
+  border: 2px solid #2C2C2C;
+  box-shadow: 3px 3px 0 #2C2C2C;
+  padding: 10px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 180px;
+}
+
+.energyRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.energyLabel {
+  font-family: var(--font-pixel);
+  font-size: 10px;
+  color: #2C2C2C;
+}
+
+.energyValue {
+  font-family: var(--font-pixel);
+  font-size: 11px;
+  color: #f5a623;
+}
+
+.keyProgress {
+  width: 100%;
+  height: 8px;
+  background: #ddd;
+  border: 1px solid #2C2C2C;
+}
+
+.keyProgressBar {
+  height: 100%;
+  background: #f5a623;
+  transition: width 0.1s;
+}
+
+.keyProgressLabel {
+  font-family: var(--font-pixel);
+  font-size: 8px;
+  color: #555;
+}
+
+.convertBtn {
+  font-family: var(--font-pixel);
+  font-size: 8px;
+  padding: 8px 10px;
+  background: #fff;
+  color: #2C2C2C;
+  border: 2px solid #2C2C2C;
+  box-shadow: 2px 2px 0 #2C2C2C;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.convertBtn:active { transform: translate(1px,1px); box-shadow: 1px 1px 0 #2C2C2C; }
+.convertBtn:disabled { opacity: 0.4; cursor: not-allowed; box-shadow: none; }
+
+.costTag {
+  font-family: var(--font-pixel);
+  font-size: 7px;
+  color: #f5a623;
+}
+
+.foodCount {
+  font-family: var(--font-pixel);
+  font-size: 7px;
+  color: #888;
+  margin-left: auto;
+}
+
+/* ── door transition ──────────────────────────────────── */
+/* The door sits at the right side of the room (~85% from left).
+   Two panels open outward like saloon doors, revealing a bright
+   "plaza" light behind. The pet then walks toward it and fades out. */
+
+.doorContainer {
+  position: absolute;
+  right: 8%;
+  bottom: 10%;
+  width: 140px;
+  height: 220px;
+  z-index: 20;
+}
+
+.doorFrame {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  border: 3px solid #5a4a3a;
+  box-shadow: 4px 4px 0 #2C2C2C;
+  overflow: hidden;
+  /* Bright light behind the door */
+  background: radial-gradient(ellipse at center, #fffde7 0%, #ffe082 60%, #ffb300 100%);
+}
+
+.doorTop {
+  position: absolute;
+  top: -26px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-family: var(--font-pixel);
+  font-size: 7px;
+  color: #2C2C2C;
+  background: rgba(255,255,255,0.9);
+  border: 2px solid #2C2C2C;
+  padding: 4px 8px;
+  white-space: nowrap;
+}
+
+/* Left door panel — swings open to the left */
+.doorLeft {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 50%;
+  height: 100%;
+  background: #8B6914;
+  border-right: 2px solid #5a4a3a;
+  transform-origin: left center;
+  transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+  /* Door panel details */
+  background-image:
+    linear-gradient(90deg, rgba(0,0,0,0.15) 0px, transparent 2px),
+    linear-gradient(rgba(0,0,0,0.08) 0px, transparent 2px);
+  background-size: 100% 100%, 100% 33%;
+}
+
+.doorLeft::after {
+  content: '';
+  position: absolute;
+  top: 30%;
+  right: 12px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #f5a623;
+  border: 1px solid #5a4a3a;
+}
+
+.doorLeftOpen {
+  transform: perspective(400px) rotateY(-110deg);
+}
+
+/* Right door panel — swings open to the right */
+.doorRight {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 50%;
+  height: 100%;
+  background: #8B6914;
+  border-left: 2px solid #5a4a3a;
+  transform-origin: right center;
+  transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+  background-image:
+    linear-gradient(270deg, rgba(0,0,0,0.15) 0px, transparent 2px),
+    linear-gradient(rgba(0,0,0,0.08) 0px, transparent 2px);
+  background-size: 100% 100%, 100% 33%;
+}
+
+.doorRight::after {
+  content: '';
+  position: absolute;
+  top: 30%;
+  left: 12px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #f5a623;
+  border: 1px solid #5a4a3a;
+}
+
+.doorRightOpen {
+  transform: perspective(400px) rotateY(110deg);
+}
+
 /* ── action bar ───────────────────────────────────────── */
 .actionBar {
   display: flex;
@@ -220,9 +367,17 @@
   flex-wrap: wrap;
 }
 
+.feedRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  justify-content: center;
+}
+
 .actionBtn {
   font-family: var(--font-pixel);
-  font-size: 7px;
+  font-size: 8px;
   padding: 10px 14px;
   background: #fff;
   color: #2C2C2C;
@@ -231,32 +386,7 @@
   cursor: pointer;
 }
 
-.actionBtn:active {
-  transform: translate(2px, 2px);
-  box-shadow: 1px 1px 0 #2C2C2C;
-}
+.actionBtn:active { transform: translate(2px,2px); box-shadow: 1px 1px 0 #2C2C2C; }
+.actionBtn:disabled { opacity: 0.4; cursor: not-allowed; box-shadow: none; }
 
-.plazaBtn {
-  background: var(--color-cta);
-}
-
-.petWrapper canvas {
-  background: transparent !important;
-  border: none !important;
-  box-shadow: none !important;
-}
-
-.petNameDisplay {
-  position: absolute;
-  top: 12px;
-  left: 50%;
-  transform: translateX(-50%);
-  font-family: var(--font-pixel);
-  font-size: 9px;
-  color: #2C2C2C;
-  background: rgba(255,255,255,0.9);
-  border: 2px solid #2C2C2C;
-  box-shadow: 3px 3px 0 #2C2C2C;
-  padding: 6px 12px;
-  white-space: nowrap;
-}
+.plazaBtn { background: var(--color-cta); }
