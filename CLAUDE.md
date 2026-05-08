@@ -145,7 +145,7 @@ VT323          — 對話泡泡、提示文字、次要說明
 - **Supabase 即時同步**：所有用戶寵物即時出現，localStorage fallback
 - **Realtime**：subscribeToNewPets，新寵物加入自動更新
 - 寵物在廣場隨機 Y 位置自由走動
-- **障礙物避開**：7 個 OBSTACLE_ZONES（椅子、路燈、垃圾桶），碰到反向
+- 寵物在廣場自由走動（X + Y 雙向），無障礙物系統
 - **自己寵物閃光**：進廣場後閃黃色光暈 8 秒
 - 點擊寵物彈出資訊卡（名字 / 加入日期 / ❤️ likes）
 - Like 功能（Supabase + localStorage）
@@ -164,10 +164,17 @@ VT323          — 對話泡泡、提示文字、次要說明
 ```typescript
 // src/engine/OnnxValidator.ts
 // 不需要任何模型檔案，純 Canvas pixel analysis
-// 三個條件加權：
-//   coverage   0.25 — 畫了多少面積
-//   colorFill  0.50 — 有沒有上色（非白非透明）
-//   enclosure  0.25 — 輪廓是否封閉（flood fill 測試）
+// 判斷邏輯：bounding box fill density（不用 flood fill）
+//   fillDensity  = drawn pixels / bounding box area（主要指標）
+//   aspectRatio  = 短邊 / 長邊（防止線條通過）
+//   coverageRatio = drawn pixels / total canvas
+//
+// 三個硬性門檻，缺一不過：
+//   hasArea      coverageRatio >= 0.04
+//   hasFill      fillDensity   >= 0.35（填滿的形狀，不是空心輪廓）
+//   hasShape     aspectRatio   >= 0.25（不是細線條）
+//
+// 任何顏色都一樣判斷，不分黑色或彩色
 // score >= 0.6 → creature（通過）
 // score >= 0.3 → maybe
 // score <  0.3 → unknown（拒絕）
@@ -197,10 +204,12 @@ const IDLE_DECAY       = 10    // 每小時扣飢餓
 ```typescript
 const LEFT_BOUND  = 80         // 左邊界
 const RIGHT_PAD   = 80         // 右邊距
-const WALK_Y_MIN  = 0.80       // walkway 上邊界（room 高度 %）
+const WALK_Y_MIN  = 0.68       // walkway 上邊界（room 高度 %）
 const WALK_Y_MAX  = 0.88       // walkway 下邊界
-// 出生點：Math.random() 全寬隨機，不用 lane 系統
-// 走路：碰到障礙物或邊界就反向
+// 出生點：Math.random() 全寬隨機
+// 走路：X + Y 雙向移動，碰到邊界反向
+// 無障礙物系統（已移除 OBSTACLE_ZONES）
+// Walker 有 dirY + speedY，寵物會上下左右自由走動
 ```
 
 ---
@@ -239,14 +248,27 @@ export interface PetCoords {
 
 ## 下一步路線圖
 
-### Week 3-4（待做）
-- [ ] Vercel + Railway 部署上線
+### Week 3-4（進行中）
+- [ ] Vercel 部署上線（前端）
+- [ ] Railway 部署（Express 後端，如需要）
+- [ ] 寵物分享頁 /pet/:id + Open Graph 預覽
 - [ ] 道具商店（付費眼睛款式解鎖）
+- [ ] Plaza → Room 返回門動畫
+- [ ] 瀏覽器 Push Notification（寵物餓了通知）
 - [ ] Electron 桌面寵物（全局鍵盤監聽，跨 App 累積能量）
 
+### 已完成修復 ✅
+- Supabase Anonymous Auth 正常運作（.env URL 格式修正）
+- pets / likes table 重建完成
+- OnnxValidator 重寫：任何顏色都用同一套判斷，必須填色才能通過
+- PlazaScene 走動重寫：spawnQueue 機制，DOM ready 才 spawn
+- 廣場寵物可上下左右自由走動，移除障礙物系統
+- PetAnimator 眨眼修正：移除 compressEyes，只用 drawEye blink flag
+
 ### 已知問題
-- 廣場 Y 位置需根據實際畫面微調 WALK_Y_MIN / WALK_Y_MAX
-- 障礙物座標為估算值，可能需要根據實際背景圖微調
+- 廣場寵物影子與寵物有輕微距離（PetAnimator translateY 偏移問題）
+- Plaza → Room 返回門動畫尚未實裝
+- 寵物分享頁（/pet/:id）尚未實裝
 
 ---
 

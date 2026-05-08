@@ -168,6 +168,24 @@
   100% { transform: translateX(-50%) translateY(-40px); opacity: 0; }
 }
 
+/* ── like panel (replaces energy panel) ──────────────────
+   Identical layout — bottom-right corner, shows ❤️ balance
+   and the two food-redemption buttons.                    */
+.likePanel {
+  position: absolute;
+  bottom: 12px;
+  right: 12px;
+  background: rgba(255, 255, 255, 0.9);
+  border: 2px solid #2C2C2C;
+  box-shadow: 3px 3px 0 #2C2C2C;
+  padding: 10px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 180px;
+  z-index: 6;
+}
+
 /* ── energy panel ─────────────────────────────────────── */
 .energyPanel {
   position: absolute;
@@ -271,8 +289,12 @@
   border: 3px solid #5a4a3a;
   box-shadow: 4px 4px 0 #2C2C2C;
   overflow: hidden;
-  /* Bright light behind the door */
   background: radial-gradient(ellipse at center, #fffde7 0%, #ffe082 60%, #ffb300 100%);
+  opacity: 0;
+}
+
+.doorFrameVisible {
+  opacity: 1;
 }
 
 .doorTop {

@@ -106,3 +106,138 @@ export async function likePet(petId: string): Promise<void> {
     console.error('[petService] likePet failed:', error.message)
   }
 }
+
+// ══════════════════════════════════════════════════════════
+// Shout system
+// ══════════════════════════════════════════════════════════
+
+export interface ShoutRecord {
+  id:         string
+  pet_id:     string
+  user_id:    string
+  message:    string
+  created_at: string
+}
+
+// ── postShout ─────────────────────────────────────────────
+// Creates a shout for the given pet. Returns the new shout id, or null on error.
+export async function postShout(petId: string, message: string): Promise<string | null> {
+  const userId = useAuthStore.getState().userId
+  if (!userId) return null
+
+  const { data, error } = await supabase
+    .from('shouts')
+    .insert({ pet_id: petId, user_id: userId, message })
+    .select('id')
+    .single()
+
+  if (error) {
+    console.error('[petService] postShout failed:', error.message)
+    return null
+  }
+  return data?.id ?? null
+}
+
+// ── getActiveShouts ───────────────────────────────────────
+// Returns all shouts created in the last 20 seconds, newest first.
+// One row per shout — caller groups by pet_id.
+export async function getActiveShouts(): Promise<ShoutRecord[]> {
+  const cutoff = new Date(Date.now() - 20_000).toISOString()
+
+  const { data, error } = await supabase
+    .from('shouts')
+    .select('*')
+    .gte('created_at', cutoff)
+    .order('created_at', { ascending: false })
+
+  if (error) {
+    console.error('[petService] getActiveShouts failed:', error.message)
+    return []
+  }
+  return (data ?? []) as ShoutRecord[]
+}
+
+// ── countTodayShouts ──────────────────────────────────────
+// Returns how many shouts the current user has posted today (midnight-based).
+export async function countTodayShouts(): Promise<number> {
+  const userId = useAuthStore.getState().userId
+  if (!userId) return 0
+
+  const startOfDay = new Date()
+  startOfDay.setHours(0, 0, 0, 0)
+
+  const { count, error } = await supabase
+    .from('shouts')
+    .select('*', { count: 'exact', head: true })
+    .eq('user_id', userId)
+    .gte('created_at', startOfDay.toISOString())
+
+  if (error) {
+    console.error('[petService] countTodayShouts failed:', error.message)
+    return 0
+  }
+  return count ?? 0
+}
+
+// ── likeShout ─────────────────────────────────────────────
+// Calls the like_shout RPC which records the like and credits
+// the pet owner's like_balance atomically.
+export async function likeShout(shoutId: string): Promise<void> {
+  const userId = useAuthStore.getState().userId
+  if (!userId) return
+
+  const { error } = await supabase.rpc('like_shout', {
+    p_shout_id: shoutId,
+    p_liker_id: userId,
+  })
+
+  if (error) {
+    console.error('[petService] likeShout failed:', error.message)
+  }
+}
+
+// ══════════════════════════════════════════════════════════
+// Like-balance economy (food redemption)
+// ══════════════════════════════════════════════════════════
+
+// ── getLikeBalance ────────────────────────────────────────
+// Returns the current user's like balance (0 if no row exists yet).
+export async function getLikeBalance(): Promise<number> {
+  const userId = useAuthStore.getState().userId
+  if (!userId) return 0
+
+  const { data, error } = await supabase
+    .from('like_balance')
+    .select('balance')
+    .eq('user_id', userId)
+    .single()
+
+  if (error) {
+    // PGRST116 = no rows → user has never received a like yet
+    if (error.code !== 'PGRST116') {
+      console.error('[petService] getLikeBalance failed:', error.message)
+    }
+    return 0
+  }
+  return (data?.balance ?? 0) as number
+}
+
+// ── redeemLikesForFood ────────────────────────────────────
+// Calls the redeem_likes RPC to atomically deduct p_cost from
+// the user's balance. Returns true on success, false if balance
+// is insufficient or the RPC fails.
+export async function redeemLikesForFood(cost: 5 | 20): Promise<boolean> {
+  const userId = useAuthStore.getState().userId
+  if (!userId) return false
+
+  const { data, error } = await supabase.rpc('redeem_likes', {
+    p_user_id: userId,
+    p_cost:    cost,
+  })
+
+  if (error) {
+    console.error('[petService] redeemLikesForFood failed:', error.message)
+    return false
+  }
+  return (data as boolean) ?? false
+}

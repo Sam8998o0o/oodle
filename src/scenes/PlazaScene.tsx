@@ -1,9 +1,14 @@
 import { useRef, useState, useEffect, useCallback } from 'react'
 import { PetAnimator } from '../engine/PetAnimator'
 import type { PetCoords } from '../api/aiRecognize'
-import { fetchAllPets, getAllLikeCounts, likePet } from '../lib/petService'
+import {
+  fetchAllPets, getAllLikeCounts, likePet,
+  postShout, getActiveShouts, countTodayShouts, likeShout,
+} from '../lib/petService'
 import { subscribeToNewPets } from '../lib/realtimeService'
 import styles from './PlazaScene.module.css'
+
+type DoorPhase = 'idle' | 'appearing' | 'opening' | 'walking' | 'done'
 
 const PET_SIZE   = 120
 const LEFT_BOUND = 80
@@ -12,6 +17,9 @@ const WALK_Y_MIN = 0.68   // top of walkable ground area
 const WALK_Y_MAX = 0.88   // bottom of walkable ground area
 
 // No obstacle zones — pets walk freely across the plaza
+
+const SHOUT_DAILY_LIMIT = 10
+const SHOUT_DURATION_MS = 15_000
 
 const DEFAULT_COORDS: PetCoords = {
   eyes:     [{ x: 0.35, y: 0.28 }, { x: 0.65, y: 0.28 }],
@@ -81,11 +89,95 @@ export default function PlazaScene({ petData, onGoToRoom }: PlazaSceneProps) {
   const [selectedPet, setSelectedPet] = useState<PlazaPet | null>(null)
   const [likes, setLikes]             = useState<Record<string, number>>({})
   const [ownGlowing, setOwnGlowing]   = useState(true)
+  const [doorPhase, setDoorPhase]     = useState<DoorPhase>('idle')
+
+  // ── Shout system ──────────────────────────────────────────
+  const [shoutInput,   setShoutInput]   = useState('')
+  const [shoutLeft,    setShoutLeft]    = useState(SHOUT_DAILY_LIMIT)
+  const [activeShouts, setActiveShouts] = useState<Record<string, { message: string; shoutId: string }>>({})
+  const [likedShouts,  setLikedShouts]  = useState<Set<string>>(new Set())
 
   useEffect(() => {
     const t = setTimeout(() => setOwnGlowing(false), 8000)
     return () => clearTimeout(t)
   }, [])
+
+  // ── Shout: load today's count on mount ────────────────────
+  useEffect(() => {
+    countTodayShouts()
+      .then(n => setShoutLeft(SHOUT_DAILY_LIMIT - n))
+      .catch(() => {})
+  }, [])
+
+  // ── Shout: poll active shouts every 5 s ───────────────────
+  useEffect(() => {
+    const poll = async () => {
+      const shouts = await getActiveShouts().catch(() => [])
+      const ownSupabaseId = localStorage.getItem('oodle_pet_supabase_id')
+      // Group by pet_id, keep only the most recent shout per pet
+      const byPet: Record<string, { message: string; shoutId: string }> = {}
+      for (const s of shouts) {
+        // Map own supabase pet_id → 'own' so it matches our pets array key
+        const key = s.pet_id === ownSupabaseId ? 'own' : s.pet_id
+        if (!byPet[key]) {
+          byPet[key] = { message: s.message, shoutId: s.id }
+        }
+      }
+      setActiveShouts(byPet)
+    }
+    poll()
+    const id = setInterval(poll, 5000)
+    return () => clearInterval(id)
+  }, [])
+
+  // ── Plaza → Room door transition ──────────────────────────
+  useEffect(() => {
+    if (doorPhase === 'appearing') {
+      const t = setTimeout(() => setDoorPhase('opening'), 50)
+      return () => clearTimeout(t)
+    }
+
+    if (doorPhase === 'opening') {
+      const t = setTimeout(() => setDoorPhase('walking'), 600)
+      return () => clearTimeout(t)
+    }
+
+    if (doorPhase === 'walking') {
+      const wrapper = wrapperMap.current.get('own')
+      const canvas  = canvasMap.current.get('own')
+      const room    = roomRef.current
+      if (!wrapper || !room) { setDoorPhase('done'); return }
+
+      // *** Stop walk loop from fighting us ***
+      walkerMap.current.delete('own')
+
+      // Stop pet just in front of the door (right edge of door + small gap)
+      const doorRightEdge = room.offsetWidth * 0.08 + 140
+      const targetX = doorRightEdge
+
+      // Face left toward door
+      if (canvas) canvas.style.transform = 'scaleX(-1)'
+
+      let rafId = 0
+      const walk = () => {
+        const current = parseFloat(wrapper.style.left) || 0
+        const dx = targetX - current
+        if (Math.abs(dx) < 3) {
+          wrapper.style.opacity = '0'
+          setTimeout(() => setDoorPhase('done'), 400)
+          return
+        }
+        wrapper.style.left = `${current + Math.sign(dx) * 3}px`
+        rafId = requestAnimationFrame(walk)
+      }
+      rafId = requestAnimationFrame(walk)
+      return () => cancelAnimationFrame(rafId)
+    }
+
+    if (doorPhase === 'done') {
+      onGoToRoom()
+    }
+  }, [doorPhase, onGoToRoom])
 
   // ── Spawn a pet into the walk system ──────────────────────
   const spawnPet = useCallback((pet: PlazaPet) => {
@@ -296,47 +388,109 @@ export default function PlazaScene({ petData, onGoToRoom }: PlazaSceneProps) {
     likePet(petId).catch(() => {})
   }, [])
 
+  // ── Shout handlers ────────────────────────────────────────
+  const handleShout = useCallback(async () => {
+    const message = shoutInput.trim()
+    if (!message || shoutLeft <= 0) return
+    const supabaseId = localStorage.getItem('oodle_pet_supabase_id')
+    if (!supabaseId) return   // pet not yet saved to Supabase
+
+    const shoutId = await postShout(supabaseId, message).catch(() => null)
+    if (!shoutId) return
+
+    setShoutInput('')
+    setShoutLeft(n => n - 1)
+
+    // Use 'own' as key to match the own pet's id in the pets array
+    setActiveShouts(prev => ({ ...prev, ['own']: { message, shoutId } }))
+
+    // Auto-remove after SHOUT_DURATION_MS
+    setTimeout(() => {
+      setActiveShouts(prev => {
+        const current = prev['own']
+        if (!current || current.shoutId !== shoutId) return prev
+        const next = { ...prev }
+        delete next['own']
+        return next
+      })
+    }, SHOUT_DURATION_MS)
+  }, [shoutInput, shoutLeft])
+
+  const handleLikeShout = useCallback((shoutId: string) => {
+    if (likedShouts.has(shoutId)) return
+    setLikedShouts(prev => new Set([...prev, shoutId]))
+    likeShout(shoutId).catch(() => {})
+  }, [likedShouts])
+
   return (
     <div className={styles.page}>
       <div className={styles.room} ref={roomRef}>
-        <button className={styles.backBtn} onClick={onGoToRoom}>← MY ROOM</button>
         <div className={styles.petCount}>🐾 {pets.length} PETS HERE</div>
 
-        {pets.map(pet => (
-          <div
-            key={pet.id}
-            className={[
-              styles.petSlot,
-              pet.isOwn ? styles.ownPet : '',
-              pet.isOwn && ownGlowing ? styles.ownPetGlow : '',
-            ].join(' ')}
-            ref={el => {
-              if (el) {
-                wrapperMap.current.set(pet.id, el)
-                // Try spawn now that DOM is available
-                spawnPet(pet)
-              } else {
-                wrapperMap.current.delete(pet.id)
-              }
-            }}
-            onClick={() => setSelectedPet(pet)}
-          >
-            <div className={styles.nameTag}>{pet.name}</div>
-            <canvas
+        {/* Door overlay — appears during transition back to room */}
+        {doorPhase !== 'idle' && (
+          <div className={styles.doorContainer}>
+            <div className={`${styles.doorFrame} ${styles.doorFrameVisible}`}>
+              <div className={`${styles.doorLeft}  ${doorPhase === 'opening' || doorPhase === 'walking' || doorPhase === 'done' ? styles.doorLeftOpen  : ''}`} />
+              <div className={`${styles.doorRight} ${doorPhase === 'opening' || doorPhase === 'walking' || doorPhase === 'done' ? styles.doorRightOpen : ''}`} />
+              <div className={styles.doorTop}>← MY ROOM</div>
+            </div>
+          </div>
+        )}
+
+        {pets.map(pet => {
+          const shout = activeShouts[pet.id]
+          return (
+            <div
+              key={pet.id}
+              className={[
+                styles.petSlot,
+                pet.isOwn ? styles.ownPet : '',
+                pet.isOwn && ownGlowing ? styles.ownPetGlow : '',
+              ].join(' ')}
               ref={el => {
                 if (el) {
-                  canvasMap.current.set(pet.id, el)
+                  wrapperMap.current.set(pet.id, el)
                   spawnPet(pet)
                 } else {
-                  canvasMap.current.delete(pet.id)
+                  wrapperMap.current.delete(pet.id)
                 }
               }}
-              width={PET_SIZE}
-              height={PET_SIZE}
-              className={styles.petCanvas}
-            />
-          </div>
-        ))}
+              onClick={() => setSelectedPet(pet)}
+            >
+              {/* Speech bubble */}
+              {shout && (
+                <div className={styles.speechBubble}>
+                  {shout.message}
+                  {!pet.isOwn && (
+                    <button
+                      className={styles.bubbleLikeBtn}
+                      disabled={likedShouts.has(shout.shoutId)}
+                      onClick={e => { e.stopPropagation(); handleLikeShout(shout.shoutId) }}
+                    >
+                      {likedShouts.has(shout.shoutId) ? '❤️ LIKED' : '❤️ LIKE'}
+                    </button>
+                  )}
+                </div>
+              )}
+
+              <div className={styles.nameTag}>{pet.name}</div>
+              <canvas
+                ref={el => {
+                  if (el) {
+                    canvasMap.current.set(pet.id, el)
+                    spawnPet(pet)
+                  } else {
+                    canvasMap.current.delete(pet.id)
+                  }
+                }}
+                width={PET_SIZE}
+                height={PET_SIZE}
+                className={styles.petCanvas}
+              />
+            </div>
+          )
+        })}
 
         {selectedPet && (
           <>
@@ -358,6 +512,38 @@ export default function PlazaScene({ petData, onGoToRoom }: PlazaSceneProps) {
             </div>
           </>
         )}
+      </div>
+
+      {/* Bottom action bar */}
+      <div className={styles.actionBar}>
+        <button
+          className={`${styles.actionBtn} ${styles.roomBtn}`}
+          onClick={() => { if (doorPhase === 'idle') setDoorPhase('appearing') }}
+          disabled={doorPhase !== 'idle'}
+        >
+          {doorPhase === 'idle' ? '← MY ROOM' : 'GOING...'}
+        </button>
+
+        <div className={styles.shoutBox}>
+          <input
+            className={styles.shoutInput}
+            value={shoutInput}
+            maxLength={30}
+            placeholder="Let your pet speak..."
+            onChange={e => setShoutInput(e.target.value.slice(0, 30))}
+            onKeyDown={e => { if (e.key === 'Enter') handleShout() }}
+          />
+          <button
+            className={styles.actionBtn}
+            onClick={handleShout}
+            disabled={shoutLeft <= 0 || shoutInput.trim() === ''}
+          >
+            SHOUT
+          </button>
+          <span className={styles.shoutCount}>
+            SHOUT {SHOUT_DAILY_LIMIT - shoutLeft}/{SHOUT_DAILY_LIMIT}
+          </span>
+        </div>
       </div>
     </div>
   )

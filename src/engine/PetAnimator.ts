@@ -7,7 +7,7 @@ export interface PetAnimData {
   eyeStyle?: string
 }
 
-export type PetState = 'idle' | 'walk' | 'eat' | 'play' | 'sleep' | 'sad'
+export type PetState = 'idle' | 'walk' | 'eat' | 'play' | 'sleep' | 'sad' | 'squish' | 'dizzy'
 
 export class PetAnimator {
   private canvas: HTMLCanvasElement
@@ -32,6 +32,8 @@ export class PetAnimator {
   private nodT        = 0
   private walkT       = 0
   private sadDroop    = 0
+  private squishT     = 0
+  private dizzyT      = 0
 
   constructor(canvas: HTMLCanvasElement, petData: PetAnimData) {
     this.canvas = canvas
@@ -76,12 +78,14 @@ export class PetAnimator {
   setState(s: PetState): void {
     const prev = this.state
     this.state = s
-    if (s === 'play')  { this.isJumping = true; this.jumpCount = 0; this.jumpT = 0 }
-    if (s === 'eat')   { this.nodT = 0 }
-    if (s === 'sleep') { this.sleepTarget = Math.PI / 2 }
+    if (s === 'play')   { this.isJumping = true; this.jumpCount = 0; this.jumpT = 0 }
+    if (s === 'eat')    { this.nodT = 0 }
+    if (s === 'sleep')  { this.sleepTarget = Math.PI / 2 }
     if (prev === 'sleep' && s !== 'sleep') { this.sleepTarget = 0 }
-    if (s === 'sad')   { this.sadDroop = 0 }
-    if (s === 'walk')  { this.walkT = 0 }
+    if (s === 'sad')    { this.sadDroop = 0 }
+    if (s === 'walk')   { this.walkT = 0 }
+    if (s === 'squish') { this.squishT = 0 }
+    if (s === 'dizzy')  { this.dizzyT = 0 }
   }
 
   private frame(): void {
@@ -143,6 +147,22 @@ export class PetAnimator {
         rotate       = Math.sin(this.t * 0.5) * 0.06
         break
       }
+      case 'squish': {
+        // Quick squish: flatten then spring back
+        this.squishT += 0.18
+        const squishProgress = Math.min(this.squishT, Math.PI)
+        scaleY     = 1 - Math.sin(squishProgress) * 0.35
+        translateY = Math.sin(squishProgress) * 8
+        rotate     = Math.sin(this.squishT * 2) * 0.08
+        break
+      }
+      case 'dizzy': {
+        // Frozen but wobble slightly
+        this.dizzyT += 0.04
+        rotate     = Math.sin(this.dizzyT * 1.5) * 0.08
+        translateY = Math.abs(Math.sin(this.dizzyT)) * 2
+        break
+      }
     }
 
     // 身體 + 眼睛全在同一個 transform 裡
@@ -186,12 +206,13 @@ export class PetAnimator {
     }
 
     // 眼睛款式（在同一個 transform 裡，跟著身體擺動）
-    if (data.eyeStyle && coords.eyes.length > 0) {
+    const eyeStyleToUse = state === 'dizzy' ? 'eye_x' : (data.eyeStyle ?? 'eye_round')
+    if (coords.eyes.length > 0) {
       const eyeSize = size * 0.09
       const ex = coords.eyes.reduce((s,e) => s+e.x, 0) / coords.eyes.length * size
       const ey = coords.eyes[0].y * size
-      this.drawEye(ctx, data.eyeStyle, ex - eyeSize*1.3, ey, eyeSize, blink)
-      this.drawEye(ctx, data.eyeStyle, ex + eyeSize*1.3, ey, eyeSize, blink)
+      this.drawEye(ctx, eyeStyleToUse, ex - eyeSize*1.3, ey, eyeSize, blink)
+      this.drawEye(ctx, eyeStyleToUse, ex + eyeSize*1.3, ey, eyeSize, blink)
     }
 
     ctx.restore()
@@ -207,6 +228,7 @@ export class PetAnimator {
 
     if (state === 'sleep') this.drawZzz(ctx, size)
     if (state === 'sad')   this.drawSweat(ctx, size)
+    if (state === 'dizzy') this.drawDizzy(ctx, size)
   }
 
   private drawEye(
@@ -298,5 +320,26 @@ export class PetAnimator {
     ctx.bezierCurveTo(x-5, y+4, x-5, y-4, x, y-8)
     ctx.fill()
     ctx.restore()
+  }
+
+  private drawDizzy(ctx: CanvasRenderingContext2D, size: number): void {
+    // Spinning 💫 stars above pet head
+    const cx = size / 2
+    const cy = size * 0.08
+    const radius = size * 0.22
+    const count = 3
+    for (let i = 0; i < count; i++) {
+      const angle = (this.dizzyT * 2) + (i / count) * Math.PI * 2
+      const x = cx + Math.cos(angle) * radius
+      const y = cy + Math.sin(angle) * radius * 0.4
+      const opacity = 0.6 + Math.sin(angle + this.dizzyT) * 0.4
+      ctx.save()
+      ctx.globalAlpha = Math.max(0.2, opacity)
+      ctx.font = `${size * 0.18}px system-ui`
+      ctx.textAlign = 'center'
+      ctx.textBaseline = 'middle'
+      ctx.fillText('💫', x, y)
+      ctx.restore()
+    }
   }
 }
