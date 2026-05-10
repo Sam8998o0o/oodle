@@ -11,12 +11,19 @@
   position: relative;
   overflow: hidden;
   min-height: 100vh;
-  background-image: url('/plaza-bg.png');
-  background-size: cover;
-  background-position: center top;
-  background-repeat: no-repeat;
-  /* fallback if no bg image */
-  background-color: #C8E6C9;
+  background: #0f3460;
+}
+
+.room::after {
+  content: '';
+  position: absolute;
+  bottom: 18%;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: var(--color-border);
+  pointer-events: none;
+  z-index: 1;
 }
 
 /* ── night overlay ────────────────────────────────────── */
@@ -68,7 +75,7 @@
   justify-content: center;
   align-items: center;
   padding: 12px 16px;
-  background: var(--color-bg);
+  background: var(--color-surface);
   border-top: 2px solid var(--color-border);
   gap: 10px;
 }
@@ -77,10 +84,10 @@
   font-family: var(--font-pixel);
   font-size: 7px;
   padding: 10px 16px;
-  background: #fff;
+  background: var(--color-panel);
   color: var(--color-text);
   border: 2px solid var(--color-border);
-  box-shadow: 3px 3px 0 var(--color-border);
+  box-shadow: var(--shadow-pixel);
   cursor: pointer;
 }
 
@@ -105,9 +112,10 @@
   font-family: var(--font-pixel);
   font-size: 7px;
   padding: 8px 12px;
-  background: rgba(255, 255, 255, 0.9);
-  border: 2px solid #2C2C2C;
-  box-shadow: 3px 3px 0 #2C2C2C;
+  background: var(--color-surface);
+  color: var(--color-text);
+  border: 2px solid var(--color-border);
+  box-shadow: var(--shadow-pixel);
   z-index: 10;
 }
 
@@ -131,9 +139,9 @@
 .nameTag {
   font-family: var(--font-pixel);
   font-size: 7px;
-  color: #2C2C2C;
-  background: rgba(255, 255, 255, 0.85);
-  border: 1px solid #2C2C2C;
+  color: var(--color-text);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
   padding: 3px 6px;
   white-space: nowrap;
   max-width: 110px;
@@ -165,9 +173,9 @@
   left: 50%;
   transform: translate(-50%, -50%);
   z-index: 21;
-  background: #fff;
-  border: 2px solid #2C2C2C;
-  box-shadow: 4px 4px 0 #2C2C2C;
+  background: var(--color-surface);
+  border: 2px solid var(--color-border);
+  box-shadow: var(--shadow-pixel);
   padding: 20px 24px;
   min-width: 220px;
   display: flex;
@@ -182,22 +190,22 @@
   font-family: var(--font-pixel);
   font-size: 8px;
   padding: 4px 6px;
-  background: #fff;
-  border: 2px solid #2C2C2C;
-  box-shadow: 2px 2px 0 #2C2C2C;
+  background: var(--color-panel);
+  border: 2px solid var(--color-border);
+  box-shadow: var(--shadow-pixel-sm);
   cursor: pointer;
   line-height: 1;
 }
 
 .closeBtn:active {
   transform: translate(1px, 1px);
-  box-shadow: 1px 1px 0 #2C2C2C;
+  box-shadow: none;
 }
 
 .cardName {
   font-family: var(--font-pixel);
   font-size: 11px;
-  color: #2C2C2C;
+  color: var(--color-cta);
   margin-bottom: 4px;
   padding-right: 24px;
 }
@@ -205,17 +213,17 @@
 .cardRow {
   font-family: var(--font-retro);
   font-size: 16px;
-  color: #444;
+  color: var(--color-text-dim);
 }
 
 .likeBtn {
   font-family: var(--font-pixel);
   font-size: 7px;
   padding: 8px 14px;
-  background: #FFE600;
-  color: #2C2C2C;
-  border: 2px solid #2C2C2C;
-  box-shadow: 3px 3px 0 #2C2C2C;
+  background: var(--color-panel);
+  color: var(--color-danger);
+  border: 2px solid var(--color-border);
+  box-shadow: var(--shadow-pixel);
   cursor: pointer;
   margin-top: 4px;
   align-self: flex-start;
@@ -223,7 +231,7 @@
 
 .likeBtn:active {
   transform: translate(2px, 2px);
-  box-shadow: 1px 1px 0 #2C2C2C;
+  box-shadow: var(--shadow-pixel-sm);
 }
 
 /* ── speech bubble ────────────────────────────────────── */
@@ -232,9 +240,9 @@
   bottom: 110px;
   left: 70%;
   transform: none;
-  background: #fff;
-  border: 2px solid #2C2C2C;
-  box-shadow: 3px 3px 0 #2C2C2C;
+  background: var(--color-surface);
+  border: 2px solid var(--color-border);
+  box-shadow: var(--shadow-pixel);
   padding: 6px 12px;
   max-width: 220px;
   min-width: 80px;
@@ -242,34 +250,31 @@
   word-break: normal;
   white-space: nowrap;
   font-family: var(--font-retro);
-  font-size: 15px;
-  color: #2C2C2C;
+  font-size: 16px;
+  color: var(--color-text);
   z-index: 8;
   pointer-events: none;
 }
 
-/* Outer hook — bottom-left corner, pointing DOWN-LEFT toward pet */
+/* Pixel square tail — bottom-left corner */
 .speechBubble::before {
   content: '';
   position: absolute;
-  bottom: -16px;
+  bottom: -4px;
   left: 6px;
-  width: 0;
-  height: 0;
-  border-right: 14px solid transparent;
-  border-top: 16px solid #2C2C2C;
+  width: 4px;
+  height: 4px;
+  background: var(--color-border);
 }
 
-/* Inner fill — slightly inset to create border effect */
 .speechBubble::after {
   content: '';
   position: absolute;
-  bottom: -12px;
-  left: 8px;
-  width: 0;
-  height: 0;
-  border-right: 11px solid transparent;
-  border-top: 13px solid #fff;
+  bottom: -2px;
+  left: 7px;
+  width: 2px;
+  height: 2px;
+  background: var(--color-surface);
 }
 
 /* ── bubble like button ───────────────────────────────── */
@@ -279,10 +284,10 @@
   font-size: 6px;
   padding: 3px 6px;
   margin-top: 4px;
-  background: #fff;
-  color: #2C2C2C;
-  border: 2px solid #2C2C2C;
-  box-shadow: 2px 2px 0 #2C2C2C;
+  background: var(--color-panel);
+  color: var(--color-danger);
+  border: 2px solid var(--color-border);
+  box-shadow: var(--shadow-pixel-sm);
   cursor: pointer;
   display: block;
   width: 100%;
@@ -290,7 +295,7 @@
 
 .bubbleLikeBtn:active {
   transform: translate(1px, 1px);
-  box-shadow: 1px 1px 0 #2C2C2C;
+  box-shadow: none;
 }
 
 .bubbleLikeBtn:disabled {
@@ -471,4 +476,17 @@
 
 .doorRightOpen {
   transform: perspective(400px) rotateY(110deg);
+}
+
+/* ── Pixel heart float animation ─────────────────────────── */
+@keyframes pixelHeartFloat {
+  0%   { transform: translateX(-50%) translateY(0);     opacity: 1; }
+  100% { transform: translateX(-50%) translateY(-40px); opacity: 0; }
+}
+
+.pixelHeart {
+  position: fixed;
+  pointer-events: none;
+  z-index: 9999;
+  animation: pixelHeartFloat 1.2s steps(10) forwards;
 }

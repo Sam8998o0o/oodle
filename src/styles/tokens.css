@@ -1,16 +1,23 @@
 @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap');
 
 :root {
-  --color-bg:     #FDF6E3;
-  --color-canvas: #FFFFFF;
-  --color-text:   #2C2C2C;
-  --color-border: #2C2C2C;
-  --color-cta:    #FFE600;
-  --color-danger: #FF5A5F;
-  --color-hunger: #F5A623;
-  --color-happy:  #E8534A;
-  --color-energy: #2196F3;
-  --color-grid:   rgba(0, 0, 0, 0.05);
+  --color-bg:           #1a1a2e;
+  --color-surface:      #16213e;
+  --color-panel:        #0f3460;
+  --color-border:       #e94560;
+  --color-text:         #eaeaea;
+  --color-text-dim:     #888;
+  --color-cta:          #f5a623;
+  --color-danger:       #e94560;
+  --color-hunger:       #f5a623;
+  --color-happy:        #e94560;
+  --color-energy:       #00b4d8;
+  --color-grid:         rgba(255, 255, 255, 0.05);
+  --color-pixel-green:  #4ecca3;
+  --color-pixel-yellow: #f5a623;
+
+  --shadow-pixel:    4px 4px 0 #000;
+  --shadow-pixel-sm: 2px 2px 0 #000;
 
   --font-pixel: 'Press Start 2P', monospace;
   --font-retro: 'VT323', monospace;
@@ -27,4 +34,24 @@ body {
   margin: 0;
   padding: 0;
   image-rendering: pixelated;
+}
+
+button {
+  background: var(--color-panel);
+  border: 2px solid var(--color-border);
+  box-shadow: var(--shadow-pixel);
+  font-family: var(--font-pixel);
+  color: var(--color-text);
+  border-radius: 0;
+  cursor: pointer;
+}
+
+button:active:not(:disabled) {
+  transform: translate(2px, 2px);
+  box-shadow: var(--shadow-pixel-sm);
+}
+
+button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
 }

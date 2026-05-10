@@ -1,145 +1,191 @@
 import { useRef, useState, useEffect, useCallback } from 'react'
-import PixelCanvas from '../ui/PixelCanvas'
 import { OnnxValidator } from '../engine/OnnxValidator'
+import { drawEye } from '../engine/drawEye'
 import type { PetCoords } from '../api/aiRecognize'
 import styles from './DrawScene.module.css'
+
+// ── Grid constants ─────────────────────────────────────────
+const GRID_SIZE = 64
+const CELL_SIZE = 8
+const CANVAS_PX = GRID_SIZE * CELL_SIZE   // 512
+
+// ── 16-colour pixel-art palette ───────────────────────────
+const PALETTE = [
+  '#000000', '#ffffff', '#e94560', '#f5a623',
+  '#ffe600', '#4ecca3', '#00b4d8', '#0f3460',
+  '#7c4dff', '#ff80ab', '#795548', '#9e9e9e',
+  '#b71c1c', '#1b5e20', '#0d47a1', '#ffccbc',
+]
+
+const CHARS = ['✦', '★', '♥', '✿', '◆', '•']
+
+const validator = new OnnxValidator()
+
+type Tool      = 'draw' | 'erase' | 'fill'
+type BrushSize = 1 | 2 | 4
+type Step      = 'draw' | 'decorate' | 'done'
+type TabMode   = 'draw' | 'ai'
+
+interface EyeOption { id: string; label: string; free: boolean }
+interface Particle  { id: number; char: string; x: number; y: number; angle: number; distance: number }
+interface StoredPet { id: string; pixelData: string; name: string }
 
 interface DrawSceneProps {
   onPetCreated: (pixelData: string, coords: PetCoords, name: string) => void
 }
 
-interface StoredPet {
-  id: string
-  pixelData: string
-  name: string
-}
-
-interface Particle {
-  id: number
-  char: string
-  x: number
-  y: number
-  angle: number
-  distance: number
-}
-
-interface Accessory {
-  id: string
-  type: 'eye'
-  label: string
-  emoji: string
-  free: boolean
-}
-
-type Step = 'draw' | 'decorate' | 'done'
-
-const CHARS = ['✦', '★', '♥', '✿', '◆', '•']
-const validator = new OnnxValidator()
-const CANVAS_DISPLAY = 320
-
-const EYES: Accessory[] = [
-  { id: 'eye_round',  type: 'eye', label: 'Round',  emoji: '👀', free: true },
-  { id: 'eye_happy',  type: 'eye', label: 'Happy',  emoji: '😊', free: true },
-  { id: 'eye_sleepy', type: 'eye', label: 'Sleepy', emoji: '😴', free: true },
-  { id: 'eye_star',   type: 'eye', label: 'Star',   emoji: '⭐', free: false },
-  { id: 'eye_heart',  type: 'eye', label: 'Heart',  emoji: '💕', free: false },
-  { id: 'eye_x',      type: 'eye', label: 'X Eyes', emoji: '😵', free: false },
+const EYES: EyeOption[] = [
+  { id: 'eye_round',  label: 'Round',  free: true  },
+  { id: 'eye_happy',  label: 'Happy',  free: true  },
+  { id: 'eye_sleepy', label: 'Sleepy', free: true  },
+  { id: 'eye_star',   label: 'Star',   free: false },
+  { id: 'eye_heart',  label: 'Heart',  free: false },
+  { id: 'eye_x',      label: 'X Eyes', free: false },
 ]
 
-function drawEyeStyle(
-  ctx: CanvasRenderingContext2D,
-  id: string, cx: number, cy: number,
-  size: number, blink: boolean
-) {
-  const r = size / 2
-  ctx.save()
-  ctx.translate(cx, cy)
-  switch(id) {
-    case 'eye_round':
-      ctx.fillStyle = '#2C2C2C'
-      ctx.beginPath(); ctx.arc(0, 0, blink ? r*0.15 : r, 0, Math.PI*2); ctx.fill()
-      if (!blink) {
-        ctx.fillStyle = '#fff'
-        ctx.beginPath(); ctx.arc(-r*0.25,-r*0.25,r*0.3,0,Math.PI*2); ctx.fill()
-      }
-      break
-    case 'eye_happy':
-      ctx.strokeStyle = '#2C2C2C'; ctx.lineWidth = 2; ctx.beginPath()
-      if (blink) { ctx.moveTo(-r,0); ctx.lineTo(r,0) }
-      else { ctx.arc(0, r*0.3, r, Math.PI, 0) }
-      ctx.stroke(); break
-    case 'eye_sleepy':
-      ctx.strokeStyle = '#2C2C2C'; ctx.lineWidth = 2
-      ctx.beginPath(); ctx.moveTo(-r,0); ctx.lineTo(r,0); ctx.stroke()
-      if (!blink) {
-        ctx.fillStyle = '#2C2C2C'
-        ctx.beginPath(); ctx.arc(0,r*0.4,r*0.5,0,Math.PI*2); ctx.fill()
-      }
-      break
-    case 'eye_star':
-      ctx.fillStyle = '#FFD700'
-      if (blink) { ctx.fillRect(-r,-r*0.15,r*2,r*0.3) }
-      else {
-        for (let i=0; i<5; i++) {
-          const a = (i*Math.PI*2/5) - Math.PI/2
-          ctx.beginPath(); ctx.moveTo(0,0)
-          ctx.lineTo(Math.cos(a)*r, Math.sin(a)*r)
-          ctx.lineTo(Math.cos(a+Math.PI/5)*r*0.4, Math.sin(a+Math.PI/5)*r*0.4)
-          ctx.fill()
-        }
-      }
-      break
-    case 'eye_heart':
-      ctx.fillStyle = '#E91E63'
-      if (blink) { ctx.fillRect(-r,-r*0.15,r*2,r*0.3) }
-      else {
-        ctx.beginPath(); ctx.moveTo(0,r*0.3)
-        ctx.bezierCurveTo(-r,-r*0.3,-r,-r,0,-r*0.3)
-        ctx.bezierCurveTo(r,-r,r,-r*0.3,0,r*0.3)
-        ctx.fill()
-      }
-      break
-    case 'eye_x':
-      ctx.strokeStyle = '#E91E63'; ctx.lineWidth = 3
-      ctx.beginPath()
-      ctx.moveTo(-r,-r); ctx.lineTo(r,r)
-      ctx.moveTo(r,-r);  ctx.lineTo(-r,r)
-      ctx.stroke(); break
+// ── Grid helpers ──────────────────────────────────────────
+function makeGrid(): string[][] {
+  return Array.from({ length: GRID_SIZE }, () => new Array<string>(GRID_SIZE).fill(''))
+}
+
+function floodFill(grid: string[][], r: number, c: number, color: string): string[][] {
+  const target = grid[r][c]
+  if (target === color) return grid
+  const next = grid.map(row => [...row])
+  const stack: [number, number][] = [[r, c]]
+  while (stack.length) {
+    const [cr, cc] = stack.pop()!
+    if (cr < 0 || cr >= GRID_SIZE || cc < 0 || cc >= GRID_SIZE) continue
+    if (next[cr][cc] !== target) continue
+    next[cr][cc] = color
+    stack.push([cr - 1, cc], [cr + 1, cc], [cr, cc - 1], [cr, cc + 1])
   }
-  ctx.restore()
+  return next
 }
 
-async function validateFromDataURL(dataURL: string): Promise<number> {
-  return new Promise(resolve => {
-    const img = new Image()
-    img.onload = () => {
-      const canvas = document.createElement('canvas')
-      canvas.width = img.width; canvas.height = img.height
-      canvas.getContext('2d')!.drawImage(img, 0, 0)
-      validator.validate(canvas).then(r => resolve(r.score))
+function paintBrush(
+  grid: string[][], r: number, c: number,
+  brushSize: BrushSize, color: string, erase: boolean,
+): string[][] {
+  const next = grid.map(row => [...row])
+  const half = Math.floor(brushSize / 2)
+  for (let dr = 0; dr < brushSize; dr++) {
+    for (let dc = 0; dc < brushSize; dc++) {
+      const nr = r + dr - half
+      const nc = c + dc - half
+      if (nr >= 0 && nr < GRID_SIZE && nc >= 0 && nc < GRID_SIZE) {
+        next[nr][nc] = erase ? '' : color
+      }
     }
-    img.onerror = () => resolve(0.75)
-    img.src = dataURL
-  })
+  }
+  return next
 }
 
+function renderGridToCtx(ctx: CanvasRenderingContext2D, grid: string[][], showGrid: boolean): void {
+  ctx.clearRect(0, 0, CANVAS_PX, CANVAS_PX)
+  // White background
+  ctx.fillStyle = '#ffffff'
+  ctx.fillRect(0, 0, CANVAS_PX, CANVAS_PX)
+  for (let r = 0; r < GRID_SIZE; r++) {
+    for (let c = 0; c < GRID_SIZE; c++) {
+      const col = grid[r][c]
+      if (col) {
+        ctx.fillStyle = col
+        ctx.fillRect(c * CELL_SIZE, r * CELL_SIZE, CELL_SIZE, CELL_SIZE)
+      }
+    }
+  }
+  // Pixel grid overlay — only when showGrid is true
+  if (showGrid) {
+    ctx.strokeStyle = 'rgba(0, 0, 0, 0.12)'
+    ctx.lineWidth   = 1
+    for (let i = 0; i <= GRID_SIZE; i++) {
+      const px = i * CELL_SIZE
+      ctx.beginPath(); ctx.moveTo(px, 0);      ctx.lineTo(px, CANVAS_PX); ctx.stroke()
+      ctx.beginPath(); ctx.moveTo(0,  px);     ctx.lineTo(CANVAS_PX, px); ctx.stroke()
+    }
+    // Thicker lines every 8 cells for 8×8 chunk guides
+    ctx.strokeStyle = 'rgba(0, 0, 0, 0.22)'
+    ctx.lineWidth   = 1
+    for (let i = 0; i <= GRID_SIZE; i += 8) {
+      const px = i * CELL_SIZE
+      ctx.beginPath(); ctx.moveTo(px, 0);      ctx.lineTo(px, CANVAS_PX); ctx.stroke()
+      ctx.beginPath(); ctx.moveTo(0,  px);     ctx.lineTo(CANVAS_PX, px); ctx.stroke()
+    }
+  }
+}
+
+function gridToDataURL(grid: string[][]): string {
+  const c   = document.createElement('canvas')
+  c.width   = CANVAS_PX; c.height = CANVAS_PX
+  const ctx = c.getContext('2d')!
+  ctx.imageSmoothingEnabled = false
+  for (let r = 0; r < GRID_SIZE; r++) {
+    for (let cc = 0; cc < GRID_SIZE; cc++) {
+      const col = grid[r][cc]
+      if (col) { ctx.fillStyle = col; ctx.fillRect(cc * CELL_SIZE, r * CELL_SIZE, CELL_SIZE, CELL_SIZE) }
+    }
+  }
+  return c.toDataURL('image/png')
+}
+
+function gridToSmallCanvas(grid: string[][]): HTMLCanvasElement {
+  const c   = document.createElement('canvas')
+  c.width   = GRID_SIZE; c.height = GRID_SIZE
+  const ctx = c.getContext('2d')!
+  for (let r = 0; r < GRID_SIZE; r++) {
+    for (let cc = 0; cc < GRID_SIZE; cc++) {
+      const col = grid[r][cc]
+      if (col) { ctx.fillStyle = col; ctx.fillRect(cc, r, 1, 1) }
+    }
+  }
+  return c
+}
+
+// ── Component ──────────────────────────────────────────────
 export default function DrawScene({ onPetCreated }: DrawSceneProps) {
-  const btnRef     = useRef<HTMLButtonElement>(null)
-  const previewRef = useRef<HTMLCanvasElement>(null)
+  const canvasRef  = useRef<HTMLCanvasElement>(null)
+  const decorateRef = useRef<HTMLCanvasElement>(null)
   const rafRef     = useRef(0)
+  const btnRef     = useRef<HTMLButtonElement>(null)
 
-  const [petDataURL, setPetDataURL]   = useState('')
-  const [onnxScore, setOnnxScore]     = useState<number | null>(null)
-  const [particles, setParticles]     = useState<Particle[]>([])
-  const [storedPets, setStoredPets]   = useState<StoredPet[]>([])
-  const [step, setStep]               = useState<Step>('draw')
-  const [selectedEye, setSelectedEye] = useState<Accessory>(EYES[0])
-  const [eyePos, setEyePos]           = useState<{x:number,y:number}>({ x:0.5, y:0.3 })
-  const [dragging, setDragging]       = useState<'eye'|null>(null)
-  const [petName, setPetName]         = useState('')
+  // Refs for stable event handlers
+  const gridRef      = useRef<string[][]>(makeGrid())
+  const toolRef      = useRef<Tool>('draw')
+  const colorRef     = useRef(PALETTE[0])
+  const brushRef     = useRef<BrushSize>(1)
+  const isDrawRef    = useRef(false)
+  const isDragEyeRef = useRef(false)
 
-  const blinkRef = useRef({ timer:0, cycle:3.5, frame:0, blinking:false })
+  const [grid, setGridState]      = useState<string[][]>(() => makeGrid())
+  const historyRef = useRef<string[][][]>([])
+  const [tool, setTool]           = useState<Tool>('draw')
+  const [color, setColor]         = useState(PALETTE[0])
+  const [brushSize, setBrushSize] = useState<BrushSize>(1)
+  const [tab, setTab]             = useState<TabMode>('draw')
+  const [step, setStep]           = useState<Step>('draw')
+  const [onnxScore, setOnnxScore] = useState<number | null>(null)
+  const [selectedEye, setSelectedEye] = useState<EyeOption>(EYES[0])
+  const [eyePos, setEyePos]       = useState({ row: 20, col: 32 })
+  const [petName, setPetName]     = useState('')
+  const [particles, setParticles] = useState<Particle[]>([])
+  const [storedPets, setStoredPets] = useState<StoredPet[]>([])
+  const [showGrid, setShowGrid]   = useState(true)
 
+  const blinkRef = useRef({ countdown: 210, frame: 0, blinking: false, cycle: 210 })
+
+  // Keep refs in sync with state
+  useEffect(() => { toolRef.current  = tool  }, [tool])
+  useEffect(() => { colorRef.current = color }, [color])
+  useEffect(() => { brushRef.current = brushSize }, [brushSize])
+
+  // Stable grid updater
+  const updateGrid = useCallback((next: string[][]) => {
+    gridRef.current = next
+    setGridState(next)
+  }, [])
+
+  // Load stored pets
   useEffect(() => {
     try {
       const raw = localStorage.getItem('oodle_pets')
@@ -147,113 +193,210 @@ export default function DrawScene({ onPetCreated }: DrawSceneProps) {
     } catch { /**/ }
   }, [])
 
-  // 預覽動畫
+  // Render grid to canvas whenever grid state or showGrid changes
   useEffect(() => {
-    if (step !== 'decorate' || !petDataURL) return
-    const canvas = previewRef.current
+    const canvas = canvasRef.current
+    if (!canvas) return
+    const ctx = canvas.getContext('2d')!
+    ctx.imageSmoothingEnabled = false
+    renderGridToCtx(ctx, grid, showGrid)
+  }, [grid, showGrid])
+
+  // Debounced validation
+  const validateTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  useEffect(() => {
+    if (validateTimerRef.current) clearTimeout(validateTimerRef.current)
+    validateTimerRef.current = setTimeout(() => {
+      const small = gridToSmallCanvas(grid)
+      validator.validate(small).then(r => setOnnxScore(r.score))
+    }, 300)
+    return () => { if (validateTimerRef.current) clearTimeout(validateTimerRef.current) }
+  }, [grid])
+
+  // ── Cell lookup ──────────────────────────────────────────
+  const getCell = useCallback((clientX: number, clientY: number, ref: React.RefObject<HTMLCanvasElement | null>) => {
+    const canvas = ref.current!
+    const rect   = canvas.getBoundingClientRect()
+    const scaleX = CANVAS_PX / rect.width
+    const scaleY = CANVAS_PX / rect.height
+    return {
+      r: Math.max(0, Math.min(GRID_SIZE - 1, Math.floor((clientY - rect.top)  * scaleY / CELL_SIZE))),
+      c: Math.max(0, Math.min(GRID_SIZE - 1, Math.floor((clientX - rect.left) * scaleX / CELL_SIZE))),
+    }
+  }, [])
+
+  // ── Draw tool application ─────────────────────────────────
+  const applyDraw = useCallback((clientX: number, clientY: number, pushUndo: boolean) => {
+    const { r, c } = getCell(clientX, clientY, canvasRef)
+    if (pushUndo) historyRef.current = [...historyRef.current.slice(-19), gridRef.current.map(r => [...r])]
+    const t  = toolRef.current
+    const col = colorRef.current
+    const bs = brushRef.current
+    if (t === 'fill') {
+      updateGrid(floodFill(gridRef.current, r, c, col))
+    } else {
+      updateGrid(paintBrush(gridRef.current, r, c, bs, col, t === 'erase'))
+    }
+  }, [getCell, updateGrid])
+
+  // ── Mouse events (draw canvas) ────────────────────────────
+  const handleMouseDown = useCallback((e: React.MouseEvent) => {
+    if (e.button !== 0) return
+    isDrawRef.current = true
+    applyDraw(e.clientX, e.clientY, true)
+  }, [applyDraw])
+
+  const handleMouseMove = useCallback((e: React.MouseEvent) => {
+    if (!isDrawRef.current || toolRef.current === 'fill') return
+    applyDraw(e.clientX, e.clientY, false)
+  }, [applyDraw])
+
+  const handleMouseUp = useCallback(() => { isDrawRef.current = false }, [])
+
+  // ── Touch events (non-passive) ────────────────────────────
+  const handleTouchStart = useCallback((e: TouchEvent) => {
+    e.preventDefault()
+    isDrawRef.current = true
+    const t = e.touches[0]
+    applyDraw(t.clientX, t.clientY, true)
+  }, [applyDraw])
+
+  const handleTouchMove = useCallback((e: TouchEvent) => {
+    e.preventDefault()
+    if (!isDrawRef.current || toolRef.current === 'fill') return
+    const t = e.touches[0]
+    applyDraw(t.clientX, t.clientY, false)
+  }, [applyDraw])
+
+  const handleTouchEnd = useCallback((e: TouchEvent) => {
+    e.preventDefault()
+    isDrawRef.current = false
+  }, [])
+
+  useEffect(() => {
+    const canvas = canvasRef.current
+    if (!canvas || step !== 'draw') return
+    canvas.addEventListener('touchstart', handleTouchStart, { passive: false })
+    canvas.addEventListener('touchmove',  handleTouchMove,  { passive: false })
+    canvas.addEventListener('touchend',   handleTouchEnd,   { passive: false })
+    return () => {
+      canvas.removeEventListener('touchstart', handleTouchStart)
+      canvas.removeEventListener('touchmove',  handleTouchMove)
+      canvas.removeEventListener('touchend',   handleTouchEnd)
+    }
+  }, [step, handleTouchStart, handleTouchMove, handleTouchEnd])
+
+  // ── Undo / Clear ──────────────────────────────────────────
+  const handleUndo = useCallback(() => {
+    if (historyRef.current.length === 0) return
+    const prev = historyRef.current[historyRef.current.length - 1]
+    historyRef.current = historyRef.current.slice(0, -1)
+    updateGrid(prev)
+  }, [updateGrid])
+
+  const handleClear = useCallback(() => {
+    historyRef.current = [...historyRef.current.slice(-19), gridRef.current.map(r => [...r])]
+    updateGrid(makeGrid())
+  }, [updateGrid])
+
+  // ── Step: draw → decorate ────────────────────────────────
+  const handleMakeItLife = useCallback(() => {
+    if (!onnxScore || onnxScore < 0.6) return
+    setStep('decorate')
+  }, [onnxScore])
+
+  // ── Decorate: preview animation ───────────────────────────
+  const eyePosRef      = useRef(eyePos)
+  const selectedEyeRef = useRef(selectedEye)
+  useEffect(() => { eyePosRef.current = eyePos },      [eyePos])
+  useEffect(() => { selectedEyeRef.current = selectedEye }, [selectedEye])
+
+  useEffect(() => {
+    if (step !== 'decorate') return
+    const canvas = decorateRef.current
     if (!canvas) return
     const ctx = canvas.getContext('2d')!
     ctx.imageSmoothingEnabled = false
 
-    const img = new Image()
-    img.src = petDataURL
+    const img  = new Image()
+    img.src    = gridToDataURL(gridRef.current)
     img.onload = () => {
-      let bobT = 0
-      const b = blinkRef.current
+      let frame = 0
+      const b   = blinkRef.current
 
       const loop = () => {
-        ctx.clearRect(0, 0, CANVAS_DISPLAY, CANVAS_DISPLAY)
+        ctx.clearRect(0, 0, CANVAS_PX, CANVAS_PX)
 
-        const offscreen = document.createElement('canvas')
-        offscreen.width = img.width; offscreen.height = img.height
-        const oc = offscreen.getContext('2d')!
-        oc.drawImage(img, 0, 0)
-        const id = oc.getImageData(0, 0, img.width, img.height)
-        for (let i=0; i<id.data.length; i+=4) {
-          if(id.data[i]>240&&id.data[i+1]>240&&id.data[i+2]>240) id.data[i+3]=0
-        }
-        oc.putImageData(id, 0, 0)
+        const bob = Math.floor(frame / 30) % 2 === 0 ? 0 : -1
+        ctx.drawImage(img, 0, bob, CANVAS_PX, CANVAS_PX)
 
-        bobT += 0.055
-        const bob = Math.round(Math.sin(bobT) * 2)
-        ctx.drawImage(offscreen, 2, 2+bob, CANVAS_DISPLAY-4, CANVAS_DISPLAY-12)
-
-        b.timer += 0.028
-        if (b.timer >= b.cycle) {
-          b.blinking=true; b.frame=0; b.timer=0
-          b.cycle=3.5+(Math.random()-0.5)*3
+        b.countdown--
+        if (b.countdown <= 0) {
+          b.blinking = true; b.frame = 0
+          b.countdown = 180 + Math.round((Math.random() - 0.5) * 120)
         }
         const blink = b.blinking && b.frame <= 6
-        if (b.blinking) { b.frame++; if(b.frame>6) b.blinking=false }
+        if (b.blinking) { b.frame++; if (b.frame > 6) b.blinking = false }
 
-        const eyeSize = CANVAS_DISPLAY * 0.08
-        const ex = eyePos.x * CANVAS_DISPLAY
-        const ey = eyePos.y * CANVAS_DISPLAY + bob
-        drawEyeStyle(ctx, selectedEye.id, ex-eyeSize*1.2, ey, eyeSize, blink)
-        drawEyeStyle(ctx, selectedEye.id, ex+eyeSize*1.2, ey, eyeSize, blink)
+        const ep  = eyePosRef.current
+        const eye = selectedEyeRef.current
+        const ex  = ep.col * CELL_SIZE
+        const ey  = ep.row * CELL_SIZE + bob
+        drawEye(ctx, eye.id, ex - 40, ey, 20, blink)
+        drawEye(ctx, eye.id, ex + 40, ey, 20, blink)
 
+        frame++
         rafRef.current = requestAnimationFrame(loop)
       }
       rafRef.current = requestAnimationFrame(loop)
     }
     return () => cancelAnimationFrame(rafRef.current)
-  }, [step, petDataURL, selectedEye, eyePos])
+  }, [step])
 
-  const handleComplete = useCallback(async (url: string) => {
-    setPetDataURL(url)
-    const score = await validateFromDataURL(url)
-    setOnnxScore(score)
+  // ── Decorate: eye drag ────────────────────────────────────
+  const updateEyePos = useCallback((clientX: number, clientY: number) => {
+    const canvas = decorateRef.current!
+    const rect   = canvas.getBoundingClientRect()
+    const scaleX = CANVAS_PX / rect.width
+    const scaleY = CANVAS_PX / rect.height
+    setEyePos({
+      row: Math.max(5,  Math.min(GRID_SIZE - 5,  Math.floor((clientY - rect.top)  * scaleY / CELL_SIZE))),
+      col: Math.max(10, Math.min(GRID_SIZE - 10, Math.floor((clientX - rect.left) * scaleX / CELL_SIZE))),
+    })
   }, [])
 
+  const handleDecMouseDown = useCallback((e: React.MouseEvent) => { isDragEyeRef.current = true;  updateEyePos(e.clientX, e.clientY) }, [updateEyePos])
+  const handleDecMouseMove = useCallback((e: React.MouseEvent) => { if (isDragEyeRef.current) updateEyePos(e.clientX, e.clientY) }, [updateEyePos])
+  const handleDecMouseUp   = useCallback(() => { isDragEyeRef.current = false }, [])
+
+  // ── Particles ──────────────────────────────────────────────
   const spawnParticles = useCallback(() => {
     const btn = btnRef.current
     if (!btn) return
     const rect = btn.getBoundingClientRect()
-    const cx = rect.left + rect.width/2
-    const cy = rect.top  + rect.height/2
-    const newP: Particle[] = Array.from({length:12},(_,i)=>({
-      id: Date.now()+i, char: CHARS[i%CHARS.length],
-      x: cx, y: cy, angle: (i/12)*360, distance: 60+Math.random()*60,
+    const cx   = rect.left + rect.width  / 2
+    const cy   = rect.top  + rect.height / 2
+    const ps   = Array.from({ length: 12 }, (_, i) => ({
+      id: Date.now() + i, char: CHARS[i % CHARS.length],
+      x: cx, y: cy, angle: (i / 12) * 360, distance: 60 + Math.random() * 60,
     }))
-    setParticles(newP)
+    setParticles(ps)
     setTimeout(() => setParticles([]), 900)
   }, [])
 
-  const handleMakeItLife = useCallback(() => {
-    if (!petDataURL) return
-    if (onnxScore === null || onnxScore < 0.6) return
-    setStep('decorate')
-  }, [petDataURL, onnxScore])
-
-  const handlePreviewMouseDown = useCallback((e: React.MouseEvent) => {
-    const rect = previewRef.current!.getBoundingClientRect()
-    const x = (e.clientX - rect.left) / CANVAS_DISPLAY
-    const y = (e.clientY - rect.top)  / CANVAS_DISPLAY
-    const eyeDist = Math.hypot(x-eyePos.x, y-eyePos.y)
-    if (eyeDist < 0.2) setDragging('eye')
-  }, [eyePos])
-
-  const handlePreviewMouseMove = useCallback((e: React.MouseEvent) => {
-    if (!dragging) return
-    const rect = previewRef.current!.getBoundingClientRect()
-    const x = Math.max(0.05, Math.min(0.95, (e.clientX-rect.left)/CANVAS_DISPLAY))
-    const y = Math.max(0.05, Math.min(0.95, (e.clientY-rect.top) /CANVAS_DISPLAY))
-    setEyePos({x, y})
-  }, [dragging])
-
-  const handlePreviewMouseUp = useCallback(() => setDragging(null), [])
-
+  // ── Confirm ───────────────────────────────────────────────
   const handleConfirm = useCallback(() => {
-    const finalName = petName.trim() || 'My Pet'
-    const eyeSize   = CANVAS_DISPLAY * 0.08
+    const finalName  = petName.trim() || 'My Pet'
+    const pixelData  = gridToDataURL(gridRef.current)
+    const ep         = eyePos
 
     const coords: PetCoords = {
       eyes: [
-        { x: eyePos.x-(eyeSize*1.2)/CANVAS_DISPLAY, y: eyePos.y },
-        { x: eyePos.x+(eyeSize*1.2)/CANVAS_DISPLAY, y: eyePos.y },
+        { x: (ep.col - 5) / GRID_SIZE, y: ep.row / GRID_SIZE },
+        { x: (ep.col + 5) / GRID_SIZE, y: ep.row / GRID_SIZE },
       ],
       legs:     [],
-      center:   { x:0.5, y:0.5 },
+      center:   { x: 0.5, y: 0.5 },
       has_eyes: true,
       has_legs: false,
     }
@@ -261,105 +404,212 @@ export default function DrawScene({ onPetCreated }: DrawSceneProps) {
     localStorage.setItem('oodle_eye_style', selectedEye.id)
     localStorage.removeItem('oodle_leg_style')
 
-    const newPet: StoredPet = {
-      id: crypto.randomUUID(),
-      pixelData: petDataURL,
-      name: finalName,
-    }
+    const newPet: StoredPet = { id: crypto.randomUUID(), pixelData, name: finalName }
     const updated = [...storedPets, newPet].slice(-20)
     setStoredPets(updated)
     localStorage.setItem('oodle_pets', JSON.stringify(updated))
 
     spawnParticles()
     setStep('done')
-    onPetCreated(petDataURL, coords, finalName)
-  }, [petName, eyePos, selectedEye, petDataURL, storedPets, spawnParticles, onPetCreated])
+    onPetCreated(pixelData, coords, finalName)
+  }, [petName, eyePos, selectedEye, storedPets, spawnParticles, onPetCreated])
 
+  // ── Render ────────────────────────────────────────────────
   return (
     <div className={styles.page}>
       <div className={styles.titleBlock}>
         <h1 className={styles.title}>OODLE</h1>
-        <p className={styles.sub}>draw a pet. make it life.</p>
+        <p className={styles.sub}>draw a pixel pet. make it life.</p>
       </div>
 
       {step === 'draw' && (
         <>
-          {onnxScore !== null && (
-            <p className={styles.onnxLabel} style={{
-              color: onnxScore>=0.6?'#4CAF50':onnxScore>=0.3?'#F5A623':'#FF5A5F'
-            }}>
-              {onnxScore>=0.6?'looks like a creature!':onnxScore>=0.3?'keep drawing...':'not sure yet...'} {Math.round(onnxScore*100)}%
-            </p>
-          )}
-          <div className={styles.canvasArea}>
-            <PixelCanvas onComplete={handleComplete} onStroke={() => {}} />
+          {/* Tab switcher */}
+          <div className={styles.tabRow}>
+            <button
+              className={`${styles.tab} ${tab === 'draw' ? styles.tabActive : ''}`}
+              onClick={() => setTab('draw')}
+            >DRAW</button>
+            <button
+              className={`${styles.tab} ${tab === 'ai' ? styles.tabActive : ''}`}
+              onClick={() => setTab('ai')}
+            >AI GENERATE</button>
           </div>
-          <button
-            ref={btnRef}
-            className={styles.ctaBtn}
-            onClick={handleMakeItLife}
-            disabled={!petDataURL}
-          >
-            ✦ MAKE IT LIFE ✦
-          </button>
+
+          {tab === 'ai' ? (
+            <div className={styles.aiPanel}>
+              <div className={styles.premiumBadge}>🔒 PREMIUM</div>
+              <p className={styles.aiDesc}>Let AI draw your pixel pet for you!</p>
+              <input className={styles.aiInput} placeholder="a chubby space cat..." disabled />
+              <button className={styles.generateBtn} disabled>GENERATE</button>
+              <p className={styles.comingSoon}>COMING SOON</p>
+            </div>
+          ) : (
+            <>
+              {/* Validation label */}
+              {onnxScore !== null && (
+                <p
+                  className={styles.validLabel}
+                  style={{
+                    color: onnxScore >= 0.6
+                      ? '#4CAF50'
+                      : onnxScore >= 0.3
+                      ? '#F5A623'
+                      : '#e94560',
+                  }}
+                >
+                  {onnxScore >= 0.6
+                    ? 'looks like a creature!'
+                    : onnxScore >= 0.3
+                    ? 'keep drawing...'
+                    : 'not sure yet...'
+                  } {Math.round(onnxScore * 100)}%
+                </p>
+              )}
+
+              {/* Draw canvas */}
+              <div className={styles.canvasWrap}>
+                <canvas
+                  ref={canvasRef}
+                  width={CANVAS_PX}
+                  height={CANVAS_PX}
+                  className={styles.drawCanvas}
+                  style={{ cursor: tool === 'erase' ? 'cell' : tool === 'fill' ? 'url("data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'16\' height=\'16\'%3E%3Ctext y=\'14\' font-size=\'14\'%3E🪣%3C/text%3E%3C/svg%3E") 0 16, crosshair' : 'crosshair' }}
+                  onMouseDown={handleMouseDown}
+                  onMouseMove={handleMouseMove}
+                  onMouseUp={handleMouseUp}
+                  onMouseLeave={handleMouseUp}
+                />
+              </div>
+
+              {/* ── Controls below canvas ── */}
+              <div className={styles.controls}>
+
+                {/* Row 1: Colour palette */}
+                <div className={styles.controlRow}>
+                  <div className={styles.palette}>
+                    {PALETTE.map(c => (
+                      <button
+                        key={c}
+                        className={`${styles.swatch} ${color === c && tool === 'draw' ? styles.swatchActive : ''}`}
+                        style={{ background: c }}
+                        onClick={() => { setColor(c); setTool('draw') }}
+                      />
+                    ))}
+                  </div>
+                </div>
+
+                {/* Row 2: Tools + Brush size + Undo/Clear + Grid */}
+                <div className={styles.controlRow}>
+                  {/* Tools */}
+                  <div className={styles.btnGroup}>
+                    <button
+                      className={`${styles.toolBtn} ${tool === 'draw'  ? styles.toolActive : ''}`}
+                      onClick={() => setTool('draw')}
+                    >✏️ Draw</button>
+                    <button
+                      className={`${styles.toolBtn} ${tool === 'erase' ? styles.toolActive : ''}`}
+                      onClick={() => setTool('erase')}
+                    >⬜ Erase</button>
+                    <button
+                      className={`${styles.toolBtn} ${tool === 'fill'  ? styles.toolActive : ''}`}
+                      onClick={() => setTool('fill')}
+                    >🪣 Fill</button>
+                  </div>
+
+                  <div className={styles.groupSep} />
+
+                  {/* Brush size */}
+                  <div className={styles.btnGroup}>
+                    {([1, 2, 4] as const).map(bs => (
+                      <button
+                        key={bs}
+                        className={`${styles.toolBtn} ${brushSize === bs ? styles.toolActive : ''}`}
+                        onClick={() => setBrushSize(bs)}
+                      >{bs}px</button>
+                    ))}
+                  </div>
+
+                  <div className={styles.groupSep} />
+
+                  {/* Undo / Clear / Grid */}
+                  <div className={styles.btnGroup}>
+                    <button className={styles.toolBtn} onClick={handleUndo}>↩ Undo</button>
+                    <button className={styles.toolBtn} onClick={handleClear}>🗑 Clear</button>
+                    <button
+                      className={`${styles.toolBtn} ${showGrid ? styles.toolActive : ''}`}
+                      onClick={() => setShowGrid(v => !v)}
+                    >⊞ Grid</button>
+                  </div>
+                </div>
+
+              </div>
+
+              <button
+                ref={btnRef}
+                className={styles.ctaBtn}
+                onClick={handleMakeItLife}
+                disabled={!onnxScore || onnxScore < 0.6}
+              >
+                ✦ MAKE IT LIFE ✦
+              </button>
+            </>
+          )}
         </>
       )}
 
       {step === 'decorate' && (
         <>
-          <p className={styles.markHint} style={{ color:'#2196F3' }}>
-            👁 Pick eyes & drag to position!
-          </p>
+          <p className={styles.decorateHint}>PICK EYES · CLICK TO POSITION</p>
 
-          <div style={{ position:'relative', cursor: dragging?'grabbing':'grab' }}>
+          <div className={styles.canvasWrap} style={{ cursor: 'crosshair' }}>
             <canvas
-              ref={previewRef}
-              width={CANVAS_DISPLAY}
-              height={CANVAS_DISPLAY}
-              style={{ display:'block', border:'2px solid #ddd', borderRadius:8 }}
-              onMouseDown={handlePreviewMouseDown}
-              onMouseMove={handlePreviewMouseMove}
-              onMouseUp={handlePreviewMouseUp}
-              onMouseLeave={handlePreviewMouseUp}
+              ref={decorateRef}
+              width={CANVAS_PX}
+              height={CANVAS_PX}
+              className={styles.drawCanvas}
+              onMouseDown={handleDecMouseDown}
+              onMouseMove={handleDecMouseMove}
+              onMouseUp={handleDecMouseUp}
+              onMouseLeave={handleDecMouseUp}
             />
-            <p style={{ textAlign:'center', fontSize:11, color:'#999', margin:'4px 0 0' }}>
-              Drag 👁 to position the eyes
-            </p>
           </div>
 
-          <div className={styles.accessoryRow}>
-            <span className={styles.accessoryLabel}>👁 EYES</span>
-            <div className={styles.accessoryGrid}>
+          {/* Eye picker */}
+          <div className={styles.section}>
+            <span className={styles.sectionLabel}>EYES</span>
+            <div className={styles.eyeGrid}>
               {EYES.map(eye => (
                 <button
                   key={eye.id}
-                  className={`${styles.accessoryBtn} ${selectedEye.id===eye.id?styles.accessorySelected:''} ${!eye.free?styles.accessoryLocked:''}`}
+                  className={[
+                    styles.eyeBtn,
+                    selectedEye.id === eye.id ? styles.eyeSelected : '',
+                    !eye.free ? styles.eyeLocked : '',
+                  ].join(' ')}
                   onClick={() => eye.free && setSelectedEye(eye)}
-                  title={eye.free ? eye.label : `${eye.label} (Premium)`}
                 >
-                  <span style={{ fontSize:20 }}>{eye.emoji}</span>
-                  <span className={styles.accessoryName}>{eye.label}</span>
-                  {!eye.free && <span className={styles.lockIcon}>🔒</span>}
+                  <span className={styles.eyeLabel}>{eye.label}</span>
+                  {!eye.free && <span className={styles.lockBadge}>🔒</span>}
                 </button>
               ))}
             </div>
           </div>
 
-          <div className={styles.nameRow}>
-            <span className={styles.accessoryLabel}>🏷 NAME YOUR PET</span>
+          {/* Name */}
+          <div className={styles.section}>
+            <span className={styles.sectionLabel}>PET NAME</span>
             <input
               className={styles.nameInput}
-              type="text"
               maxLength={16}
-              placeholder="e.g. Biscuit, Noodle, Zap..."
+              placeholder="Biscuit, Noodle, Zap..."
               value={petName}
               onChange={e => setPetName(e.target.value)}
             />
           </div>
 
           <button
-            className={styles.ctaBtn}
-            style={{ background:'#4CAF50', borderColor:'#2E7D32', boxShadow:'4px 4px 0 #2E7D32' }}
+            className={`${styles.ctaBtn} ${styles.ctaBtnGreen}`}
             onClick={handleConfirm}
           >
             ✓ BRING IT TO LIFE!
@@ -368,11 +618,15 @@ export default function DrawScene({ onPetCreated }: DrawSceneProps) {
       )}
 
       {particles.map(p => (
-        <span key={p.id} className={styles.particle} style={{
-          left:p.x, top:p.y,
-          '--angle':`${p.angle}deg`,
-          '--dist':`${p.distance}px`,
-        } as React.CSSProperties}>
+        <span
+          key={p.id}
+          className={styles.particle}
+          style={{
+            left: p.x, top: p.y,
+            '--angle': `${p.angle}deg`,
+            '--dist':  `${p.distance}px`,
+          } as React.CSSProperties}
+        >
           {p.char}
         </span>
       ))}

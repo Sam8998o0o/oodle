@@ -10,6 +10,49 @@ import styles from './PlazaScene.module.css'
 
 type DoorPhase = 'idle' | 'appearing' | 'opening' | 'walking' | 'done'
 
+// ── Pixel heart (11×9 dot matrix) ─────────────────────────
+const HEART_DOTS: [number, number][] = [
+  [0,1],[0,2],[0,5],[0,6],
+  [1,0],[1,1],[1,2],[1,3],[1,4],[1,5],[1,6],[1,7],
+  [2,0],[2,1],[2,2],[2,3],[2,4],[2,5],[2,6],[2,7],[2,8],
+  [3,0],[3,1],[3,2],[3,3],[3,4],[3,5],[3,6],[3,7],[3,8],
+  [4,0],[4,1],[4,2],[4,3],[4,4],[4,5],[4,6],[4,7],[4,8],
+  [5,1],[5,2],[5,3],[5,4],[5,5],[5,6],[5,7],
+  [6,2],[6,3],[6,4],[6,5],[6,6],
+  [7,3],[7,4],[7,5],
+  [8,4],
+]
+const HEART_PX = 4
+
+interface HeartAnim { id: number; x: number; y: number }
+
+function PixelHeart({ id, x, y }: HeartAnim) {
+  return (
+    <div
+      key={id}
+      className={styles.pixelHeart}
+      style={{ left: x, top: y }}
+    >
+      <svg
+        width={9 * HEART_PX + HEART_PX}
+        height={9 * HEART_PX}
+        style={{ display: 'block', imageRendering: 'pixelated' }}
+      >
+        {HEART_DOTS.map(([r, c]) => (
+          <rect
+            key={`${r}-${c}`}
+            x={c * HEART_PX}
+            y={r * HEART_PX}
+            width={HEART_PX}
+            height={HEART_PX}
+            fill="#e94560"
+          />
+        ))}
+      </svg>
+    </div>
+  )
+}
+
 const PET_SIZE   = 120
 const LEFT_BOUND = 80
 const RIGHT_PAD  = 80
@@ -90,6 +133,7 @@ export default function PlazaScene({ petData, onGoToRoom }: PlazaSceneProps) {
   const [likes, setLikes]             = useState<Record<string, number>>({})
   const [ownGlowing, setOwnGlowing]   = useState(true)
   const [doorPhase, setDoorPhase]     = useState<DoorPhase>('idle')
+  const [hearts, setHearts]           = useState<HeartAnim[]>([])
 
   // ── Shout system ──────────────────────────────────────────
   const [shoutInput,   setShoutInput]   = useState('')
@@ -386,6 +430,19 @@ export default function PlazaScene({ petData, onGoToRoom }: PlazaSceneProps) {
       return updated
     })
     likePet(petId).catch(() => {})
+
+    // Spawn heart from the pet's canvas position in the plaza
+    const canvas = canvasMap.current.get(petId)
+    if (canvas) {
+      const rect = canvas.getBoundingClientRect()
+      const heart: HeartAnim = {
+        id: Date.now(),
+        x:  rect.left + rect.width  / 2,
+        y:  rect.top,
+      }
+      setHearts(prev => [...prev, heart])
+      setTimeout(() => setHearts(prev => prev.filter(h => h.id !== heart.id)), 1400)
+    }
   }, [])
 
   // ── Shout handlers ────────────────────────────────────────
@@ -513,6 +570,9 @@ export default function PlazaScene({ petData, onGoToRoom }: PlazaSceneProps) {
           </>
         )}
       </div>
+
+      {/* Pixel hearts */}
+      {hearts.map(h => <PixelHeart key={h.id} id={h.id} x={h.x} y={h.y} />)}
 
       {/* Bottom action bar */}
       <div className={styles.actionBar}>

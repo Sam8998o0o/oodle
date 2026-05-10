@@ -1,4 +1,5 @@
 import type { PetCoords } from '../api/aiRecognize'
+import { drawEye } from './drawEye'
 
 export interface PetAnimData {
   imageDataURL: string
@@ -18,22 +19,25 @@ export class PetAnimator {
   private state: PetState = 'idle'
   private rafId = 0
 
-  private t          = 0
-  private blinkTimer = 0
-  private blinkCycle = 3.5
-  private blinkFrame = 0
-  private isBlinking = false
+  // Integer frame counter — all animation timing uses this
+  private frame = 0
 
-  private sleepAngle  = 0
-  private sleepTarget = 0
-  private jumpT       = 0
-  private isJumping   = false
-  private jumpCount   = 0
-  private nodT        = 0
-  private walkT       = 0
-  private sadDroop    = 0
-  private squishT     = 0
-  private dizzyT      = 0
+  // Per-state frame counters (reset on state change)
+  private walkF  = 0
+  private nodF   = 0
+  private sadF   = 0
+  private squishF = 0
+  private dizzyF  = 0
+  private jumpF   = 0
+  private jumpCount = 0
+  private isJumping = false
+
+  // Blink timing (frame-based)
+  private blinkCountdown = 210
+  private blinkFrame     = 0
+  private isBlinking     = false
+
+  private zzzF = 0
 
   constructor(canvas: HTMLCanvasElement, petData: PetAnimData) {
     this.canvas = canvas
@@ -66,7 +70,7 @@ export class PetAnimator {
 
   start(): void {
     if (this.rafId) return
-    const loop = () => { this.frame(); this.rafId = requestAnimationFrame(loop) }
+    const loop = () => { this.tick(); this.rafId = requestAnimationFrame(loop) }
     this.rafId = requestAnimationFrame(loop)
   }
 
@@ -78,25 +82,26 @@ export class PetAnimator {
   setState(s: PetState): void {
     const prev = this.state
     this.state = s
-    if (s === 'play')   { this.isJumping = true; this.jumpCount = 0; this.jumpT = 0 }
-    if (s === 'eat')    { this.nodT = 0 }
-    if (s === 'sleep')  { this.sleepTarget = Math.PI / 2 }
-    if (prev === 'sleep' && s !== 'sleep') { this.sleepTarget = 0 }
-    if (s === 'sad')    { this.sadDroop = 0 }
-    if (s === 'walk')   { this.walkT = 0 }
-    if (s === 'squish') { this.squishT = 0 }
-    if (s === 'dizzy')  { this.dizzyT = 0 }
+    if (s === 'play')  { this.isJumping = true; this.jumpCount = 0; this.jumpF = 0 }
+    if (s === 'eat')   { this.nodF = 0 }
+    if (prev === 'sleep' && s !== 'sleep') { /* nothing extra needed */ }
+    if (s === 'sad')   { this.sadF = 0 }
+    if (s === 'walk')  { this.walkF = 0 }
+    if (s === 'squish'){ this.squishF = 0 }
+    if (s === 'dizzy') { this.dizzyF = 0 }
   }
 
-  private frame(): void {
+  private tick(): void {
     const { ctx, data, state, src } = this
     const { size, coords } = data
 
     ctx.clearRect(0, 0, this.canvas.width, this.canvas.height)
     if (!src) return
 
-    this.t += 0.055
+    this.frame++
 
+    // Integer pixel offsets only — no sub-pixel values
+    let translateX = 0
     let translateY = 0
     let rotate     = 0
     let scaleY     = 1
@@ -104,241 +109,186 @@ export class PetAnimator {
 
     switch (state) {
       case 'idle': {
-        scaleY = 1 + Math.sin(this.t * 0.8) * 0.015
+        // Every 30 frames: bob 1px up, then back
+        translateY = Math.floor(this.frame / 30) % 2 === 0 ? 0 : -1
         break
       }
       case 'walk': {
-        this.walkT += 0.14
-        rotate     = Math.sin(this.walkT) * 0.06
-        translateY = (1 - Math.abs(Math.cos(this.walkT))) * -4
+        this.walkF++
+        // Every 8 frames: sway ±2px horizontally
+        translateX = Math.floor(this.walkF / 8) % 2 === 0 ? 2 : -2
+        // Every 16 frames: bob 1px vertically
+        translateY = Math.floor(this.walkF / 16) % 2 === 0 ? 0 : -1
         break
       }
       case 'eat': {
-        this.nodT += 0.18
-        rotate     = Math.sin(this.nodT) * 0.12
-        translateY = Math.max(0, Math.sin(this.nodT)) * 4
+        this.nodF++
+        // 16-frame cycle: 0–7 nod down 2px, 8–15 return
+        translateY = Math.floor(this.nodF / 8) % 2 === 0 ? 0 : 2
         break
       }
       case 'play': {
-        this.jumpT += 0.18
+        this.jumpF++
         if (this.isJumping) {
-          const jumpY = Math.sin(this.jumpT * Math.PI)
-          translateY  = -Math.max(0, jumpY) * 20
-          rotate      = jumpY * 0.15
-          if (this.jumpT >= 1) {
-            this.jumpT = 0; this.jumpCount++
+          // 30-frame arc: up 20px then back
+          const f = this.jumpF % 30
+          translateY = f < 15 ? -Math.round((f / 15) * 20) : -Math.round(((30 - f) / 15) * 20)
+          if (this.jumpF % 30 === 0) {
+            this.jumpCount++
             if (this.jumpCount >= 3) { this.isJumping = false; this.setState('idle') }
           }
         }
         break
       }
       case 'sleep': {
-        const diff = this.sleepTarget - this.sleepAngle
-        this.sleepAngle += diff * 0.08
-        rotate     = this.sleepAngle
-        translateY = Math.sin(this.sleepAngle) * (size * 0.25)
+        // Snap immediately to lying on side
+        rotate     = Math.PI / 2
+        translateY = Math.round(size * 0.25)
         break
       }
       case 'sad': {
-        this.sadDroop = Math.min(this.sadDroop + 0.3, 8)
-        translateY   = this.sadDroop
-        scaleY       = 0.90
-        alpha        = 0.70
-        rotate       = Math.sin(this.t * 0.5) * 0.06
+        this.sadF = Math.min(this.sadF + 1, 240)
+        // Gradually droop, max 4px, every 60 frames +1px
+        translateY = Math.min(Math.floor(this.sadF / 60), 4)
+        alpha      = 0.70
+        // Slow side-to-side: every 20 frames flip ±2px
+        translateX = Math.floor(this.frame / 20) % 2 === 0 ? -2 : 2
         break
       }
       case 'squish': {
-        // Quick squish: flatten then spring back
-        this.squishT += 0.18
-        const squishProgress = Math.min(this.squishT, Math.PI)
-        scaleY     = 1 - Math.sin(squishProgress) * 0.35
-        translateY = Math.sin(squishProgress) * 8
-        rotate     = Math.sin(this.squishT * 2) * 0.08
+        this.squishF++
+        // 4-frame squish burst then reset to idle
+        const f = this.squishF % 16
+        scaleY     = f >= 4 && f < 8 ? 0.65 : 1
+        translateY = f >= 4 && f < 8 ? Math.round(size * 0.1) : 0
+        if (this.squishF >= 16) { this.squishF = 0; this.setState('idle') }
         break
       }
       case 'dizzy': {
-        // Frozen but wobble slightly
-        this.dizzyT += 0.04
-        rotate     = Math.sin(this.dizzyT * 1.5) * 0.08
-        translateY = Math.abs(Math.sin(this.dizzyT)) * 2
+        this.dizzyF++
+        // Every 6 frames: alternate ±2px horizontal
+        translateX = Math.floor(this.dizzyF / 6) % 2 === 0 ? 2 : -2
         break
       }
     }
 
-    // 身體 + 眼睛全在同一個 transform 裡
+    // ── Draw body ──────────────────────────────────────────────────
     ctx.save()
     ctx.globalAlpha = alpha
     ctx.imageSmoothingEnabled = false
 
-    const cx2 = size / 2
-    const pivotY = size - 4
+    const halfW   = size / 2
+    const pivotY  = size - 4
 
-    ctx.translate(cx2, pivotY + translateY)
+    ctx.translate(Math.round(halfW + translateX), Math.round(pivotY + translateY))
     ctx.rotate(rotate)
     ctx.scale(1, scaleY)
-    ctx.translate(-cx2, -pivotY)
+    ctx.translate(Math.round(-halfW - translateX), -pivotY)
 
-    // 畫身體
-    ctx.drawImage(src, 2, 2, size-4, size-4)
+    ctx.drawImage(src, 2, 2, size - 4, size - 4)
 
-    // 眨眼邏輯 — 只用 drawEye 的 blink flag，完全移除 compressEyes
-    // compressEyes 會在身體圖上挖方塊造成方形殘影，不再使用
+    // ── Blink timing ───────────────────────────────────────────────
     let blink = false
     if (state === 'sleep') {
-      blink = true  // sleep = 眼睛一直閉著
+      blink = true
     } else if (state === 'sad') {
-      blink = true  // sad = 半閉眼效果由 drawEye 處理
+      blink = true
     } else {
-      this.blinkTimer += 0.028
-      if (this.blinkTimer >= this.blinkCycle) {
-        this.isBlinking = true; this.blinkFrame = 0
-        this.blinkTimer = 0
-        this.blinkCycle = 3.5 + (Math.random()-0.5)*3
+      this.blinkCountdown--
+      if (this.blinkCountdown <= 0) {
+        this.isBlinking    = true
+        this.blinkFrame    = 0
+        this.blinkCountdown = 180 + Math.round((Math.random() - 0.5) * 120)
       }
       if (this.isBlinking) {
         this.blinkFrame++
-        if (this.blinkFrame <= 6) {
-          blink = true
-        } else {
-          this.isBlinking = false
-        }
+        blink = this.blinkFrame <= 6
+        if (this.blinkFrame > 6) this.isBlinking = false
       }
     }
 
-    // 眼睛款式（在同一個 transform 裡，跟著身體擺動）
+    // ── Draw pixel eyes ────────────────────────────────────────────
     const eyeStyleToUse = state === 'dizzy' ? 'eye_x' : (data.eyeStyle ?? 'eye_round')
     if (coords.eyes.length > 0) {
-      const eyeSize = size * 0.09
-      const ex = coords.eyes.reduce((s,e) => s+e.x, 0) / coords.eyes.length * size
+      const eyeSize = Math.round(size * 0.09)
+      const ex = coords.eyes.reduce((s, e) => s + e.x, 0) / coords.eyes.length * size
       const ey = coords.eyes[0].y * size
-      this.drawEye(ctx, eyeStyleToUse, ex - eyeSize*1.3, ey, eyeSize, blink)
-      this.drawEye(ctx, eyeStyleToUse, ex + eyeSize*1.3, ey, eyeSize, blink)
+      drawEye(ctx, eyeStyleToUse, Math.round(ex - eyeSize * 1.3), Math.round(ey), eyeSize, blink)
+      drawEye(ctx, eyeStyleToUse, Math.round(ex + eyeSize * 1.3), Math.round(ey), eyeSize, blink)
     }
 
     ctx.restore()
 
-    // 影子跟著 translateY 偏移，貼在寵物底部
+    // ── Shadow ─────────────────────────────────────────────────────
     ctx.save()
     ctx.globalAlpha = 0.18
-    ctx.fillStyle = '#000'
+    ctx.fillStyle   = '#000'
     ctx.beginPath()
-    ctx.ellipse(size / 2, size - 6 + translateY, size * 0.30, 5, 0, 0, Math.PI * 2)
+    ctx.ellipse(
+      Math.round(size / 2 + translateX),
+      size - 6 + translateY,
+      Math.round(size * 0.30), 5,
+      0, 0, Math.PI * 2,
+    )
     ctx.fill()
     ctx.restore()
 
-    if (state === 'sleep') this.drawZzz(ctx, size)
-    if (state === 'sad')   this.drawSweat(ctx, size)
-    if (state === 'dizzy') this.drawDizzy(ctx, size)
+    if (state === 'sleep') this.drawZzz(size)
+    if (state === 'sad')   this.drawSweat(size)
+    if (state === 'dizzy') this.drawDizzy(size)
   }
 
-  private drawEye(
-    ctx: CanvasRenderingContext2D,
-    id: string, cx: number, cy: number,
-    size: number, blink: boolean
-  ): void {
-    const r = size / 2
-    ctx.save()
-    ctx.translate(cx, cy)
-    switch(id) {
-      case 'eye_round':
-        ctx.fillStyle = '#2C2C2C'
-        ctx.beginPath(); ctx.arc(0, 0, blink ? r*0.15 : r, 0, Math.PI*2); ctx.fill()
-        if (!blink) {
-          ctx.fillStyle = '#fff'
-          ctx.beginPath(); ctx.arc(-r*0.25,-r*0.25,r*0.3,0,Math.PI*2); ctx.fill()
-        }
-        break
-      case 'eye_happy':
-        ctx.strokeStyle = '#2C2C2C'; ctx.lineWidth = 2; ctx.beginPath()
-        if (blink) { ctx.moveTo(-r,0); ctx.lineTo(r,0) }
-        else { ctx.arc(0, r*0.3, r, Math.PI, 0) }
-        ctx.stroke(); break
-      case 'eye_sleepy':
-        ctx.strokeStyle = '#2C2C2C'; ctx.lineWidth = 2
-        ctx.beginPath(); ctx.moveTo(-r,0); ctx.lineTo(r,0); ctx.stroke()
-        if (!blink) {
-          ctx.fillStyle = '#2C2C2C'
-          ctx.beginPath(); ctx.arc(0,r*0.4,r*0.5,0,Math.PI*2); ctx.fill()
-        }
-        break
-      case 'eye_star':
-        ctx.fillStyle = '#FFD700'
-        if (blink) { ctx.fillRect(-r,-r*0.15,r*2,r*0.3) }
-        else {
-          for (let i=0;i<5;i++) {
-            const a=(i*Math.PI*2/5)-Math.PI/2
-            ctx.beginPath(); ctx.moveTo(0,0)
-            ctx.lineTo(Math.cos(a)*r,Math.sin(a)*r)
-            ctx.lineTo(Math.cos(a+Math.PI/5)*r*0.4,Math.sin(a+Math.PI/5)*r*0.4)
-            ctx.fill()
-          }
-        }
-        break
-      case 'eye_heart':
-        ctx.fillStyle = '#E91E63'
-        if (blink) { ctx.fillRect(-r,-r*0.15,r*2,r*0.3) }
-        else {
-          ctx.beginPath(); ctx.moveTo(0,r*0.3)
-          ctx.bezierCurveTo(-r,-r*0.3,-r,-r,0,-r*0.3)
-          ctx.bezierCurveTo(r,-r,r,-r*0.3,0,r*0.3)
-          ctx.fill()
-        }
-        break
-      case 'eye_x':
-        ctx.strokeStyle = '#E91E63'; ctx.lineWidth = 3
-        ctx.beginPath()
-        ctx.moveTo(-r,-r); ctx.lineTo(r,r)
-        ctx.moveTo(r,-r);  ctx.lineTo(-r,r)
-        ctx.stroke(); break
-    }
-    ctx.restore()
-  }
-
-
-  private zzzT = 0
-  private drawZzz(ctx: CanvasRenderingContext2D, size: number): void {
-    this.zzzT += 0.02
-    ;['z','z','Z'].forEach((l, i) => {
-      const phase = (this.zzzT + i*0.6) % 1.8
-      const a = phase < 0.9 ? phase/0.9 : 1-(phase-0.9)/0.9
-      ctx.save()
-      ctx.globalAlpha = Math.max(0, a)
-      ctx.fillStyle   = '#555'
-      ctx.font        = `bold ${10+i*4}px system-ui`
-      ctx.fillText(l, Math.sin(phase*Math.PI)*10 + size*0.65, size*0.25 - phase*18)
-      ctx.restore()
+  private drawZzz(size: number): void {
+    this.zzzF++
+    const letters = ['z', 'z', 'Z']
+    letters.forEach((l, i) => {
+      // Each letter floats up 18px over 54 frames, then resets
+      const cycle  = 54
+      const offset = i * 18
+      const f      = (this.zzzF + offset) % (cycle * letters.length)
+      if (f >= cycle) return
+      const progress = f / cycle
+      const alpha    = progress < 0.7 ? progress / 0.7 : (1 - progress) / 0.3
+      this.ctx.save()
+      this.ctx.globalAlpha = Math.max(0, alpha)
+      this.ctx.fillStyle   = '#888'
+      this.ctx.font        = `bold ${10 + i * 4}px monospace`
+      this.ctx.fillText(l, size * 0.65 + Math.round(Math.sin(progress * Math.PI) * 6), size * 0.22 - Math.round(progress * 18))
+      this.ctx.restore()
     })
   }
 
-  private drawSweat(ctx: CanvasRenderingContext2D, size: number): void {
+  private drawSweat(size: number): void {
+    const ctx = this.ctx
     ctx.save()
-    ctx.fillStyle = '#64B5F6'; ctx.globalAlpha = 0.8
-    const x = size*0.78, y = size*0.22
-    ctx.beginPath()
-    ctx.moveTo(x, y-8)
-    ctx.bezierCurveTo(x+5, y-4, x+5, y+4, x, y+5)
-    ctx.bezierCurveTo(x-5, y+4, x-5, y-4, x, y-8)
-    ctx.fill()
+    ctx.fillStyle   = '#64B5F6'
+    ctx.globalAlpha = 0.8
+    // 3 pixel drops
+    const x = size * 0.78, y = size * 0.25
+    for (let i = 0; i < 3; i++) {
+      ctx.fillRect(Math.round(x + i * 2), Math.round(y + i * 3), 2, 3)
+    }
     ctx.restore()
   }
 
-  private drawDizzy(ctx: CanvasRenderingContext2D, size: number): void {
-    // Spinning 💫 stars above pet head
-    const cx = size / 2
-    const cy = size * 0.08
-    const radius = size * 0.22
+  private drawDizzy(size: number): void {
+    const ctx  = this.ctx
+    const cx   = size / 2
+    const cy   = size * 0.08
+    const rad  = size * 0.22
     const count = 3
     for (let i = 0; i < count; i++) {
-      const angle = (this.dizzyT * 2) + (i / count) * Math.PI * 2
-      const x = cx + Math.cos(angle) * radius
-      const y = cy + Math.sin(angle) * radius * 0.4
-      const opacity = 0.6 + Math.sin(angle + this.dizzyT) * 0.4
+      // Step every 4 frames
+      const step  = Math.floor(this.dizzyF / 4)
+      const angle = ((step + i * (count * 4 / count)) / (count * 4)) * Math.PI * 2
+      const x     = Math.round(cx + Math.cos(angle) * rad)
+      const y     = Math.round(cy + Math.sin(angle) * rad * 0.4)
       ctx.save()
-      ctx.globalAlpha = Math.max(0.2, opacity)
-      ctx.font = `${size * 0.18}px system-ui`
-      ctx.textAlign = 'center'
+      ctx.globalAlpha = 0.7
+      ctx.font        = `${Math.round(size * 0.18)}px monospace`
+      ctx.textAlign   = 'center'
       ctx.textBaseline = 'middle'
-      ctx.fillText('💫', x, y)
+      ctx.fillText('*', x, y)
       ctx.restore()
     }
   }
