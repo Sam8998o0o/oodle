@@ -490,3 +490,17 @@
   z-index: 9999;
   animation: pixelHeartFloat 1.2s steps(10) forwards;
 }
+
+.likeBtn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  box-shadow: none;
+  transform: none;
+}
+
+.likeQuota {
+  font-family: var(--font-pixel);
+  font-size: 6px;
+  color: #888;
+  margin-top: 2px;
+}

@@ -2,7 +2,7 @@ import { useRef, useState, useEffect, useCallback } from 'react'
 import { PetAnimator } from '../engine/PetAnimator'
 import type { PetCoords } from '../api/aiRecognize'
 import {
-  fetchAllPets, getAllLikeCounts, likePet,
+  fetchAllPets, getAllLikeCounts, likePet, getTodayLikedPetIds,
   postShout, getActiveShouts, countTodayShouts, likeShout,
 } from '../lib/petService'
 import { subscribeToNewPets } from '../lib/realtimeService'
@@ -62,6 +62,7 @@ const WALK_Y_MAX = 0.88   // bottom of walkable ground area
 // No obstacle zones — pets walk freely across the plaza
 
 const SHOUT_DAILY_LIMIT = 10
+const LIKE_DAILY_LIMIT  = 10
 const SHOUT_DURATION_MS = 15_000
 
 const DEFAULT_COORDS: PetCoords = {
@@ -131,6 +132,8 @@ export default function PlazaScene({ petData, onGoToRoom }: PlazaSceneProps) {
   const [pets, setPets]               = useState<PlazaPet[]>([])
   const [selectedPet, setSelectedPet] = useState<PlazaPet | null>(null)
   const [likes, setLikes]             = useState<Record<string, number>>({})
+  const [likeLeft, setLikeLeft]       = useState(LIKE_DAILY_LIMIT)
+  const [todayLikedPets, setTodayLikedPets] = useState<Set<string>>(new Set())
   const [ownGlowing, setOwnGlowing]   = useState(true)
   const [doorPhase, setDoorPhase]     = useState<DoorPhase>('idle')
   const [hearts, setHearts]           = useState<HeartAnim[]>([])
@@ -151,6 +154,14 @@ export default function PlazaScene({ petData, onGoToRoom }: PlazaSceneProps) {
     countTodayShouts()
       .then(n => setShoutLeft(SHOUT_DAILY_LIMIT - n))
       .catch(() => {})
+  }, [])
+
+  // ── Like: load today's liked pets on mount ────────────────
+  useEffect(() => {
+    getTodayLikedPetIds().then(ids => {
+      setTodayLikedPets(ids)
+      setLikeLeft(Math.max(0, LIKE_DAILY_LIMIT - ids.size))
+    }).catch(() => {})
   }, [])
 
   // ── Shout: poll active shouts every 5 s ───────────────────
@@ -424,14 +435,23 @@ export default function PlazaScene({ petData, onGoToRoom }: PlazaSceneProps) {
 
   // ── Like ──────────────────────────────────────────────────
   const handleLike = useCallback((petId: string) => {
+    // Already liked this pet today
+    if (todayLikedPets.has(petId)) return
+    // Daily like quota exhausted
+    if (likeLeft <= 0) return
+
+    // Optimistic UI update
     setLikes(prev => {
       const updated = { ...prev, [petId]: (prev[petId] ?? 0) + 1 }
       localStorage.setItem('oodle_likes', JSON.stringify(updated))
       return updated
     })
+    setTodayLikedPets(prev => new Set(prev).add(petId))
+    setLikeLeft(n => n - 1)
+
     likePet(petId).catch(() => {})
 
-    // Spawn heart from the pet's canvas position in the plaza
+    // Spawn pixel heart
     const canvas = canvasMap.current.get(petId)
     if (canvas) {
       const rect = canvas.getBoundingClientRect()
@@ -443,7 +463,7 @@ export default function PlazaScene({ petData, onGoToRoom }: PlazaSceneProps) {
       setHearts(prev => [...prev, heart])
       setTimeout(() => setHearts(prev => prev.filter(h => h.id !== heart.id)), 1400)
     }
-  }, [])
+  }, [todayLikedPets, likeLeft])
 
   // ── Shout handlers ────────────────────────────────────────
   const handleShout = useCallback(async () => {
@@ -559,12 +579,20 @@ export default function PlazaScene({ petData, onGoToRoom }: PlazaSceneProps) {
               <div className={styles.cardRow}>Joined: {formatDate(selectedPet.createdAt)}</div>
               <div className={styles.cardRow}>❤️ {likes[selectedPet.id] ?? 0} likes</div>
               {!selectedPet.isOwn && (
-                <button
-                  className={styles.likeBtn}
-                  onClick={() => handleLike(selectedPet.id)}
-                >
-                  ❤️ LIKE
-                </button>
+                <>
+                  <button
+                    className={styles.likeBtn}
+                    onClick={() => handleLike(selectedPet.id)}
+                    disabled={todayLikedPets.has(selectedPet.id) || likeLeft <= 0}
+                  >
+                    {todayLikedPets.has(selectedPet.id) ? '✓ LIKED' : '❤️ LIKE'}
+                  </button>
+                  <div className={styles.likeQuota}>
+                    {likeLeft > 0
+                      ? `${likeLeft}/${LIKE_DAILY_LIMIT} likes left today`
+                      : 'Come back tomorrow!'}
+                  </div>
+                </>
               )}
             </div>
           </>

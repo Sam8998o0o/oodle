@@ -14,26 +14,38 @@ interface PetData {
 
 type Scene = 'draw' | 'room' | 'plaza'
 
-function App() {
-  const [petData, setPetData] = useState<PetData | null>(null)
-  const [scene, setScene]     = useState<Scene>('draw')
+const PET_STORAGE_KEY = 'oodle_pet_data'
 
-  // Silently establish an anonymous Supabase session on first load.
-  // Reuses existing session if one is already stored in localStorage.
+function loadSavedPet(): PetData | null {
+  try {
+    const raw = localStorage.getItem(PET_STORAGE_KEY)
+    if (!raw) return null
+    return JSON.parse(raw) as PetData
+  } catch {
+    return null
+  }
+}
+
+function App() {
+  const [petData, setPetData] = useState<PetData | null>(() => loadSavedPet())
+  const [scene, setScene]     = useState<Scene>(() => loadSavedPet() ? 'room' : 'draw')
+
   useEffect(() => {
     initAuth()
   }, [])
+
+  const handlePetCreated = (pixelData: string, coords: PetCoords, name: string) => {
+    const data: PetData = { pixelData, coords, name }
+    setPetData(data)
+    localStorage.setItem(PET_STORAGE_KEY, JSON.stringify(data))
+    setScene('room')
+  }
 
   if (!petData || scene === 'draw') {
     return (
       <>
         <AuthButton />
-        <DrawScene
-          onPetCreated={(pixelData, coords, name) => {
-            setPetData({ pixelData, coords, name })
-            setScene('room')
-          }}
-        />
+        <DrawScene onPetCreated={handlePetCreated} />
       </>
     )
   }

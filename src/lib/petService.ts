@@ -107,6 +107,50 @@ export async function likePet(petId: string): Promise<void> {
   }
 }
 
+// ── countTodayLikes ───────────────────────────────────────
+// Returns how many distinct pets the current user has liked today.
+export async function countTodayLikes(): Promise<number> {
+  const userId = useAuthStore.getState().userId
+  if (!userId) return 0
+
+  const startOfDay = new Date()
+  startOfDay.setHours(0, 0, 0, 0)
+
+  const { count, error } = await supabase
+    .from('likes')
+    .select('*', { count: 'exact', head: true })
+    .eq('user_id', userId)
+    .gte('created_at', startOfDay.toISOString())
+
+  if (error) {
+    console.error('[petService] countTodayLikes failed:', error.message)
+    return 0
+  }
+  return count ?? 0
+}
+
+// ── getTodayLikedPetIds ───────────────────────────────────
+// Returns the set of pet ids the current user has liked today.
+export async function getTodayLikedPetIds(): Promise<Set<string>> {
+  const userId = useAuthStore.getState().userId
+  if (!userId) return new Set()
+
+  const startOfDay = new Date()
+  startOfDay.setHours(0, 0, 0, 0)
+
+  const { data, error } = await supabase
+    .from('likes')
+    .select('pet_id')
+    .eq('user_id', userId)
+    .gte('created_at', startOfDay.toISOString())
+
+  if (error) {
+    console.error('[petService] getTodayLikedPetIds failed:', error.message)
+    return new Set()
+  }
+  return new Set((data ?? []).map(r => r.pet_id as string))
+}
+
 // ══════════════════════════════════════════════════════════
 // Shout system
 // ══════════════════════════════════════════════════════════

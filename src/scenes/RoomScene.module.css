@@ -11,7 +11,10 @@
   position: relative;
   overflow: hidden;
   min-height: 400%;
-  background: #1a1a2e;
+  background-image: url('/room-bg.png');
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
 }
 
 .room::after {
