@@ -9,8 +9,8 @@ export default function AuthButton() {
 
   if (isAnonymous) {
     return (
-      <button className={styles.btn} onClick={linkGoogle} title="Link Google to keep your pet forever">
-        ☁ SIGN IN TO SAVE
+      <button className={styles.btn} onClick={linkGoogle}>
+        🔑 LOGIN WITH GOOGLE
       </button>
     )
   }
@@ -18,7 +18,7 @@ export default function AuthButton() {
   return (
     <div className={styles.group}>
       <div className={styles.avatar}>G</div>
-      <button className={styles.btn} onClick={signOut}>SIGN OUT</button>
+      <button className={styles.signOutBtn} onClick={signOut}>SIGN OUT</button>
     </div>
   )
 }

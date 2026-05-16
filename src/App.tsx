@@ -29,6 +29,12 @@ function loadSavedPet(): PetData | null {
 function App() {
   const [petData, setPetData] = useState<PetData | null>(() => loadSavedPet())
   const [scene, setScene]     = useState<Scene>(() => loadSavedPet() ? 'room' : 'draw')
+  const [petSize, setPetSize] = useState(() => {
+    try {
+      const g = parseInt(localStorage.getItem('oodle_growth') ?? '0', 10)
+      return Math.round(60 + (Math.min(100, Math.max(0, g)) / 100) * 100)
+    } catch { return 60 }
+  })
 
   useEffect(() => {
     initAuth()
@@ -56,6 +62,7 @@ function App() {
         <AuthButton />
         <PlazaScene
           petData={petData}
+          petSize={petSize}
           onGoToRoom={() => setScene('room')}
         />
       </>
@@ -68,6 +75,7 @@ function App() {
       <RoomScene
         petData={petData}
         onGoToPlaza={() => setScene('plaza')}
+        onSizeChange={(size) => setPetSize(size)}
       />
     </>
   )

@@ -1,37 +1,35 @@
-/* Fixed to bottom-left, always on top of all scenes */
+/* Fixed to bottom-right, always on top */
 .btn {
   position: fixed;
-  bottom: 12px;
-  left: 12px;
+  bottom: 16px;
+  right: 16px;
   z-index: 100;
   font-family: var(--font-pixel);
-  font-size: 6px;
-  padding: 6px 10px;
-  background: rgba(255, 255, 255, 0.85);
-  color: #555;
-  border: 1px solid #aaa;
-  box-shadow: 2px 2px 0 #aaa;
+  font-size: 8px;
+  padding: 10px 16px;
+  background: #FFE600;
+  color: #2C2C2C;
+  border: 2px solid #2C2C2C;
+  box-shadow: 4px 4px 0 #2C2C2C;
   cursor: pointer;
   white-space: nowrap;
+  letter-spacing: 1px;
 }
 
 .btn:active {
-  transform: translate(1px, 1px);
-  box-shadow: 1px 1px 0 #aaa;
-}
-
-.btn:hover {
-  background: #fff;
-  color: #2C2C2C;
-  border-color: #2C2C2C;
+  transform: translate(2px, 2px);
   box-shadow: 2px 2px 0 #2C2C2C;
 }
 
-/* Logged-in state: avatar chip + sign out */
+.btn:hover {
+  background: #f5d800;
+}
+
+/* Logged-in state */
 .group {
   position: fixed;
-  bottom: 12px;
-  left: 12px;
+  bottom: 16px;
+  right: 16px;
   z-index: 100;
   display: flex;
   align-items: center;
@@ -39,14 +37,31 @@
 }
 
 .avatar {
-  width: 22px;
-  height: 22px;
+  width: 28px;
+  height: 28px;
   background: #4285F4;
   color: #fff;
   font-family: var(--font-pixel);
-  font-size: 7px;
+  font-size: 8px;
   display: flex;
   align-items: center;
   justify-content: center;
-  border: 1px solid #2C2C2C;
+  border: 2px solid #2C2C2C;
+  box-shadow: 2px 2px 0 #2C2C2C;
+}
+
+.signOutBtn {
+  font-family: var(--font-pixel);
+  font-size: 7px;
+  padding: 6px 10px;
+  background: #fff;
+  color: #2C2C2C;
+  border: 2px solid #2C2C2C;
+  box-shadow: 2px 2px 0 #2C2C2C;
+  cursor: pointer;
+}
+
+.signOutBtn:active {
+  transform: translate(1px, 1px);
+  box-shadow: 1px 1px 0 #2C2C2C;
 }

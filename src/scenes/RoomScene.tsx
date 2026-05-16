@@ -12,8 +12,9 @@ interface PetStats {
 }
 
 interface RoomSceneProps {
-  petData: { pixelData: string; coords: PetCoords; name: string }
-  onGoToPlaza: () => void
+  petData:      { pixelData: string; coords: PetCoords; name: string }
+  onGoToPlaza:  () => void
+  onSizeChange: (size: number) => void
 }
 
 interface FloatEmoji {
@@ -27,7 +28,8 @@ function pick<T>(arr: T[]): T {
 
 const FEED_LINES = ['Yummy!', 'Thank you!', 'So good!']
 
-const PET_SIZE        = 160
+const PET_SIZE_MIN    = 60
+const PET_SIZE_MAX    = 160
 const SMALL_HUNGER    = 10
 const BIG_HUNGER      = 20
 const DAILY_EAT_LIMIT = 5
@@ -42,7 +44,7 @@ const DEFAULT_COORDS: PetCoords = {
   has_legs: false,
 }
 
-export default function RoomScene({ petData, onGoToPlaza }: RoomSceneProps) {
+export default function RoomScene({ petData, onGoToPlaza, onSizeChange }: RoomSceneProps) {
   const roomRef       = useRef<HTMLDivElement>(null)
   const petWrapperRef = useRef<HTMLDivElement>(null)
   const petCanvasRef  = useRef<HTMLCanvasElement>(null)
@@ -63,10 +65,17 @@ export default function RoomScene({ petData, onGoToPlaza }: RoomSceneProps) {
   const isLongPressRef   = useRef(false)
   const isPetClickRef    = useRef(false)
 
-  const [stats, setStats]             = useState<PetStats>({ hunger: 80, happy: 80, energy: 80 })
+  const [stats, setStats] = useState<PetStats>(() => {
+    try {
+      const s = localStorage.getItem('oodle_stats')
+      if (!s) return { hunger: 80, happy: 80, energy: 80 }
+      return JSON.parse(s) as PetStats
+    } catch { return { hunger: 80, happy: 80, energy: 80 } }
+  })
   const [dayCount, setDayCount]       = useState(1)
   const [floatEmojis, setFloatEmojis] = useState<FloatEmoji[]>([])
   const [bubble, setBubble]           = useState<{ text: string; id: number } | null>(null)
+  const isSleepingRef = useRef(false)
 
   // ── Like-exchange food system ────────────────────────────
   const [likeBalance, setLikeBalance] = useState(0)
@@ -80,6 +89,14 @@ export default function RoomScene({ petData, onGoToPlaza }: RoomSceneProps) {
   const [isDizzy,   setIsDizzy]   = useState(false)
   const [isFainted, setIsFainted] = useState(false)
   const isFaintedRef = useRef(false)
+  const isDizzyRef   = useRef(false)
+
+  // ── Growth system (day-based) ─────────────────────────────
+  const [growthPoints, setGrowthPoints] = useState(() => {
+    try { return Math.min(100, Math.max(0, parseInt(localStorage.getItem('oodle_growth') ?? '0', 10))) }
+    catch { return 0 }
+  })
+  const petSize = Math.round(PET_SIZE_MIN + (growthPoints / 100) * (PET_SIZE_MAX - PET_SIZE_MIN))
 
   // ── Day / Night + Weekend ─────────────────────────────────
   const [isNight,   setIsNight]   = useState(() => { const h = new Date().getHours(); return h >= 22 || h < 6 })
@@ -101,7 +118,7 @@ export default function RoomScene({ petData, onGoToPlaza }: RoomSceneProps) {
   // ── Load like balance from Supabase ───────────────────────
   useEffect(() => {
     getLikeBalance()
-      .then(b => setLikeBalance(b))
+      .then((b: number) => setLikeBalance(b))
       .catch(() => {})
   }, [])
 
@@ -143,6 +160,10 @@ export default function RoomScene({ petData, onGoToPlaza }: RoomSceneProps) {
         setSmallFood(fp.smallFood ?? 0)
         setBigFood(fp.bigFood   ?? 0)
         const today = new Date().toDateString()
+        if (fp.eatDate && fp.eatDate !== today) {
+          const fedYesterday = (fp.todayEats ?? 0) > 0
+          setGrowthPoints((g: number) => Math.min(100, Math.max(0, g + (fedYesterday ? 10 : -5))))
+        }
         setTodayEats(fp.eatDate === today ? (fp.todayEats ?? 0) : 0)
       }
     } catch { /* ignore */ }
@@ -158,6 +179,8 @@ export default function RoomScene({ petData, onGoToPlaza }: RoomSceneProps) {
 
   useEffect(() => { localStorage.setItem('oodle_stats',      JSON.stringify(stats))    }, [stats])
   useEffect(() => { localStorage.setItem('oodle_day_count',  String(dayCount))          }, [dayCount])
+  useEffect(() => { localStorage.setItem('oodle_growth',     String(growthPoints))      }, [growthPoints])
+  useEffect(() => { onSizeChange(petSize) }, [petSize, onSizeChange])
   useEffect(() => {
     localStorage.setItem('oodle_food_state', JSON.stringify({
       smallFood, bigFood, todayEats,
@@ -178,17 +201,26 @@ export default function RoomScene({ petData, onGoToPlaza }: RoomSceneProps) {
     return () => clearInterval(decay)
   }, [isWeekend])
 
-  // ── Auto sleep ────────────────────────────────────────────
+  // ── Auto sleep (energy-based) ─────────────────────────────
   useEffect(() => {
     const check = setInterval(() => {
-      const s       = statsRef.current
+      const s        = statsRef.current
       const animator = animatorRef.current
       if (!animator) return
-      if (isFaintedRef.current) return   // fainted — don't override state
-      if (s.energy < 25) {
+      if (isFaintedRef.current) return
+      if (isDizzyRef.current)   return
+
+      if (!isSleepingRef.current && s.energy <= 0) {
+        // Energy depleted → fall asleep
+        isSleepingRef.current = true
         animator.setState('sleep')
-        setStats(prev => ({ ...prev, energy: Math.min(100, prev.energy + 2) }))
-      } else if (s.energy >= 30) {
+        setBubble({ text: 'Zzz...', id: Date.now() })
+      } else if (isSleepingRef.current && s.energy <= 0) {
+        // Sleeping: recover energy
+        setStats(prev => ({ ...prev, energy: Math.min(100, prev.energy + 5) }))
+      } else if (isSleepingRef.current && s.energy >= 30) {
+        // Fully rested → wake up
+        isSleepingRef.current = false
         animator.setState('walk')
       }
     }, 5000)
@@ -208,7 +240,13 @@ export default function RoomScene({ petData, onGoToPlaza }: RoomSceneProps) {
 
   // ── Night → force sleep ───────────────────────────────────
   useEffect(() => {
-    if (isNight) animatorRef.current?.setState('sleep')
+    if (isNight) {
+      isSleepingRef.current = true
+      animatorRef.current?.setState('sleep')
+    } else if (!isNight && isSleepingRef.current) {
+      isSleepingRef.current = false
+      animatorRef.current?.setState('walk')
+    }
   }, [isNight])
 
   // ── Weekend celebration: random play every 30 s ───────────
@@ -233,7 +271,13 @@ export default function RoomScene({ petData, onGoToPlaza }: RoomSceneProps) {
     const coords: PetCoords = (petData.coords?.has_eyes) ? petData.coords : DEFAULT_COORDS
     const eyeStyle = localStorage.getItem('oodle_eye_style') || 'eye_round'
 
-    const animator = new PetAnimator(canvas, { imageDataURL: petData.pixelData, coords, size: PET_SIZE, eyeStyle })
+    animatorRef.current?.stop()
+    canvas.width  = petSize
+    canvas.height = petSize
+    wrapper.style.width  = `${petSize}px`
+    wrapper.style.height = `${petSize}px`
+
+    const animator = new PetAnimator(canvas, { imageDataURL: petData.pixelData, coords, size: petSize, eyeStyle })
     animatorRef.current = animator
     animator.setState('walk')
     animator.start()
@@ -241,7 +285,7 @@ export default function RoomScene({ petData, onGoToPlaza }: RoomSceneProps) {
     const walk = () => {
       if (!mounted) return
       if (statsRef.current.energy >= 25) {
-        const maxX = room.offsetWidth - PET_SIZE
+        const maxX = room.offsetWidth - petSize
         walkXRef.current += 0.3 * walkDirRef.current
         if (walkXRef.current >= maxX) walkDirRef.current = -1
         if (walkXRef.current <= 0)    walkDirRef.current =  1
@@ -257,7 +301,7 @@ export default function RoomScene({ petData, onGoToPlaza }: RoomSceneProps) {
       animator.stop()
       cancelAnimationFrame(walkRafRef.current)
     }
-  }, [petData])
+  }, [petData, petSize])
 
   // ── Door transition ───────────────────────────────────────
   useEffect(() => {
@@ -280,7 +324,7 @@ export default function RoomScene({ petData, onGoToPlaza }: RoomSceneProps) {
       cancelAnimationFrame(walkRafRef.current)
       animatorRef.current?.setState('walk')
 
-      const targetX = room.offsetWidth * 0.85 - PET_SIZE / 2
+      const targetX = room.offsetWidth * 0.85 - petSize / 2
       canvas.style.transform = 'none'
 
       let rafId = 0
@@ -378,7 +422,6 @@ export default function RoomScene({ petData, onGoToPlaza }: RoomSceneProps) {
   }, [todayEats, smallFood, bigFood, showFloat, showBubble])
 
   // ── Pinch / drag / throw ─────────────────────────────────
-  const isDizzyRef = useRef(false)
 
   const startBounce = useCallback((vx: number, vy: number, triggerDizzy: boolean) => {
     const wrapper = petWrapperRef.current
@@ -548,7 +591,7 @@ export default function RoomScene({ petData, onGoToPlaza }: RoomSceneProps) {
   }, [doorPhase])
 
   const isTransitioning = doorPhase !== 'idle'
-  const plazaReady      = petSaved && !isTransitioning
+  const plazaReady      = petSaved && !isTransitioning && !isDizzy && !isFainted
 
   return (
     <div className={styles.page}>
@@ -634,8 +677,8 @@ export default function RoomScene({ petData, onGoToPlaza }: RoomSceneProps) {
           )}
           <canvas
             ref={petCanvasRef}
-            width={PET_SIZE}
-            height={PET_SIZE}
+            width={petSize}
+            height={petSize}
             style={{ display: 'block', background: 'transparent', border: 'none' }}
           />
           {bubble && <div className={styles.bubble} key={bubble.id}>{bubble.text}</div>}

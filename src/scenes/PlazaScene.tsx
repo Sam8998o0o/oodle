@@ -74,8 +74,9 @@ const DEFAULT_COORDS: PetCoords = {
 }
 
 interface PlazaSceneProps {
-  petData: { pixelData: string; coords: PetCoords; name: string }
+  petData:    { pixelData: string; coords: PetCoords; name: string }
   onGoToRoom: () => void
+  petSize:    number
 }
 
 interface PlazaPet {
@@ -114,7 +115,7 @@ function mergePets(existing: PlazaPet[], incoming: PlazaPet[]): PlazaPet[] {
   return Array.from(map.values())
 }
 
-export default function PlazaScene({ petData, onGoToRoom }: PlazaSceneProps) {
+export default function PlazaScene({ petData, onGoToRoom, petSize }: PlazaSceneProps) {
   const roomRef    = useRef<HTMLDivElement>(null)
 
   // DOM refs — keyed by pet id
@@ -125,6 +126,7 @@ export default function PlazaScene({ petData, onGoToRoom }: PlazaSceneProps) {
   const animMap    = useRef(new Map<string, PetAnimator>())
   const walkerMap  = useRef(new Map<string, Walker>())
   const rafRef     = useRef(0)
+  const petSizeRef = useRef(petSize)
 
   // Queue of pets waiting to be spawned (DOM not ready yet when pets state updates)
   const spawnQueue = useRef<PlazaPet[]>([])
@@ -136,6 +138,9 @@ export default function PlazaScene({ petData, onGoToRoom }: PlazaSceneProps) {
   const [todayLikedPets, setTodayLikedPets] = useState<Set<string>>(new Set())
   const [ownGlowing, setOwnGlowing]   = useState(true)
   const [doorPhase, setDoorPhase]     = useState<DoorPhase>('idle')
+
+  // Keep petSizeRef in sync — used by spawnPet without causing re-spawn
+  useEffect(() => { petSizeRef.current = petSize }, [petSize])
   const [hearts, setHearts]           = useState<HeartAnim[]>([])
 
   // ── Shout system ──────────────────────────────────────────
@@ -244,7 +249,40 @@ export default function PlazaScene({ petData, onGoToRoom }: PlazaSceneProps) {
 
   // ── Spawn a pet into the walk system ──────────────────────
   const spawnPet = useCallback((pet: PlazaPet) => {
-    if (animMap.current.has(pet.id)) return   // already spawned
+    const alreadySpawned = animMap.current.has(pet.id)
+
+    if (alreadySpawned) {
+      if (!pet.isOwn) return  // others: skip
+
+      // Own pet: only re-spawn animator if size changed, keep position
+      const canvas = canvasMap.current.get(pet.id)
+      const newSize = petSizeRef.current
+      if (canvas && canvas.width === newSize) return  // size unchanged, skip
+
+      // Stop old animator, rebuild with new size, keep walker position intact
+      animMap.current.get(pet.id)?.stop()
+      animMap.current.delete(pet.id)
+      if (canvas) {
+        canvas.width  = newSize
+        canvas.height = newSize
+        const eyeStyle = localStorage.getItem('oodle_eye_style') ?? 'eye_round'
+        const animator = new PetAnimator(canvas, {
+          imageDataURL: pet.pixelData,
+          coords:       pet.coords,
+          size:         newSize,
+          eyeStyle,
+        })
+        animator.setState('walk')
+        animator.start()
+        animMap.current.set(pet.id, animator)
+        const wrapper = wrapperMap.current.get(pet.id)
+        if (wrapper) {
+          wrapper.style.width  = `${newSize}px`
+          wrapper.style.height = `${newSize + 20}px`
+        }
+      }
+      return
+    }
 
     const canvas  = canvasMap.current.get(pet.id)
     const wrapper = wrapperMap.current.get(pet.id)
@@ -263,19 +301,24 @@ export default function PlazaScene({ petData, onGoToRoom }: PlazaSceneProps) {
     }
 
     const eyeStyle  = localStorage.getItem('oodle_eye_style') ?? 'eye_round'
+    const size      = pet.isOwn ? petSizeRef.current : PET_SIZE
+    canvas.width    = size
+    canvas.height   = size
+    wrapper.style.width  = `${size}px`
+    wrapper.style.height = `${size + 20}px`
     const animator  = new PetAnimator(canvas, {
       imageDataURL: pet.pixelData,
       coords:       pet.coords,
-      size:         PET_SIZE,
+      size,
       eyeStyle,
     })
     animator.setState('walk')
     animator.start()
     animMap.current.set(pet.id, animator)
 
-    const rightBound = rW - RIGHT_PAD - PET_SIZE
+    const rightBound = rW - RIGHT_PAD - size
     const yRatio     = WALK_Y_MIN + Math.random() * (WALK_Y_MAX - WALK_Y_MIN)
-    const y          = yRatio * rH - PET_SIZE
+    const y          = yRatio * rH - size
     const x          = LEFT_BOUND + Math.random() * (rightBound - LEFT_BOUND)
     const dir        = Math.random() < 0.5 ? 1 : -1
     const dirY       = Math.random() < 0.5 ? 1 : -1
@@ -297,7 +340,6 @@ export default function PlazaScene({ petData, onGoToRoom }: PlazaSceneProps) {
     const tick = () => {
       const rW         = room.offsetWidth
       const rH         = room.offsetHeight
-      const rightBound = rW - RIGHT_PAD - PET_SIZE
 
       // Drain spawn queue — try pets that were queued before DOM was ready
       if (spawnQueue.current.length > 0) {
@@ -315,24 +357,27 @@ export default function PlazaScene({ petData, onGoToRoom }: PlazaSceneProps) {
       }
 
       // Move all walkers
-      const topBound    = WALK_Y_MIN * rH - PET_SIZE
-      const bottomBound = WALK_Y_MAX * rH - PET_SIZE
-
       walkerMap.current.forEach((w, id) => {
         const wr = wrapperMap.current.get(id)
         const cv = canvasMap.current.get(id)
         if (!wr || !cv) return
 
+        // Use actual canvas size for own pet bounds
+        const sz         = id === 'own' ? petSizeRef.current : PET_SIZE
+        const ownRight   = rW - RIGHT_PAD - sz
+        const ownTop     = WALK_Y_MIN * rH - sz
+        const ownBottom  = WALK_Y_MAX * rH - sz
+
         // X movement
         const nextX = w.x + w.speed * w.dir
-        if (nextX >= rightBound) { w.dir = -1 }
+        if (nextX >= ownRight)   { w.dir = -1 }
         else if (nextX <= LEFT_BOUND) { w.dir = 1 }
         else { w.x = nextX }
 
         // Y movement
         const nextY = w.y + w.speedY * w.dirY
-        if (nextY >= bottomBound) { w.dirY = -1 }
-        else if (nextY <= topBound) { w.dirY = 1 }
+        if (nextY >= ownBottom) { w.dirY = -1 }
+        else if (nextY <= ownTop) { w.dirY = 1 }
         else { w.y = nextY }
 
         wr.style.left      = `${w.x}px`
@@ -405,7 +450,7 @@ export default function PlazaScene({ petData, onGoToRoom }: PlazaSceneProps) {
       if (records.length === 0) { loadFromLocalStorage(); return }
       const ownSupabaseId = localStorage.getItem('oodle_pet_supabase_id')
       const others: PlazaPet[] = records
-        .filter(r => r.id !== ownSupabaseId)
+        .filter(r => r.id !== ownSupabaseId && r.pixel_data !== petData.pixelData)
         .map(r => ({
           id:        r.id,
           pixelData: r.pixel_data,
@@ -426,6 +471,7 @@ export default function PlazaScene({ petData, onGoToRoom }: PlazaSceneProps) {
     const ownSupabaseId = localStorage.getItem('oodle_pet_supabase_id')
     const unsubscribe = subscribeToNewPets(newPet => {
       if (newPet.id === ownSupabaseId) return
+      if (newPet.pixel_data === petData.pixelData) return
       setPets(prev => {
         if (prev.some(p => p.id === newPet.id)) return prev
         return [...prev, {
@@ -579,8 +625,8 @@ export default function PlazaScene({ petData, onGoToRoom }: PlazaSceneProps) {
                     canvasMap.current.delete(pet.id)
                   }
                 }}
-                width={PET_SIZE}
-                height={PET_SIZE}
+                width={pet.isOwn ? petSize : PET_SIZE}
+                height={pet.isOwn ? petSize : PET_SIZE}
                 className={styles.petCanvas}
               />
             </div>
