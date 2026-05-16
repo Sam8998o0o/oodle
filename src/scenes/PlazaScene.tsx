@@ -469,28 +469,38 @@ export default function PlazaScene({ petData, onGoToRoom }: PlazaSceneProps) {
   const handleShout = useCallback(async () => {
     const message = shoutInput.trim()
     if (!message || shoutLeft <= 0) return
-    const supabaseId = localStorage.getItem('oodle_pet_supabase_id')
-    if (!supabaseId) return   // pet not yet saved to Supabase
-
-    const shoutId = await postShout(supabaseId, message).catch(() => null)
-    if (!shoutId) return
 
     setShoutInput('')
     setShoutLeft(n => n - 1)
 
-    // Use 'own' as key to match the own pet's id in the pets array
-    setActiveShouts(prev => ({ ...prev, ['own']: { message, shoutId } }))
+    // Show bubble locally immediately regardless of Supabase
+    const localShoutId = `local_${Date.now()}`
+    setActiveShouts(prev => ({ ...prev, ['own']: { message, shoutId: localShoutId } }))
 
     // Auto-remove after SHOUT_DURATION_MS
     setTimeout(() => {
       setActiveShouts(prev => {
         const current = prev['own']
-        if (!current || current.shoutId !== shoutId) return prev
+        if (!current || current.shoutId !== localShoutId) return prev
         const next = { ...prev }
         delete next['own']
         return next
       })
     }, SHOUT_DURATION_MS)
+
+    // Try to persist to Supabase (best-effort)
+    const supabaseId = localStorage.getItem('oodle_pet_supabase_id')
+    if (supabaseId) {
+      const shoutId = await postShout(supabaseId, message).catch(() => null)
+      // Update shoutId to the real one so other users' polls pick it up
+      if (shoutId) {
+        setActiveShouts(prev => {
+          const current = prev['own']
+          if (!current) return prev
+          return { ...prev, ['own']: { message, shoutId } }
+        })
+      }
+    }
   }, [shoutInput, shoutLeft])
 
   const handleLikeShout = useCallback((shoutId: string) => {

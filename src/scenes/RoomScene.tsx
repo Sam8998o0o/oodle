@@ -58,9 +58,10 @@ export default function RoomScene({ petData, onGoToPlaza }: RoomSceneProps) {
   const lastPosRef       = useRef({ x: 0, y: 0 })
   const velRef           = useRef({ x: 0, y: 0 })
   const throwRafRef      = useRef(0)
-  const throwCountRef    = useRef(0)   // how many times thrown this session
+  const throwCountRef    = useRef(0)
   const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const isLongPressRef   = useRef(false)
+  const isPetClickRef    = useRef(false)
 
   const [stats, setStats]             = useState<PetStats>({ hunger: 80, happy: 80, energy: 80 })
   const [dayCount, setDayCount]       = useState(1)
@@ -77,6 +78,8 @@ export default function RoomScene({ petData, onGoToPlaza }: RoomSceneProps) {
   const [doorPhase, setDoorPhase] = useState<DoorPhase>('idle')
   const [petSaved,  setPetSaved]  = useState(false)
   const [isDizzy,   setIsDizzy]   = useState(false)
+  const [isFainted, setIsFainted] = useState(false)
+  const isFaintedRef = useRef(false)
 
   // ── Day / Night + Weekend ─────────────────────────────────
   const [isNight,   setIsNight]   = useState(() => { const h = new Date().getHours(); return h >= 22 || h < 6 })
@@ -102,14 +105,38 @@ export default function RoomScene({ petData, onGoToPlaza }: RoomSceneProps) {
       .catch(() => {})
   }, [])
 
-  // ── Load localStorage ─────────────────────────────────────
+  // ── Load localStorage + offline decay ────────────────────
   useEffect(() => {
     try {
       const s = localStorage.getItem('oodle_stats')
-      if (s) { const p = JSON.parse(s) as PetStats; setStats(p); statsRef.current = p }
+      const lastSeen = localStorage.getItem('oodle_last_seen')
+
+      if (s) {
+        let p = JSON.parse(s) as PetStats
+
+        // Calculate offline decay
+        if (lastSeen) {
+          const offlineMs      = Date.now() - parseInt(lastSeen, 10)
+          const offlineMins    = offlineMs / 1000 / 60
+          const isWeekendNow   = [0, 6].includes(new Date().getDay())
+          const decayMult      = isWeekendNow ? 0.5 : 1
+
+          // Same rate as live decay: hunger -1/30s, happy -0.5/30s, energy -0.8/30s
+          const intervals      = offlineMins * 2 * decayMult   // intervals per 30s
+          p = {
+            hunger: Math.max(0, p.hunger - intervals * 1),
+            happy:  Math.max(0, p.happy  - intervals * 0.5),
+            energy: Math.max(0, p.energy - intervals * 0.8),
+          }
+        }
+
+        setStats(p)
+        statsRef.current = p
+      }
+
       const d = localStorage.getItem('oodle_day_count')
       if (d) setDayCount(parseInt(d, 10))
-      // Food state (persisted separately from the old key_state)
+
       const fs = localStorage.getItem('oodle_food_state')
       if (fs) {
         const fp = JSON.parse(fs) as { smallFood?: number; bigFood?: number; todayEats?: number; eatDate?: string }
@@ -119,6 +146,14 @@ export default function RoomScene({ petData, onGoToPlaza }: RoomSceneProps) {
         setTodayEats(fp.eatDate === today ? (fp.todayEats ?? 0) : 0)
       }
     } catch { /* ignore */ }
+  }, [])
+
+  // ── Save last seen timestamp every 10s ───────────────────
+  useEffect(() => {
+    const save = () => localStorage.setItem('oodle_last_seen', String(Date.now()))
+    save()
+    const id = setInterval(save, 10000)
+    return () => { save(); clearInterval(id) }
   }, [])
 
   useEffect(() => { localStorage.setItem('oodle_stats',      JSON.stringify(stats))    }, [stats])
@@ -149,6 +184,7 @@ export default function RoomScene({ petData, onGoToPlaza }: RoomSceneProps) {
       const s       = statsRef.current
       const animator = animatorRef.current
       if (!animator) return
+      if (isFaintedRef.current) return   // fainted — don't override state
       if (s.energy < 25) {
         animator.setState('sleep')
         setStats(prev => ({ ...prev, energy: Math.min(100, prev.energy + 2) }))
@@ -280,6 +316,17 @@ export default function RoomScene({ petData, onGoToPlaza }: RoomSceneProps) {
     setTimeout(() => setBubble(b => (b?.id === id ? null : b)), 2000)
   }, [])
 
+  // ── Faint when hunger = 0 ─────────────────────────────────
+  useEffect(() => {
+    if (stats.hunger <= 0 && !isFaintedRef.current) {
+      isFaintedRef.current = true
+      setIsFainted(true)
+      cancelAnimationFrame(walkRafRef.current)
+      animatorRef.current?.setState('sad')
+      showBubble('So hungry... 😵')
+    }
+  }, [stats.hunger, showBubble])
+
   // ── Like → food redemption ────────────────────────────────
   const handleRedeemSmall = useCallback(async () => {
     if (likeBalance < 5) return
@@ -319,7 +366,15 @@ export default function RoomScene({ petData, onGoToPlaza }: RoomSceneProps) {
     showFloat('🍖')
     showBubble(pick(FEED_LINES))
     animatorRef.current?.setState('eat')
-    setTimeout(() => animatorRef.current?.setState('walk'), 2000)
+
+    // Recover from faint if hunger was 0
+    if (isFaintedRef.current) {
+      isFaintedRef.current = false
+      setIsFainted(false)
+      setTimeout(() => animatorRef.current?.setState('walk'), 2000)
+    } else {
+      setTimeout(() => animatorRef.current?.setState('walk'), 2000)
+    }
   }, [todayEats, smallFood, bigFood, showFloat, showBubble])
 
   // ── Pinch / drag / throw ─────────────────────────────────
@@ -418,10 +473,11 @@ export default function RoomScene({ petData, onGoToPlaza }: RoomSceneProps) {
   }, [])
 
   const handlePetMouseDown = useCallback((e: React.MouseEvent) => {
-    if (isDizzyRef.current) return
+    if (isDizzyRef.current || isFaintedRef.current) return
     const wrapper = petWrapperRef.current
     if (!wrapper) return
 
+    isPetClickRef.current  = true
     isLongPressRef.current = false
 
     longPressTimerRef.current = setTimeout(() => {
@@ -457,21 +513,22 @@ export default function RoomScene({ petData, onGoToPlaza }: RoomSceneProps) {
       longPressTimerRef.current = null
     }
     if (!isDraggingRef.current) {
-      // Quick click = pinch
-      if (!isDizzyRef.current) {
+      // Only scratch if click originated on the pet
+      if (isPetClickRef.current && !isDizzyRef.current) {
         animatorRef.current?.setState('squish')
         setStats(s => ({ ...s, happy: Math.min(100, s.happy + 10) }))
         showFloat('⭐')
         setTimeout(() => animatorRef.current?.setState('walk'), 600)
       }
+      isPetClickRef.current = false
       return
     }
+    isPetClickRef.current = false
     isDraggingRef.current = false
     const vx = velRef.current.x * 0.8
     const vy = velRef.current.y * 0.8
 
     throwCountRef.current += 1
-    // Trigger dizzy after bounce settles if this is the 2nd+ throw
     const triggerDizzy = throwCountRef.current >= 2 && !isDizzyRef.current
     startBounce(vx, vy, triggerDizzy)
   }, [startBounce, showFloat])
@@ -554,8 +611,27 @@ export default function RoomScene({ petData, onGoToPlaza }: RoomSceneProps) {
           className={styles.petWrapper}
           ref={petWrapperRef}
           onMouseDown={handlePetMouseDown}
-          style={{ cursor: isDizzy ? 'not-allowed' : 'grab', userSelect: 'none' }}
+          style={{ cursor: isFainted ? 'not-allowed' : isDizzy ? 'not-allowed' : 'grab', userSelect: 'none' }}
         >
+          {isFainted && (
+            <div style={{
+              position: 'absolute',
+              top: '-28px',
+              left: '50%',
+              transform: 'translateX(-50%)',
+              fontFamily: 'var(--font-pixel)',
+              fontSize: '8px',
+              background: '#fff',
+              border: '2px solid #e94560',
+              boxShadow: '2px 2px 0 #2C2C2C',
+              padding: '3px 8px',
+              whiteSpace: 'nowrap',
+              color: '#e94560',
+              zIndex: 10,
+            }}>
+              FEED ME! 😵
+            </div>
+          )}
           <canvas
             ref={petCanvasRef}
             width={PET_SIZE}
