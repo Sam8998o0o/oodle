@@ -169,16 +169,24 @@ export default function PlazaScene({ petData, onGoToRoom }: PlazaSceneProps) {
     const poll = async () => {
       const shouts = await getActiveShouts().catch(() => [])
       const ownSupabaseId = localStorage.getItem('oodle_pet_supabase_id')
-      // Group by pet_id, keep only the most recent shout per pet
       const byPet: Record<string, { message: string; shoutId: string }> = {}
       for (const s of shouts) {
-        // Map own supabase pet_id → 'own' so it matches our pets array key
         const key = s.pet_id === ownSupabaseId ? 'own' : s.pet_id
         if (!byPet[key]) {
           byPet[key] = { message: s.message, shoutId: s.id }
         }
       }
-      setActiveShouts(byPet)
+      // Preserve local own shout if it hasn't synced to Supabase yet
+      // (local shout ids start with 'local_', Supabase ids are UUIDs)
+      setActiveShouts(prev => {
+        const ownShout = prev['own']
+        const serverHasOwn = !!byPet['own']
+        if (ownShout && !serverHasOwn && ownShout.shoutId.startsWith('local_')) {
+          // Keep local shout until server picks it up
+          return { ...byPet, ['own']: ownShout }
+        }
+        return byPet
+      })
     }
     poll()
     const id = setInterval(poll, 5000)

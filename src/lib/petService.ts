@@ -183,10 +183,10 @@ export async function postShout(petId: string, message: string): Promise<string 
 }
 
 // ── getActiveShouts ───────────────────────────────────────
-// Returns all shouts created in the last 20 seconds, newest first.
+// Returns all shouts created in the last 30 seconds, newest first.
 // One row per shout — caller groups by pet_id.
 export async function getActiveShouts(): Promise<ShoutRecord[]> {
-  const cutoff = new Date(Date.now() - 20_000).toISOString()
+  const cutoff = new Date(Date.now() - 30_000).toISOString()
 
   const { data, error } = await supabase
     .from('shouts')
@@ -284,4 +284,46 @@ export async function redeemLikesForFood(cost: 5 | 20): Promise<boolean> {
     return false
   }
   return (data as boolean) ?? false
+}
+
+// ══════════════════════════════════════════════════════════
+// Subscription system
+// ══════════════════════════════════════════════════════════
+
+// ── checkSubscription ─────────────────────────────────────
+// Returns true if the current user has an active subscription.
+export async function checkSubscription(): Promise<boolean> {
+  const userId = useAuthStore.getState().userId
+  if (!userId) return false
+
+  const { data, error } = await supabase.rpc('check_subscription', {
+    p_user_id: userId,
+  })
+
+  if (error) {
+    console.error('[petService] checkSubscription failed:', error.message)
+    return false
+  }
+  return (data as boolean) ?? false
+}
+
+// ── getPetAge ─────────────────────────────────────────────
+// Returns the number of days since the pet was created (from Supabase created_at).
+// Returns null if the pet hasn't been saved to Supabase yet.
+export async function getPetAge(): Promise<number | null> {
+  const petId = localStorage.getItem('oodle_pet_supabase_id')
+  if (!petId) return null
+
+  const { data, error } = await supabase
+    .from('pets')
+    .select('created_at')
+    .eq('id', petId)
+    .single()
+
+  if (error || !data) return null
+
+  const days = Math.floor(
+    (Date.now() - new Date(data.created_at as string).getTime()) / 86_400_000
+  )
+  return days
 }
