@@ -67,9 +67,27 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange }: RoomSc
 
   const [stats, setStats] = useState<PetStats>(() => {
     try {
-      const s = localStorage.getItem('oodle_stats')
+      const s        = localStorage.getItem('oodle_stats')
+      const lastSeen = localStorage.getItem('oodle_last_seen')
+      // Update last_seen NOW before anything else runs
+      localStorage.setItem('oodle_last_seen', String(Date.now()))
       if (!s) return { hunger: 80, happy: 80, energy: 80 }
-      return JSON.parse(s) as PetStats
+      let p = JSON.parse(s) as PetStats
+      if (lastSeen) {
+        const offlineMs   = Date.now() - parseInt(lastSeen, 10)
+        const offlineMins = offlineMs / 1000 / 60
+        if (offlineMins > 1) {
+          const isWeekendNow = [0, 6].includes(new Date().getDay())
+          const decayMult    = isWeekendNow ? 0.5 : 1
+          const intervals    = offlineMins * 2 * decayMult
+          p = {
+            hunger: Math.max(0, p.hunger - intervals * 1),
+            happy:  Math.max(0, p.happy  - intervals * 0.5),
+            energy: Math.max(0, p.energy - intervals * 0.8),
+          }
+        }
+      }
+      return p
     } catch { return { hunger: 80, happy: 80, energy: 80 } }
   })
   const [dayCount, setDayCount]       = useState(1)
@@ -122,35 +140,9 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange }: RoomSc
       .catch(() => {})
   }, [])
 
-  // ── Load localStorage + offline decay ────────────────────
+  // ── Load localStorage (food, day, growth only — stats handled above) ─
   useEffect(() => {
     try {
-      const s = localStorage.getItem('oodle_stats')
-      const lastSeen = localStorage.getItem('oodle_last_seen')
-
-      if (s) {
-        let p = JSON.parse(s) as PetStats
-
-        // Calculate offline decay
-        if (lastSeen) {
-          const offlineMs      = Date.now() - parseInt(lastSeen, 10)
-          const offlineMins    = offlineMs / 1000 / 60
-          const isWeekendNow   = [0, 6].includes(new Date().getDay())
-          const decayMult      = isWeekendNow ? 0.5 : 1
-
-          // Same rate as live decay: hunger -1/30s, happy -0.5/30s, energy -0.8/30s
-          const intervals      = offlineMins * 2 * decayMult   // intervals per 30s
-          p = {
-            hunger: Math.max(0, p.hunger - intervals * 1),
-            happy:  Math.max(0, p.happy  - intervals * 0.5),
-            energy: Math.max(0, p.energy - intervals * 0.8),
-          }
-        }
-
-        setStats(p)
-        statsRef.current = p
-      }
-
       const d = localStorage.getItem('oodle_day_count')
       if (d) setDayCount(parseInt(d, 10))
 
@@ -169,12 +161,15 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange }: RoomSc
     } catch { /* ignore */ }
   }, [])
 
-  // ── Save last seen timestamp every 10s ───────────────────
+  // ── Save last seen timestamp every 10s (no immediate call — already set in useState) ──
   useEffect(() => {
-    const save = () => localStorage.setItem('oodle_last_seen', String(Date.now()))
-    save()
-    const id = setInterval(save, 10000)
-    return () => { save(); clearInterval(id) }
+    const id = setInterval(() => {
+      localStorage.setItem('oodle_last_seen', String(Date.now()))
+    }, 10000)
+    return () => {
+      localStorage.setItem('oodle_last_seen', String(Date.now()))
+      clearInterval(id)
+    }
   }, [])
 
   useEffect(() => { localStorage.setItem('oodle_stats',      JSON.stringify(stats))    }, [stats])
@@ -366,10 +361,25 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange }: RoomSc
       isFaintedRef.current = true
       setIsFainted(true)
       cancelAnimationFrame(walkRafRef.current)
-      animatorRef.current?.setState('sad')
+      // Move pet to center of room when fainting
+      const room = roomRef.current
+      const wrapper = petWrapperRef.current
+      if (room && wrapper) {
+        const centerX = Math.round((room.offsetWidth - petSize) / 2)
+        walkXRef.current = centerX
+        wrapper.style.left = `${centerX}px`
+      }
+      animatorRef.current?.setState('faint')
       showBubble('So hungry... 😵')
     }
-  }, [stats.hunger, showBubble])
+  }, [stats.hunger, showBubble, petSize])
+
+  // ── Keep faint state on animator (in case animator reinits) ──
+  useEffect(() => {
+    if (isFainted) {
+      animatorRef.current?.setState('faint')
+    }
+  }, [isFainted])
 
   // ── Like → food redemption ────────────────────────────────
   const handleRedeemSmall = useCallback(async () => {
@@ -659,7 +669,7 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange }: RoomSc
           {isFainted && (
             <div style={{
               position: 'absolute',
-              top: '-28px',
+              bottom: '100%',
               left: '50%',
               transform: 'translateX(-50%)',
               fontFamily: 'var(--font-pixel)',
@@ -671,6 +681,7 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange }: RoomSc
               whiteSpace: 'nowrap',
               color: '#e94560',
               zIndex: 10,
+              marginBottom: '4px',
             }}>
               FEED ME! 😵
             </div>

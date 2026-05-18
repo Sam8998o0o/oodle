@@ -17,18 +17,6 @@
   background-repeat: no-repeat;
 }
 
-.room::after {
-  content: '';
-  position: absolute;
-  bottom: 18%;
-  left: 0;
-  right: 0;
-  height: 2px;
-  background: var(--color-border);
-  pointer-events: none;
-  z-index: 1;
-}
-
 /* ── night overlay ────────────────────────────────────── */
 .nightOverlay {
   position: absolute;
@@ -125,10 +113,11 @@
 /* ── pet wrapper ──────────────────────────────────────── */
 .petWrapper {
   position: absolute;
-  bottom: 18%;
+  bottom: 22%;
   width: 160px;
   height: 160px;
   background: transparent;
+  overflow: visible;
 }
 
 .petWrapper canvas {
