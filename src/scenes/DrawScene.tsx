@@ -31,7 +31,8 @@ interface Particle  { id: number; char: string; x: number; y: number; angle: num
 interface StoredPet { id: string; pixelData: string; name: string }
 
 interface DrawSceneProps {
-  onPetCreated: (pixelData: string, coords: PetCoords, name: string) => void
+  onPetCreated:    (pixelData: string, coords: PetCoords, name: string) => void
+  onSubscribeClick: () => void
 }
 
 const EYES: EyeOption[] = [
@@ -143,7 +144,7 @@ function gridToSmallCanvas(grid: string[][]): HTMLCanvasElement {
 }
 
 // ── Component ──────────────────────────────────────────────
-export default function DrawScene({ onPetCreated }: DrawSceneProps) {
+export default function DrawScene({ onPetCreated, onSubscribeClick }: DrawSceneProps) {
   const canvasRef  = useRef<HTMLCanvasElement>(null)
   const decorateRef = useRef<HTMLCanvasElement>(null)
   const rafRef     = useRef(0)
@@ -441,8 +442,14 @@ export default function DrawScene({ onPetCreated }: DrawSceneProps) {
               <div className={styles.premiumBadge}>🔒 PREMIUM</div>
               <p className={styles.aiDesc}>Let AI draw your pixel pet for you!</p>
               <input className={styles.aiInput} placeholder="a chubby space cat..." disabled />
-              <button className={styles.generateBtn} disabled>GENERATE</button>
-              <p className={styles.comingSoon}>COMING SOON</p>
+              <button
+                className={styles.generateBtn}
+                onClick={onSubscribeClick}
+                style={{ cursor: 'pointer', opacity: 1 }}
+              >
+                🔑 UNLOCK TO GENERATE
+              </button>
+              <p className={styles.comingSoon}>$4.99 / MONTH</p>
             </div>
           ) : (
             <>

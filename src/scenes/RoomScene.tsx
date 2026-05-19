@@ -81,9 +81,9 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange }: RoomSc
           const decayMult    = isWeekendNow ? 0.5 : 1
           const intervals    = offlineMins * 2 * decayMult
           p = {
-            hunger: Math.max(0, p.hunger - intervals * 1),
-            happy:  Math.max(0, p.happy  - intervals * 0.5),
-            energy: Math.max(0, p.energy - intervals * 0.8),
+            hunger: Math.max(0, p.hunger - intervals * 0.08),
+            happy:  Math.max(0, p.happy  - intervals * 0.06),
+            energy: Math.max(0, p.energy - intervals * 0.11),
           }
         }
       }
@@ -97,8 +97,20 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange }: RoomSc
 
   // ── Like-exchange food system ────────────────────────────
   const [likeBalance, setLikeBalance] = useState(0)
-  const [smallFood,   setSmallFood]   = useState(0)
-  const [bigFood,     setBigFood]     = useState(0)
+  const [smallFood, setSmallFood] = useState(() => {
+    try {
+      const fs = localStorage.getItem('oodle_food_state')
+      if (fs) return JSON.parse(fs).smallFood ?? 0
+      return 1   // new user starter snack
+    } catch { return 1 }
+  })
+  const [bigFood, setBigFood] = useState(() => {
+    try {
+      const fs = localStorage.getItem('oodle_food_state')
+      if (fs) return JSON.parse(fs).bigFood ?? 0
+      return 1   // new user starter meal
+    } catch { return 1 }
+  })
   const [todayEats,   setTodayEats]   = useState(0)
 
   // ── Door transition ───────────────────────────────────────
@@ -149,8 +161,6 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange }: RoomSc
       const fs = localStorage.getItem('oodle_food_state')
       if (fs) {
         const fp = JSON.parse(fs) as { smallFood?: number; bigFood?: number; todayEats?: number; eatDate?: string }
-        setSmallFood(fp.smallFood ?? 0)
-        setBigFood(fp.bigFood   ?? 0)
         const today = new Date().toDateString()
         if (fp.eatDate && fp.eatDate !== today) {
           const fedYesterday = (fp.todayEats ?? 0) > 0
@@ -187,10 +197,10 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange }: RoomSc
   useEffect(() => {
     const interval = isWeekend ? 60000 : 30000
     const decay = setInterval(() => {
-      setStats(s => ({
-        hunger: Math.max(0, s.hunger - 1),
-        happy:  Math.max(0, s.happy  - 0.5),
-        energy: Math.max(0, s.energy - 0.8),
+      setStats((s: PetStats) => ({
+        hunger: Math.max(0, s.hunger - 0.08),
+        happy:  Math.max(0, s.happy  - 0.06),
+        energy: Math.max(0, s.energy - 0.11),
       }))
     }, interval)
     return () => clearInterval(decay)
@@ -355,7 +365,19 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange }: RoomSc
     setTimeout(() => setBubble(b => (b?.id === id ? null : b)), 2000)
   }, [])
 
-  // ── Faint when hunger = 0 ─────────────────────────────────
+  // ── Warning bubbles when stats are low ───────────────────
+  useEffect(() => {
+    const id = setInterval(() => {
+      const s = statsRef.current
+      if (isFaintedRef.current) return
+      if (s.hunger > 0 && s.hunger <= 20) {
+        showBubble('I\'m hungry... 🍖')
+      } else if (s.happy <= 20) {
+        showBubble('I\'m unhappy... 😢')
+      }
+    }, 30000)
+    return () => clearInterval(id)
+  }, [showBubble])
   useEffect(() => {
     if (stats.hunger <= 0 && !isFaintedRef.current) {
       isFaintedRef.current = true
@@ -386,8 +408,8 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange }: RoomSc
     if (likeBalance < 5) return
     const ok = await redeemLikesForFood(5)
     if (ok) {
-      setSmallFood(f => f + 1)
-      setLikeBalance(b => b - 5)
+      setSmallFood((f: number) => f + 1)
+      setLikeBalance((b: number) => b - 5)
       showFloat('🍎')
       showBubble('Got a snack!')
     }
@@ -397,7 +419,7 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange }: RoomSc
     if (likeBalance < 20) return
     const ok = await redeemLikesForFood(20)
     if (ok) {
-      setBigFood(f => f + 1)
+      setBigFood((f: number) => f + 1)
       setLikeBalance(b => b - 20)
       showFloat('🍱')
       showBubble('Got a meal!')
@@ -409,11 +431,11 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange }: RoomSc
     if (todayEats >= DAILY_EAT_LIMIT) { showBubble('Too full! Come back tomorrow'); return }
     if (size === 'small') {
       if (smallFood <= 0) { showBubble('Redeem likes for snacks! ❤️'); return }
-      setSmallFood(f => f - 1)
+      setSmallFood((f: number) => f - 1)
       setStats(s => ({ ...s, hunger: Math.min(100, s.hunger + SMALL_HUNGER) }))
     } else {
       if (bigFood <= 0) { showBubble('Redeem likes for meals! ❤️'); return }
-      setBigFood(f => f - 1)
+      setBigFood((f: number) => f + 1)
       setStats(s => ({ ...s, hunger: Math.min(100, s.hunger + BIG_HUNGER) }))
     }
     setTodayEats(n => n + 1)

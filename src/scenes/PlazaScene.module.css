@@ -11,20 +11,13 @@
   position: relative;
   overflow: hidden;
   min-height: 0;
-  background: #0f3460;
+  background-image: url('/plaza-bg.svg');
+  background-size: cover;
+  background-position: center bottom;
+  background-repeat: no-repeat;
+  background-color: #5ba3e0;
 }
 
-.room::after {
-  content: '';
-  position: absolute;
-  bottom: 18%;
-  left: 0;
-  right: 0;
-  height: 2px;
-  background: var(--color-border);
-  pointer-events: none;
-  z-index: 1;
-}
 
 /* ── night overlay ────────────────────────────────────── */
 .nightOverlay {

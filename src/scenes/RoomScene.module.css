@@ -254,18 +254,18 @@
   font-family: var(--font-pixel);
   font-size: 8px;
   padding: 8px 10px;
-  background: var(--color-panel);
-  color: var(--color-text);
+  background: var(--color-cta);
+  color: #000;
   border: 2px solid var(--color-border);
-  box-shadow: var(--shadow-pixel-sm);
+  box-shadow: var(--shadow-pixel);
   cursor: pointer;
   display: flex;
   align-items: center;
   gap: 6px;
 }
 
-.convertBtn:active { transform: translate(1px,1px); box-shadow: none; }
-.convertBtn:disabled { opacity: 0.4; cursor: not-allowed; box-shadow: none; }
+.convertBtn:active { transform: translate(2px,2px); box-shadow: none; }
+.convertBtn:disabled { opacity: 0.35; cursor: not-allowed; box-shadow: none; background: var(--color-panel); color: var(--color-text-dim); }
 
 .costTag {
   font-family: var(--font-pixel);

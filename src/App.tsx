@@ -3,7 +3,8 @@ import DrawScene from './scenes/DrawScene'
 import RoomScene from './scenes/RoomScene'
 import PlazaScene from './scenes/PlazaScene'
 import AuthButton from './components/AuthButton'
-import { initAuth } from './lib/auth'
+import { initAuth, linkGoogle, useAuthStore } from './lib/auth'
+import { createCheckoutSession } from './lib/stripe'
 import type { PetCoords } from './api/aiRecognize'
 
 interface PetData {
@@ -47,11 +48,26 @@ function App() {
     setScene('room')
   }
 
+  const handleSubscribeClick = async () => {
+    // If not logged in, do Google OAuth first
+    const { userId, isAnonymous } = useAuthStore.getState()
+    if (!userId || isAnonymous) {
+      await linkGoogle()
+    }
+    const uid = useAuthStore.getState().userId
+    if (!uid) return
+    const url = await createCheckoutSession(uid)
+    if (url) window.location.href = url
+  }
+
   if (!petData || scene === 'draw') {
     return (
       <>
         <AuthButton />
-        <DrawScene onPetCreated={handlePetCreated} />
+        <DrawScene
+          onPetCreated={handlePetCreated}
+          onSubscribeClick={handleSubscribeClick}
+        />
       </>
     )
   }
