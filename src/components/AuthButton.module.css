@@ -33,12 +33,12 @@
   z-index: 100;
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 0;
 }
 
 .avatar {
-  width: 28px;
-  height: 28px;
+  width: 38px;
+  height: 38px;
   background: #4285F4;
   color: #fff;
   font-family: var(--font-pixel);
@@ -47,21 +47,24 @@
   align-items: center;
   justify-content: center;
   border: 2px solid #2C2C2C;
-  box-shadow: 2px 2px 0 #2C2C2C;
+  box-shadow: 4px 4px 0 #2C2C2C;
 }
 
 .signOutBtn {
   font-family: var(--font-pixel);
-  font-size: 7px;
-  padding: 6px 10px;
-  background: #fff;
+  font-size: 8px;
+  padding: 10px 16px;
+  background: #FFE600;
   color: #2C2C2C;
   border: 2px solid #2C2C2C;
-  box-shadow: 2px 2px 0 #2C2C2C;
+  border-left: none;
+  box-shadow: 4px 4px 0 #2C2C2C;
   cursor: pointer;
+  white-space: nowrap;
+  letter-spacing: 1px;
 }
 
 .signOutBtn:active {
-  transform: translate(1px, 1px);
-  box-shadow: 1px 1px 0 #2C2C2C;
+  transform: translate(2px, 2px);
+  box-shadow: 2px 2px 0 #2C2C2C;
 }

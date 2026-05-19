@@ -4,9 +4,18 @@ import type { PetCoords } from '../api/aiRecognize'
 import {
   fetchAllPets, getAllLikeCounts, likePet, getTodayLikedPetIds,
   postShout, getActiveShouts, countTodayShouts, likeShout,
+  fetchAds,
 } from '../lib/petService'
+import type { AdRecord } from '../lib/petService'
 import { subscribeToNewPets } from '../lib/realtimeService'
 import styles from './PlazaScene.module.css'
+
+// ── Default ads (shown when no advertisers in Supabase) ───
+const DEFAULT_ADS: AdRecord[] = [
+  { id: 'd1', text: 'ADVERTISE HERE',   sub_text: 'contact@oodle.game',    logo_url: null, url: 'mailto:contact@oodle.game', duration: 22 },
+  { id: 'd2', text: 'YOUR BRAND HERE',  sub_text: 'oodle.game/advertise',  logo_url: null, url: 'mailto:contact@oodle.game', duration: 28 },
+  { id: 'd3', text: 'REACH PET OWNERS', sub_text: 'click to advertise',    logo_url: null, url: 'mailto:contact@oodle.game', duration: 32 },
+]
 
 type DoorPhase = 'idle' | 'appearing' | 'opening' | 'walking' | 'done'
 
@@ -132,6 +141,7 @@ export default function PlazaScene({ petData, onGoToRoom, petSize }: PlazaSceneP
   const spawnQueue = useRef<PlazaPet[]>([])
 
   const [pets, setPets]               = useState<PlazaPet[]>([])
+  const [ads,  setAds]                = useState<AdRecord[]>(DEFAULT_ADS)
   const [selectedPet, setSelectedPet] = useState<PlazaPet | null>(null)
   const [likes, setLikes]             = useState<Record<string, number>>({})
   const [likeLeft, setLikeLeft]       = useState(LIKE_DAILY_LIMIT)
@@ -153,6 +163,19 @@ export default function PlazaScene({ petData, onGoToRoom, petSize }: PlazaSceneP
     const t = setTimeout(() => setOwnGlowing(false), 8000)
     return () => clearTimeout(t)
   }, [])
+
+  // ── Load ads from Supabase ────────────────────────────────
+  useEffect(() => {
+    fetchAds().then(data => {
+      if (data.length > 0) setAds(data)
+    }).catch(() => {})
+  }, [])
+
+  const AD_CONFIGS = [
+    { top: '8%',  duration: 20, delay: 0  },
+    { top: '22%', duration: 26, delay: 10 },
+    { top: '36%', duration: 22, delay: 18 },
+  ]
 
   // ── Shout: load today's count on mount ────────────────────
   useEffect(() => {
@@ -567,6 +590,65 @@ export default function PlazaScene({ petData, onGoToRoom, petSize }: PlazaSceneP
     <div className={styles.page}>
       <div className={styles.room} ref={roomRef}>
         <div className={styles.petCount}>🐾 {pets.length} PETS HERE</div>
+
+        {/* ── Airplane ad banners ── */}
+        <div className={styles.skyLayer}>
+          {ads.map((ad, i) => {
+            const cfg = AD_CONFIGS[i % AD_CONFIGS.length]
+            return (
+              <div
+                key={ad.id}
+                className={styles.flyLTR}
+                style={{
+                  position: 'absolute',
+                  top: cfg.top,
+                  display: 'flex',
+                  alignItems: 'center',
+                  whiteSpace: 'nowrap',
+                  cursor: 'pointer',
+                  animationDuration: `${cfg.duration}s`,
+                  animationDelay: `${cfg.delay}s`,
+                }}
+                onClick={() => window.open(ad.url, '_blank', 'noopener')}
+              >
+                {/* Pixel plane — nose points RIGHT */}
+                <svg width="90" height="44" viewBox="0 0 90 44" style={{ imageRendering: 'pixelated', flexShrink: 0, transform: 'scaleX(-1)' }}>
+                  {/* Fuselage */}
+                  <rect x="12" y="18" width="68" height="10" fill="#e8e8e8"/>
+                  {/* Nose — RIGHT side */}
+                  <rect x="78" y="19" width="8"  height="8"  fill="#d0d0d0"/>
+                  <rect x="84" y="21" width="6"  height="4"  fill="#bbb"/>
+                  {/* Tail — LEFT side */}
+                  <rect x="8"  y="12" width="8"  height="6"  fill="#d0d0d0"/>
+                  <rect x="8"  y="28" width="8"  height="6"  fill="#d0d0d0"/>
+                  <rect x="4"  y="14" width="6"  height="4"  fill="#bbb"/>
+                  <rect x="4"  y="28" width="6"  height="4"  fill="#bbb"/>
+                  {/* Main wing — center-right */}
+                  <rect x="38" y="8"  width="28" height="4"  fill="#c8c8c8"/>
+                  <rect x="34" y="12" width="32" height="6"  fill="#d8d8d8"/>
+                  <rect x="34" y="28" width="32" height="6"  fill="#d8d8d8"/>
+                  <rect x="38" y="34" width="28" height="4"  fill="#c8c8c8"/>
+                  {/* Windows — near nose */}
+                  <rect x="62" y="19" width="8"  height="6"  fill="#88ccff"/>
+                  <rect x="52" y="19" width="6"  height="6"  fill="#aaddff"/>
+                  {/* Engine under wing */}
+                  <rect x="44" y="34" width="12" height="5"  fill="#aaa"/>
+                  <rect x="46" y="39" width="8"  height="2"  fill="#888"/>
+                </svg>
+                {/* Rope */}
+                <div className={styles.adRope} />
+                {/* Banner */}
+                <div className={styles.adBanner} onClick={() => window.open(ad.url, '_blank', 'noopener')}>
+                  {ad.logo_url && <img src={ad.logo_url} className={styles.adLogo} alt="" />}
+                  <div>
+                    <div className={styles.adText}>{ad.text}</div>
+                    {ad.sub_text && <div className={styles.adTextSmall}>{ad.sub_text}</div>}
+                  </div>
+                </div>
+              </div>
+            )
+          })}
+        </div>
 
         {/* Door overlay — appears during transition back to room */}
         {doorPhase !== 'idle' && (

@@ -2,34 +2,43 @@ import { useState, useEffect } from 'react'
 import DrawScene from './scenes/DrawScene'
 import RoomScene from './scenes/RoomScene'
 import PlazaScene from './scenes/PlazaScene'
+import ArrestedScene from './scenes/ArrestedScene'
 import AuthButton from './components/AuthButton'
 import { initAuth, linkGoogle, useAuthStore } from './lib/auth'
 import { createCheckoutSession } from './lib/stripe'
 import type { PetCoords } from './api/aiRecognize'
 
-interface PetData {
+export interface PetData {
   pixelData: string
   coords: PetCoords
   name: string
 }
 
-type Scene = 'draw' | 'room' | 'plaza'
+type Scene = 'draw' | 'room' | 'plaza' | 'arrested'
 
-const PET_STORAGE_KEY = 'oodle_pet_data'
+const PET_STORAGE_KEY    = 'oodle_pet_data'
+const FREE_TRIAL_DAYS    = 14
 
 function loadSavedPet(): PetData | null {
   try {
     const raw = localStorage.getItem(PET_STORAGE_KEY)
     if (!raw) return null
     return JSON.parse(raw) as PetData
-  } catch {
-    return null
-  }
+  } catch { return null }
+}
+
+function getPetAgeDays(): number {
+  try {
+    const created = localStorage.getItem('oodle_pet_created_at')
+    if (!created) return 0
+    return Math.floor((Date.now() - parseInt(created, 10)) / 86400000)
+  } catch { return 0 }
 }
 
 function App() {
   const [petData, setPetData] = useState<PetData | null>(() => loadSavedPet())
   const [scene, setScene]     = useState<Scene>(() => loadSavedPet() ? 'room' : 'draw')
+  const [isPremium, setIsPremium] = useState(false)
   const [petSize, setPetSize] = useState(() => {
     try {
       const g = parseInt(localStorage.getItem('oodle_growth') ?? '0', 10)
@@ -37,28 +46,53 @@ function App() {
     } catch { return 60 }
   })
 
+  useEffect(() => { initAuth() }, [])
+
+  // Check trial expiry on mount
   useEffect(() => {
-    initAuth()
+    if (!petData || isPremium) return
+    const age = getPetAgeDays()
+    if (age >= FREE_TRIAL_DAYS) setScene('arrested')
+  }, [petData, isPremium])
+
+  // Handle Stripe success callback
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    if (params.get('subscribed') === 'true') {
+      window.history.replaceState({}, '', '/')
+      setIsPremium(true)
+      setScene('room')
+    }
   }, [])
 
   const handlePetCreated = (pixelData: string, coords: PetCoords, name: string) => {
     const data: PetData = { pixelData, coords, name }
     setPetData(data)
     localStorage.setItem(PET_STORAGE_KEY, JSON.stringify(data))
+    // Record creation time for trial calculation
+    if (!localStorage.getItem('oodle_pet_created_at')) {
+      localStorage.setItem('oodle_pet_created_at', String(Date.now()))
+    }
     setScene('room')
   }
 
   const handleSubscribeClick = async () => {
-    // If not logged in, do Google OAuth first
     const { userId, isAnonymous } = useAuthStore.getState()
     if (!userId || isAnonymous) {
       await linkGoogle()
+      return
     }
     const uid = useAuthStore.getState().userId
     if (!uid) return
     const url = await createCheckoutSession(uid)
     if (url) window.location.href = url
   }
+
+  const handleLoginClick = async () => {
+    await linkGoogle()
+  }
+
+  const { isAnonymous } = useAuthStore()
 
   if (!petData || scene === 'draw') {
     return (
@@ -69,6 +103,17 @@ function App() {
           onSubscribeClick={handleSubscribeClick}
         />
       </>
+    )
+  }
+
+  if (scene === 'arrested') {
+    return (
+      <ArrestedScene
+        petData={petData}
+        isLoggedIn={!isAnonymous}
+        onSubscribeClick={handleSubscribeClick}
+        onLoginClick={handleLoginClick}
+      />
     )
   }
 

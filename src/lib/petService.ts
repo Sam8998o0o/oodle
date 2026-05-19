@@ -327,3 +327,26 @@ export async function getPetAge(): Promise<number | null> {
   )
   return days
 }
+
+// ══════════════════════════════════════════════════════════
+// Ads system
+// ══════════════════════════════════════════════════════════
+
+export interface AdRecord {
+  id:       string
+  text:     string
+  sub_text: string
+  logo_url: string | null
+  url:      string
+  duration: number
+}
+
+export async function fetchAds(): Promise<AdRecord[]> {
+  const { data, error } = await supabase
+    .from('ads')
+    .select('*')
+    .eq('is_active', true)
+    .order('created_at', { ascending: true })
+  if (error) return []
+  return (data ?? []) as AdRecord[]
+}
