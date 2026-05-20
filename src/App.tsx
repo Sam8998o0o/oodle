@@ -118,6 +118,62 @@ function App() {
   }
 
   if (scene === 'plaza') {
+    // Require Google login to enter plaza
+    if (isAnonymous) {
+      return (
+        <>
+          <AuthButton />
+          <div style={{
+            minHeight: '100vh',
+            background: '#FDF6E3',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontFamily: 'var(--font-pixel)',
+            gap: '20px',
+          }}>
+            <div style={{ fontSize: '14px', color: '#2C2C2C', textAlign: 'center', lineHeight: 2 }}>
+              LOGIN TO ENTER<br />THE PLAZA
+            </div>
+            <div style={{ fontSize: '9px', color: '#888', textAlign: 'center', lineHeight: 2 }}>
+              Sign in with Google to meet<br />other pets, like & shout!
+            </div>
+            <button
+              onClick={handleLoginClick}
+              style={{
+                fontFamily: 'var(--font-pixel)',
+                fontSize: '10px',
+                padding: '14px 24px',
+                background: '#FFE600',
+                color: '#2C2C2C',
+                border: '3px solid #2C2C2C',
+                boxShadow: '4px 4px 0 #2C2C2C',
+                cursor: 'pointer',
+                letterSpacing: '2px',
+              }}
+            >
+              G SIGN IN
+            </button>
+            <button
+              onClick={() => setScene('room')}
+              style={{
+                fontFamily: 'var(--font-pixel)',
+                fontSize: '8px',
+                padding: '10px 18px',
+                background: 'transparent',
+                color: '#888',
+                border: '2px solid #ccc',
+                cursor: 'pointer',
+              }}
+            >
+              ← BACK TO ROOM
+            </button>
+          </div>
+        </>
+      )
+    }
+
     return (
       <>
         <AuthButton />

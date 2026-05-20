@@ -836,7 +836,7 @@ export default function PlazaScene({ petData, onGoToRoom, petSize }: PlazaSceneP
                 </div>
               )}
 
-              <div className={styles.nameTag}>{pet.name}</div>
+
               <canvas
                 ref={el => {
                   if (el) {
@@ -860,7 +860,7 @@ export default function PlazaScene({ petData, onGoToRoom, petSize }: PlazaSceneP
             <div className={styles.card}>
               <button className={styles.closeBtn} onClick={() => setSelectedPet(null)}>✕</button>
               <div className={styles.cardName}>{selectedPet.name}</div>
-              <div className={styles.cardRow}>Owner: Anonymous</div>
+              <div className={styles.cardRow}>Artist: {selectedPet.name}</div>
               <div className={styles.cardRow}>Joined: {formatDate(selectedPet.createdAt)}</div>
               <div className={styles.cardRow}>❤️ {likes[selectedPet.id] ?? 0} likes</div>
               {!selectedPet.isOwn && (
