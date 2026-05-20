@@ -99,8 +99,7 @@ function App() {
       <>
         <AuthButton />
         <DrawScene
-          onPetCreated={handlePetCreated}
-          onSubscribeClick={handleSubscribeClick}
+          onPetCreated={handlePetCreated} 
         />
       </>
     )
