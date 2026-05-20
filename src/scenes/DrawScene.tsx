@@ -1,815 +1,634 @@
 import { useRef, useState, useEffect, useCallback } from 'react'
-import StatBar from '../ui/StatBar'
-import { PetAnimator } from '../engine/PetAnimator'
+import { OnnxValidator } from '../engine/OnnxValidator'
+import { drawEye } from '../engine/drawEye'
 import type { PetCoords } from '../api/aiRecognize'
-import { savePet, getLikeBalance, redeemLikesForFood } from '../lib/petService'
-import styles from './RoomScene.module.css'
+import styles from './DrawScene.module.css'
 
-interface PetStats {
-  hunger: number
-  happy:  number
-  energy: number
+// ── Grid constants ─────────────────────────────────────────
+const GRID_SIZE = 64
+const CELL_SIZE = 8
+const CANVAS_PX = GRID_SIZE * CELL_SIZE   // 512
+
+// ── 16-colour pixel-art palette ───────────────────────────
+const PALETTE = [
+  '#000000', '#ffffff', '#e94560', '#f5a623',
+  '#ffe600', '#4ecca3', '#00b4d8', '#0f3460',
+  '#7c4dff', '#ff80ab', '#795548', '#9e9e9e',
+  '#b71c1c', '#1b5e20', '#0d47a1', '#ffccbc',
+]
+
+const CHARS = ['✦', '★', '♥', '✿', '◆', '•']
+
+const validator = new OnnxValidator()
+
+type Tool      = 'draw' | 'erase' | 'fill'
+type BrushSize = 1 | 2 | 4
+type Step      = 'draw' | 'decorate' | 'done'
+type TabMode   = 'draw' | 'ai'
+
+interface EyeOption { id: string; label: string; free: boolean }
+interface Particle  { id: number; char: string; x: number; y: number; angle: number; distance: number }
+interface StoredPet { id: string; pixelData: string; name: string }
+
+interface DrawSceneProps {
+  onPetCreated: (pixelData: string, coords: PetCoords, name: string) => void
 }
 
-interface RoomSceneProps {
-  petData:      { pixelData: string; coords: PetCoords; name: string }
-  onGoToPlaza:  () => void
-  onSizeChange: (size: number) => void
+const EYES: EyeOption[] = [
+  { id: 'eye_round',  label: 'Round',  free: true  },
+  { id: 'eye_happy',  label: 'Happy',  free: true  },
+  { id: 'eye_sleepy', label: 'Sleepy', free: true  },
+  { id: 'eye_star',   label: 'Star',   free: false },
+  { id: 'eye_heart',  label: 'Heart',  free: false },
+  { id: 'eye_x',      label: 'X Eyes', free: false },
+]
+
+// ── Grid helpers ──────────────────────────────────────────
+function makeGrid(): string[][] {
+  return Array.from({ length: GRID_SIZE }, () => new Array<string>(GRID_SIZE).fill(''))
 }
 
-interface FloatEmoji {
-  id:   number
-  char: string
+function floodFill(grid: string[][], r: number, c: number, color: string): string[][] {
+  const target = grid[r][c]
+  if (target === color) return grid
+  const next = grid.map(row => [...row])
+  const stack: [number, number][] = [[r, c]]
+  while (stack.length) {
+    const [cr, cc] = stack.pop()!
+    if (cr < 0 || cr >= GRID_SIZE || cc < 0 || cc >= GRID_SIZE) continue
+    if (next[cr][cc] !== target) continue
+    next[cr][cc] = color
+    stack.push([cr - 1, cc], [cr + 1, cc], [cr, cc - 1], [cr, cc + 1])
+  }
+  return next
 }
 
-function pick<T>(arr: T[]): T {
-  return arr[Math.floor(Math.random() * arr.length)]
+function paintBrush(
+  grid: string[][], r: number, c: number,
+  brushSize: BrushSize, color: string, erase: boolean,
+): string[][] {
+  const next = grid.map(row => [...row])
+  const half = Math.floor(brushSize / 2)
+  for (let dr = 0; dr < brushSize; dr++) {
+    for (let dc = 0; dc < brushSize; dc++) {
+      const nr = r + dr - half
+      const nc = c + dc - half
+      if (nr >= 0 && nr < GRID_SIZE && nc >= 0 && nc < GRID_SIZE) {
+        next[nr][nc] = erase ? '' : color
+      }
+    }
+  }
+  return next
 }
 
-const FEED_LINES = ['Yummy!', 'Thank you!', 'So good!']
-
-const PET_SIZE_MIN    = 60
-const PET_SIZE_MAX    = 160
-const SMALL_HUNGER    = 10
-const BIG_HUNGER      = 20
-const DAILY_EAT_LIMIT = 5
-
-type DoorPhase = 'idle' | 'appearing' | 'opening' | 'walking' | 'done'
-
-const DEFAULT_COORDS: PetCoords = {
-  eyes:     [{ x: 0.35, y: 0.28 }, { x: 0.65, y: 0.28 }],
-  legs:     [],
-  center:   { x: 0.5, y: 0.5 },
-  has_eyes: false,
-  has_legs: false,
+function renderGridToCtx(ctx: CanvasRenderingContext2D, grid: string[][], showGrid: boolean): void {
+  ctx.clearRect(0, 0, CANVAS_PX, CANVAS_PX)
+  // White background
+  ctx.fillStyle = '#ffffff'
+  ctx.fillRect(0, 0, CANVAS_PX, CANVAS_PX)
+  for (let r = 0; r < GRID_SIZE; r++) {
+    for (let c = 0; c < GRID_SIZE; c++) {
+      const col = grid[r][c]
+      if (col) {
+        ctx.fillStyle = col
+        ctx.fillRect(c * CELL_SIZE, r * CELL_SIZE, CELL_SIZE, CELL_SIZE)
+      }
+    }
+  }
+  // Pixel grid overlay — only when showGrid is true
+  if (showGrid) {
+    ctx.strokeStyle = 'rgba(0, 0, 0, 0.12)'
+    ctx.lineWidth   = 1
+    for (let i = 0; i <= GRID_SIZE; i++) {
+      const px = i * CELL_SIZE
+      ctx.beginPath(); ctx.moveTo(px, 0);      ctx.lineTo(px, CANVAS_PX); ctx.stroke()
+      ctx.beginPath(); ctx.moveTo(0,  px);     ctx.lineTo(CANVAS_PX, px); ctx.stroke()
+    }
+    // Thicker lines every 8 cells for 8×8 chunk guides
+    ctx.strokeStyle = 'rgba(0, 0, 0, 0.22)'
+    ctx.lineWidth   = 1
+    for (let i = 0; i <= GRID_SIZE; i += 8) {
+      const px = i * CELL_SIZE
+      ctx.beginPath(); ctx.moveTo(px, 0);      ctx.lineTo(px, CANVAS_PX); ctx.stroke()
+      ctx.beginPath(); ctx.moveTo(0,  px);     ctx.lineTo(CANVAS_PX, px); ctx.stroke()
+    }
+  }
 }
 
-export default function RoomScene({ petData, onGoToPlaza, onSizeChange }: RoomSceneProps) {
-  const roomRef       = useRef<HTMLDivElement>(null)
-  const petWrapperRef = useRef<HTMLDivElement>(null)
-  const petCanvasRef  = useRef<HTMLCanvasElement>(null)
-  const animatorRef   = useRef<PetAnimator | null>(null)
-  const statsRef      = useRef<PetStats>({ hunger: 80, happy: 80, energy: 80 })
-  const walkRafRef    = useRef(0)
-  const walkXRef      = useRef(80)
-  const walkDirRef    = useRef(1)
-  const walkYRef      = useRef(0)
-  const walkDYRef     = useRef(0)
+function gridToDataURL(grid: string[][]): string {
+  const c   = document.createElement('canvas')
+  c.width   = CANVAS_PX; c.height = CANVAS_PX
+  const ctx = c.getContext('2d')!
+  ctx.imageSmoothingEnabled = false
+  for (let r = 0; r < GRID_SIZE; r++) {
+    for (let cc = 0; cc < GRID_SIZE; cc++) {
+      const col = grid[r][cc]
+      if (col) { ctx.fillStyle = col; ctx.fillRect(cc * CELL_SIZE, r * CELL_SIZE, CELL_SIZE, CELL_SIZE) }
+    }
+  }
+  return c.toDataURL('image/png')
+}
 
-  // ── Drag / throw / dizzy refs ─────────────────────────────
-  const isDraggingRef    = useRef(false)
-  const dragOffsetRef    = useRef({ x: 0, y: 0 })
-  const lastPosRef       = useRef({ x: 0, y: 0 })
-  const velRef           = useRef({ x: 0, y: 0 })
-  const throwRafRef      = useRef(0)
-  const throwCountRef    = useRef(0)
-  const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const isLongPressRef   = useRef(false)
-  const isPetClickRef    = useRef(false)
+function gridToSmallCanvas(grid: string[][]): HTMLCanvasElement {
+  const c   = document.createElement('canvas')
+  c.width   = GRID_SIZE; c.height = GRID_SIZE
+  const ctx = c.getContext('2d')!
+  for (let r = 0; r < GRID_SIZE; r++) {
+    for (let cc = 0; cc < GRID_SIZE; cc++) {
+      const col = grid[r][cc]
+      if (col) { ctx.fillStyle = col; ctx.fillRect(cc, r, 1, 1) }
+    }
+  }
+  return c
+}
 
-  const [stats, setStats] = useState<PetStats>(() => {
-    try {
-      const s        = localStorage.getItem('oodle_stats')
-      const lastSeen = localStorage.getItem('oodle_last_seen')
-      // Update last_seen NOW before anything else runs
-      localStorage.setItem('oodle_last_seen', String(Date.now()))
-      if (!s) return { hunger: 80, happy: 80, energy: 80 }
-      let p = JSON.parse(s) as PetStats
-      if (lastSeen) {
-        const offlineMs   = Date.now() - parseInt(lastSeen, 10)
-        const offlineMins = offlineMs / 1000 / 60
-        if (offlineMins > 1) {
-          const isWeekendNow = [0, 6].includes(new Date().getDay())
-          const decayMult    = isWeekendNow ? 0.5 : 1
-          const intervals    = offlineMins * 2 * decayMult
-          p = {
-            hunger: Math.max(0, p.hunger - intervals * 0.08),
-            happy:  Math.max(0, p.happy  - intervals * 0.06),
-            energy: Math.max(0, p.energy - intervals * 0.11),
-          }
-        }
-      }
-      return p
-    } catch { return { hunger: 80, happy: 80, energy: 80 } }
-  })
-  const [dayCount, setDayCount]       = useState(1)
-  const [floatEmojis, setFloatEmojis] = useState<FloatEmoji[]>([])
-  const [bubble, setBubble]           = useState<{ text: string; id: number } | null>(null)
-  const isSleepingRef = useRef(false)
+// ── Component ──────────────────────────────────────────────
+export default function DrawScene({ onPetCreated }: DrawSceneProps) {
+  const canvasRef  = useRef<HTMLCanvasElement>(null)
+  const decorateRef = useRef<HTMLCanvasElement>(null)
+  const rafRef     = useRef(0)
+  const btnRef     = useRef<HTMLButtonElement>(null)
 
-  // ── Like-exchange food system ────────────────────────────
-  const [likeBalance, setLikeBalance] = useState(0)
-  const [smallFood, setSmallFood] = useState(() => {
-    try {
-      const fs = localStorage.getItem('oodle_food_state')
-      if (fs) return JSON.parse(fs).smallFood ?? 0
-      return 1   // new user starter snack
-    } catch { return 1 }
-  })
-  const [bigFood, setBigFood] = useState(() => {
-    try {
-      const fs = localStorage.getItem('oodle_food_state')
-      if (fs) return JSON.parse(fs).bigFood ?? 0
-      return 1   // new user starter meal
-    } catch { return 1 }
-  })
-  const [todayEats,   setTodayEats]   = useState(0)
+  // Refs for stable event handlers
+  const gridRef      = useRef<string[][]>(makeGrid())
+  const toolRef      = useRef<Tool>('draw')
+  const colorRef     = useRef(PALETTE[0])
+  const brushRef     = useRef<BrushSize>(1)
+  const isDrawRef    = useRef(false)
+  const isDragEyeRef = useRef(false)
 
-  // ── Door transition ───────────────────────────────────────
-  const [doorPhase, setDoorPhase] = useState<DoorPhase>('idle')
-  const [petSaved,  setPetSaved]  = useState(false)
-  const [isDizzy,    setIsDizzy]    = useState(false)
-  const [isFainted,  setIsFainted]  = useState(false)
-  const [isSleeping, setIsSleeping] = useState(false)
-  const isFaintedRef = useRef(false)
-  const isDizzyRef   = useRef(false)
+  const [grid, setGridState]      = useState<string[][]>(() => makeGrid())
+  const historyRef = useRef<string[][][]>([])
+  const [tool, setTool]           = useState<Tool>('draw')
+  const [color, setColor]         = useState(PALETTE[0])
+  const [brushSize, setBrushSize] = useState<BrushSize>(1)
+  const [tab, setTab]             = useState<TabMode>('draw')
+  const [step, setStep]           = useState<Step>('draw')
+  const [onnxScore, setOnnxScore] = useState<number | null>(null)
+  const [selectedEye, setSelectedEye] = useState<EyeOption>(EYES[0])
+  const [eyePos, setEyePos]       = useState({ row: 20, col: 32 })
+  const [petName, setPetName]     = useState('')
+  const [particles, setParticles] = useState<Particle[]>([])
+  const [storedPets, setStoredPets] = useState<StoredPet[]>([])
+  const [showGrid, setShowGrid]   = useState(true)
 
-  // ── Growth system (day-based) ─────────────────────────────
-  const [growthPoints, setGrowthPoints] = useState(() => {
-    try { return Math.min(100, Math.max(0, parseInt(localStorage.getItem('oodle_growth') ?? '0', 10))) }
-    catch { return 0 }
-  })
-  const petSize = Math.round(PET_SIZE_MIN + (growthPoints / 100) * (PET_SIZE_MAX - PET_SIZE_MIN))
+  const blinkRef = useRef({ countdown: 210, frame: 0, blinking: false, cycle: 210 })
 
-  // ── Day / Night + Weekend ─────────────────────────────────
-  const [isNight,   setIsNight]   = useState(() => { const h = new Date().getHours(); return h >= 22 || h < 6 })
-  const [isWeekend, setIsWeekend] = useState(() => { const d = new Date().getDay();   return d === 0 || d === 6 })
+  // Keep refs in sync with state
+  useEffect(() => { toolRef.current  = tool  }, [tool])
+  useEffect(() => { colorRef.current = color }, [color])
+  useEffect(() => { brushRef.current = brushSize }, [brushSize])
 
-  useEffect(() => { statsRef.current = stats }, [stats])
-
-  // ── Save pet to Supabase (once, idempotent) ───────────────
-  useEffect(() => {
-    savePet({
-      name:      petData.name,
-      pixelData: petData.pixelData,
-      coords:    petData.coords,
-    })
-      .then(() => setPetSaved(true))
-      .catch(() => setPetSaved(true))
-  }, [petData])
-
-  // ── Load like balance from Supabase ───────────────────────
-  useEffect(() => {
-    getLikeBalance()
-      .then((b: number) => setLikeBalance(b))
-      .catch(() => {})
+  // Stable grid updater
+  const updateGrid = useCallback((next: string[][]) => {
+    gridRef.current = next
+    setGridState(next)
   }, [])
 
-  // ── Load localStorage (food, day, growth only — stats handled above) ─
+  // Load stored pets
   useEffect(() => {
     try {
-      const d = localStorage.getItem('oodle_day_count')
-      if (d) setDayCount(parseInt(d, 10))
-
-      const fs = localStorage.getItem('oodle_food_state')
-      if (fs) {
-        const fp = JSON.parse(fs) as { smallFood?: number; bigFood?: number; todayEats?: number; eatDate?: string }
-        const today = new Date().toDateString()
-        if (fp.eatDate && fp.eatDate !== today) {
-          const fedYesterday = (fp.todayEats ?? 0) > 0
-          setGrowthPoints((g: number) => Math.min(100, Math.max(0, g + (fedYesterday ? 10 : -5))))
-        }
-        setTodayEats(fp.eatDate === today ? (fp.todayEats ?? 0) : 0)
-      }
-    } catch { /* ignore */ }
+      const raw = localStorage.getItem('oodle_pets')
+      if (raw) setStoredPets(JSON.parse(raw) as StoredPet[])
+    } catch { /**/ }
   }, [])
 
-  // ── Save last seen timestamp every 10s (no immediate call — already set in useState) ──
+  // Render grid to canvas whenever grid state or showGrid changes
   useEffect(() => {
-    const id = setInterval(() => {
-      localStorage.setItem('oodle_last_seen', String(Date.now()))
-    }, 10000)
-    return () => {
-      localStorage.setItem('oodle_last_seen', String(Date.now()))
-      clearInterval(id)
-    }
-  }, [])
+    const canvas = canvasRef.current
+    if (!canvas) return
+    const ctx = canvas.getContext('2d')!
+    ctx.imageSmoothingEnabled = false
+    renderGridToCtx(ctx, grid, showGrid)
+  }, [grid, showGrid])
 
-  useEffect(() => { localStorage.setItem('oodle_stats',      JSON.stringify(stats))    }, [stats])
-  useEffect(() => { localStorage.setItem('oodle_day_count',  String(dayCount))          }, [dayCount])
-  useEffect(() => { localStorage.setItem('oodle_growth',     String(growthPoints))      }, [growthPoints])
-  useEffect(() => { onSizeChange(petSize) }, [petSize, onSizeChange])
+  // Debounced validation
+  const validateTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   useEffect(() => {
-    localStorage.setItem('oodle_food_state', JSON.stringify({
-      smallFood, bigFood, todayEats,
-      eatDate: new Date().toDateString(),
-    }))
-  }, [smallFood, bigFood, todayEats])
-
-  // ── Trial expiry warning bubbles (Day 11-13) ────────────
-  useEffect(() => {
-    try {
-      const created = localStorage.getItem('oodle_pet_created_at')
-      if (!created) return
-      const ageDays = Math.floor((Date.now() - parseInt(created, 10)) / 86400000)
-      const msg =
-        ageDays === 10 ? "I'll miss you... 3 days left 💛" :
-        ageDays === 11 ? "2 days left... don't go 🥺" :
-        ageDays === 12 ? "Last day together... 😢" :
-        null
-      if (msg) {
-        const t = setTimeout(() => {
-          setBubble({ text: msg, id: Date.now() })
-        }, 3000)
-        return () => clearTimeout(t)
-      }
-    } catch { /* ignore */ }
-  }, [])
-
-  // ── Stat decay (halved on weekends) ──────────────────────
-  useEffect(() => {
-    const interval = isWeekend ? 60000 : 30000
-    const decay = setInterval(() => {
-      setStats((s: PetStats) => ({
-        hunger: Math.max(0, s.hunger - 0.08),
-        happy:  Math.max(0, s.happy  - 0.06),
-        energy: Math.max(0, s.energy - 0.11),
-      }))
-    }, interval)
-    return () => clearInterval(decay)
-  }, [isWeekend])
-
-  // ── Auto sleep (energy-based) ─────────────────────────────
-  useEffect(() => {
-    const check = setInterval(() => {
-      const s        = statsRef.current
-      const animator = animatorRef.current
-      if (!animator) return
-      if (isFaintedRef.current) return
-      if (isDizzyRef.current)   return
-
-      if (!isSleepingRef.current && s.energy < 25) {
-        isSleepingRef.current = true
-        setIsSleeping(true)
-        animator.setState('sleep')
-        setTimeout(() => {
-          const r = roomRef.current
-          const w = petWrapperRef.current
-          if (r && w && r.offsetWidth > 0) {
-            const cx = Math.round((r.offsetWidth - petSize) / 2)
-            walkXRef.current = cx
-            w.style.left = `${cx}px`
-          }
-        }, 200)
-        setBubble({ text: 'Zzz... 💤', id: Date.now() })
-      } else if (isSleepingRef.current && s.energy < 25) {
-        if (s.hunger > 20 && s.happy > 20) {
-          setBubble({ text: 'Zzz... 💤', id: Date.now() })
-        }
-        setStats((prev: PetStats) => ({ ...prev, energy: Math.min(100, prev.energy + 0.14) }))
-      } else if (isSleepingRef.current && s.energy >= 100) {
-        isSleepingRef.current = false
-        setIsSleeping(false)
-        setBubble(null)
-        animator.setState('walk')
-      }
-    }, 5000)
-    return () => clearInterval(check)
-  }, [])
-
-  // ── Time check (every minute) ─────────────────────────────
-  useEffect(() => {
-    const tick = () => {
-      const now = new Date()
-      setIsNight(now.getHours() >= 22 || now.getHours() < 6)
-      setIsWeekend(now.getDay() === 0 || now.getDay() === 6)
-    }
-    const id = setInterval(tick, 60000)
-    return () => clearInterval(id)
-  }, [])
-
-  // ── Night → force sleep ───────────────────────────────────
-  useEffect(() => {
-    if (isNight) {
-      isSleepingRef.current = true
-      setIsSleeping(true)
-      animatorRef.current?.setState('sleep')
-    } else if (!isNight && isSleepingRef.current) {
-      isSleepingRef.current = false
-      setIsSleeping(false)
-      animatorRef.current?.setState('walk')
-    }
-  }, [isNight])
-
-  // ── Weekend celebration: random play every 30 s ───────────
-  useEffect(() => {
-    if (!isWeekend) return
-    const id = setInterval(() => {
-      if (Math.random() < 0.5) animatorRef.current?.setState('play')
-    }, 30000)
-    return () => clearInterval(id)
-  }, [isWeekend])
-
-  // ── Animation + walk loop ─────────────────────────────────
-  useEffect(() => {
-    const canvas  = petCanvasRef.current!
-    const wrapper = petWrapperRef.current!
-    const room    = roomRef.current!
-
-    let mounted = true
-    walkXRef.current   = 80
-    walkDirRef.current = 1
-    walkYRef.current   = 0
-    walkDYRef.current  = 0
-
-    // Set initial left position
-    wrapper.style.left = '80px'
-
-    const coords: PetCoords = (petData.coords?.has_eyes) ? petData.coords : DEFAULT_COORDS
-    const eyeStyle = localStorage.getItem('oodle_eye_style') || 'eye_round'
-
-    animatorRef.current?.stop()
-    canvas.width  = petSize
-    canvas.height = petSize
-    wrapper.style.width  = `${petSize}px`
-    wrapper.style.height = `${petSize}px`
-
-    const animator = new PetAnimator(canvas, { imageDataURL: petData.pixelData, coords, size: petSize, eyeStyle })
-    animatorRef.current = animator
-    animator.setState('walk')
-    animator.start()
-
-    const walk = () => {
-      if (!mounted) return
-      if (statsRef.current.energy >= 25 && !isFaintedRef.current && !isDizzyRef.current && !isSleepingRef.current) {
-        const maxX = room.offsetWidth - petSize
-        walkXRef.current += 0.3 * walkDirRef.current
-        if (walkXRef.current >= maxX) walkDirRef.current = -1
-        if (walkXRef.current <= 0)    walkDirRef.current =  1
-        wrapper.style.left     = `${walkXRef.current}px`
-        canvas.style.transform = walkDirRef.current === -1 ? 'scaleX(-1)' : 'none'
-      }
-      walkRafRef.current = requestAnimationFrame(walk)
-    }
-    walkRafRef.current = requestAnimationFrame(walk)
-
-    return () => {
-      mounted = false
-      animator.stop()
-      cancelAnimationFrame(walkRafRef.current)
-    }
-  }, [petData, petSize])
-
-  // ── Door transition ───────────────────────────────────────
-  useEffect(() => {
-    if (doorPhase === 'appearing') {
-      const t = setTimeout(() => setDoorPhase('opening'), 50)
-      return () => clearTimeout(t)
-    }
-
-    if (doorPhase === 'opening') {
-      const t = setTimeout(() => setDoorPhase('walking'), 700)
-      return () => clearTimeout(t)
-    }
-
-    if (doorPhase === 'walking') {
-      const wrapper = petWrapperRef.current
-      const canvas  = petCanvasRef.current
-      const room    = roomRef.current
-      if (!wrapper || !canvas || !room) return
-
-      cancelAnimationFrame(walkRafRef.current)
-      animatorRef.current?.setState('walk')
-
-      const targetX = room.offsetWidth * 0.85 - petSize / 2
-      canvas.style.transform = 'none'
-
-      let rafId = 0
-      const walkToDoor = () => {
-        const current = parseFloat(wrapper.style.left) || walkXRef.current
-        const dx      = targetX - current
-        if (Math.abs(dx) < 3) {
-          wrapper.style.transition = 'opacity 0.4s'
-          wrapper.style.opacity    = '0'
-          setTimeout(() => setDoorPhase('done'), 450)
-          return
-        }
-        wrapper.style.left = `${current + Math.sign(dx) * Math.min(Math.abs(dx), 3)}px`
-        rafId = requestAnimationFrame(walkToDoor)
-      }
-      rafId = requestAnimationFrame(walkToDoor)
-      return () => cancelAnimationFrame(rafId)
-    }
-
-    if (doorPhase === 'done') onGoToPlaza()
-  }, [doorPhase, onGoToPlaza])
-
-  // ── Helpers ───────────────────────────────────────────────
-  const showFloat = useCallback((char: string) => {
-    const id = Date.now()
-    setFloatEmojis(e => [...e, { id, char }])
-    setTimeout(() => setFloatEmojis(e => e.filter(x => x.id !== id)), 1000)
-  }, [])
-
-  const showBubble = useCallback((text: string) => {
-    const id = Date.now()
-    setBubble({ text, id })
-    setTimeout(() => setBubble((b: { text: string; id: number } | null) => (b?.id === id ? null : b)), 6000)
-  }, [])
-
-  // ── Warning bubbles when stats are low ───────────────────
-  useEffect(() => {
-    const id = setInterval(() => {
-      if (isFaintedRef.current || isSleepingRef.current) return
-      if (statsRef.current.hunger > 0 && statsRef.current.hunger <= 20) {
-        showBubble('I\'m hungry... 🍖')
-      } else if (statsRef.current.happy <= 20) {
-        showBubble('I\'m unhappy... 😢')
-      }
-    }, 5000)
-    return () => clearInterval(id)
-  }, [showBubble])
-  useEffect(() => {
-    if (stats.hunger <= 0 && !isFaintedRef.current) {
-      isFaintedRef.current = true
-      setIsFainted(true)
-      cancelAnimationFrame(walkRafRef.current)
-      // Move pet to center of room when fainting
-      const room = roomRef.current
-      const wrapper = petWrapperRef.current
-      if (room && wrapper) {
-        const centerX = Math.round((room.offsetWidth - petSize) / 2)
-        walkXRef.current = centerX
-        wrapper.style.left = `${centerX}px`
-      }
-      animatorRef.current?.setState('faint')
-      showBubble('So hungry... 😵')
-    }
-  }, [stats.hunger, showBubble, petSize])
-
-  // ── Keep faint state on animator (in case animator reinits) ──
-  useEffect(() => {
-    if (isFainted) {
-      animatorRef.current?.setState('faint')
-    }
-  }, [isFainted])
-
-  // ── Like → food redemption ────────────────────────────────
-  const handleRedeemSmall = useCallback(async () => {
-    if (likeBalance < 5) return
-    const ok = await redeemLikesForFood(5)
-    if (ok) {
-      setSmallFood((f: number) => f + 1)
-      setLikeBalance((b: number) => b - 5)
-      showFloat('🍎')
-      showBubble('Got a snack!')
-    }
-  }, [likeBalance, showFloat, showBubble])
-
-  const handleRedeemBig = useCallback(async () => {
-    if (likeBalance < 20) return
-    const ok = await redeemLikesForFood(20)
-    if (ok) {
-      setBigFood((f: number) => f + 1)
-      setLikeBalance(b => b - 20)
-      showFloat('🍱')
-      showBubble('Got a meal!')
-    }
-  }, [likeBalance, showFloat, showBubble])
-
-  // ── Feed ──────────────────────────────────────────────────
-  const handleFeed = useCallback((size: 'small' | 'big') => {
-    if (todayEats >= DAILY_EAT_LIMIT) { showBubble('Too full! Come back tomorrow'); return }
-    if (size === 'small') {
-      if (smallFood <= 0) { showBubble('Redeem likes for snacks! ❤️'); return }
-      setSmallFood((f: number) => f - 1)
-      setStats((s: PetStats) => ({ ...s, hunger: Math.min(100, s.hunger + SMALL_HUNGER) }))
-    } else {
-      if (bigFood <= 0) { showBubble('Redeem likes for meals! ❤️'); return }
-      setBigFood((f: number) => f - 1)
-      setStats((s: PetStats) => ({ ...s, hunger: Math.min(100, s.hunger + BIG_HUNGER) }))
-    }
-    setTodayEats((n: number) => n + 1)
-    showFloat('🍖')
-    showBubble(pick(FEED_LINES))
-    animatorRef.current?.setState('eat')
-
-    // Recover from faint
-    if (isFaintedRef.current) {
-      isFaintedRef.current = false
-      setIsFainted(false)
-    }
-    setTimeout(() => animatorRef.current?.setState('walk'), 2000)
-  }, [todayEats, smallFood, bigFood, showFloat, showBubble])
-
-  // ── Pinch / drag / throw ─────────────────────────────────
-
-  const startBounce = useCallback((vx: number, vy: number, triggerDizzy: boolean) => {
-    const wrapper = petWrapperRef.current
-    const room    = roomRef.current
-    if (!wrapper || !room) return
-
-    cancelAnimationFrame(walkRafRef.current)
-    cancelAnimationFrame(throwRafRef.current)
-
-    // Switch from bottom% to top px for physics
-    const currentBottom = room.offsetHeight * 0.22
-    wrapper.style.top    = `${room.offsetHeight - currentBottom - petSize}px`
-    wrapper.style.bottom = 'auto'
-
-    let pvx = vx, pvy = vy
-    const GRAVITY  = 0.5
-    const BOUNCE   = 0.55
-    const FRICTION = 0.92
-    const roomW    = room.offsetWidth
-    const roomH    = room.offsetHeight
-    const PET_W    = 160
-
-    const tick = () => {
-      pvy += GRAVITY
-      let nx = parseFloat(wrapper.style.left || '80') + pvx
-      let ny = parseFloat(wrapper.style.top  || String(roomH * 0.5)) + pvy
-
-      const floor = roomH * 0.70
-      if (ny + PET_W > floor) {
-        ny  = floor - PET_W
-        pvy = -Math.abs(pvy) * BOUNCE
-        pvx *= FRICTION
-        animatorRef.current?.setState('squish')
-        if (Math.abs(pvy) < 1) pvy = 0
-      }
-      if (nx < 0)             { nx = 0;           pvx =  Math.abs(pvx) * BOUNCE }
-      if (nx + PET_W > roomW) { nx = roomW-PET_W; pvx = -Math.abs(pvx) * BOUNCE }
-      if (ny < 0)             { ny = 0;            pvy =  Math.abs(pvy) * BOUNCE }
-
-      wrapper.style.left = `${nx}px`
-      wrapper.style.top  = `${ny}px`
-
-      if (Math.abs(pvx) > 0.2 || Math.abs(pvy) > 0.2) {
-        throwRafRef.current = requestAnimationFrame(tick)
-      } else {
-        // Bounce fully settled — restore CSS bottom positioning
-        walkXRef.current       = nx
-        wrapper.style.top      = ''
-        wrapper.style.bottom   = '22%'
-
-        if (triggerDizzy) {
-          // Trigger dizzy NOW after bounce settles
-          isDizzyRef.current = true
-          setIsDizzy(true)
-          animatorRef.current?.setState('dizzy')
-          setTimeout(() => {
-            isDizzyRef.current    = false
-            throwCountRef.current = 0
-            setIsDizzy(false)
-            animatorRef.current?.setState('walk')
-            // Resume walk loop
-            const canvas = petCanvasRef.current
-            if (canvas) {
-              walkDirRef.current = 1
-              const walk = () => {
-                const maxX = room.offsetWidth - PET_W
-                walkXRef.current += 0.3 * walkDirRef.current
-                if (walkXRef.current >= maxX) walkDirRef.current = -1
-                if (walkXRef.current <= 0)    walkDirRef.current =  1
-                wrapper.style.left     = `${walkXRef.current}px`
-                canvas.style.transform = walkDirRef.current === -1 ? 'scaleX(-1)' : 'none'
-                walkRafRef.current = requestAnimationFrame(walk)
-              }
-              walkRafRef.current = requestAnimationFrame(walk)
-            }
-          }, 15000)
-        } else {
-          // Resume normal walk
-          animatorRef.current?.setState('walk')
-          const canvas = petCanvasRef.current
-          if (canvas) {
-            walkDirRef.current = 1
-            const walk = () => {
-              const maxX = room.offsetWidth - PET_W
-              walkXRef.current += 0.3 * walkDirRef.current
-              if (walkXRef.current >= maxX) walkDirRef.current = -1
-              if (walkXRef.current <= 0)    walkDirRef.current =  1
-              wrapper.style.left     = `${walkXRef.current}px`
-              canvas.style.transform = walkDirRef.current === -1 ? 'scaleX(-1)' : 'none'
-              walkRafRef.current = requestAnimationFrame(walk)
-            }
-            walkRafRef.current = requestAnimationFrame(walk)
-          }
-        }
-      }
-    }
-    throwRafRef.current = requestAnimationFrame(tick)
-  }, [])
-
-  const handlePetMouseDown = useCallback((e: React.MouseEvent) => {
-    if (isDizzyRef.current || isFaintedRef.current) return
-
-    // Wake up if sleeping and energy >= 30
-    if (isSleepingRef.current) {
-      if (statsRef.current.energy >= 30) {
-        isSleepingRef.current = false
-        setIsSleeping(false)
-        setBubble(null)
-        const wrapper = petWrapperRef.current
-        if (wrapper) {
-          wrapper.style.left      = `${walkXRef.current}px`
-          wrapper.style.transform = ''
-        }
-        animatorRef.current?.setState('walk')
-        showBubble('Good morning! 🌞')
-      } else {
-        showBubble('Still sleepy... 😴')
-      }
-      return
-    }
-    const wrapper = petWrapperRef.current
-    if (!wrapper) return
-
-    isPetClickRef.current  = true
-    isLongPressRef.current = false
-
-    longPressTimerRef.current = setTimeout(() => {
-      isLongPressRef.current = true
-      isDraggingRef.current  = true
-      cancelAnimationFrame(walkRafRef.current)
-      cancelAnimationFrame(throwRafRef.current)
-      animatorRef.current?.setState('squish')
-      const rect = wrapper.getBoundingClientRect()
-      dragOffsetRef.current = { x: e.clientX - rect.left, y: e.clientY - rect.top }
-      lastPosRef.current    = { x: e.clientX, y: e.clientY }
-      velRef.current        = { x: 0, y: 0 }
+    if (validateTimerRef.current) clearTimeout(validateTimerRef.current)
+    validateTimerRef.current = setTimeout(() => {
+      const small = gridToSmallCanvas(grid)
+      validator.validate(small).then(r => setOnnxScore(r.score))
     }, 300)
+    return () => { if (validateTimerRef.current) clearTimeout(validateTimerRef.current) }
+  }, [grid])
+
+  // ── Cell lookup ──────────────────────────────────────────
+  const getCell = useCallback((clientX: number, clientY: number, ref: React.RefObject<HTMLCanvasElement | null>) => {
+    const canvas = ref.current!
+    const rect   = canvas.getBoundingClientRect()
+    const scaleX = CANVAS_PX / rect.width
+    const scaleY = CANVAS_PX / rect.height
+    return {
+      r: Math.max(0, Math.min(GRID_SIZE - 1, Math.floor((clientY - rect.top)  * scaleY / CELL_SIZE))),
+      c: Math.max(0, Math.min(GRID_SIZE - 1, Math.floor((clientX - rect.left) * scaleX / CELL_SIZE))),
+    }
   }, [])
 
-  const handleMouseMove = useCallback((e: MouseEvent) => {
-    if (!isDraggingRef.current) return
-    const wrapper = petWrapperRef.current
-    const room    = roomRef.current
-    if (!wrapper || !room) return
-    const rect = room.getBoundingClientRect()
-    const nx   = e.clientX - rect.left - dragOffsetRef.current.x
-    const ny   = e.clientY - rect.top  - dragOffsetRef.current.y
-    velRef.current     = { x: e.clientX - lastPosRef.current.x, y: e.clientY - lastPosRef.current.y }
-    lastPosRef.current = { x: e.clientX, y: e.clientY }
-    wrapper.style.left = `${nx}px`
-    wrapper.style.top  = `${ny}px`
+  // ── Draw tool application ─────────────────────────────────
+  const applyDraw = useCallback((clientX: number, clientY: number, pushUndo: boolean) => {
+    const { r, c } = getCell(clientX, clientY, canvasRef)
+    if (pushUndo) historyRef.current = [...historyRef.current.slice(-19), gridRef.current.map(r => [...r])]
+    const t  = toolRef.current
+    const col = colorRef.current
+    const bs = brushRef.current
+    if (t === 'fill') {
+      updateGrid(floodFill(gridRef.current, r, c, col))
+    } else {
+      updateGrid(paintBrush(gridRef.current, r, c, bs, col, t === 'erase'))
+    }
+  }, [getCell, updateGrid])
+
+  // ── Mouse events (draw canvas) ────────────────────────────
+  const handleMouseDown = useCallback((e: React.MouseEvent) => {
+    if (e.button !== 0) return
+    isDrawRef.current = true
+    applyDraw(e.clientX, e.clientY, true)
+  }, [applyDraw])
+
+  const handleMouseMove = useCallback((e: React.MouseEvent) => {
+    if (!isDrawRef.current || toolRef.current === 'fill') return
+    applyDraw(e.clientX, e.clientY, false)
+  }, [applyDraw])
+
+  const handleMouseUp = useCallback(() => { isDrawRef.current = false }, [])
+
+  // ── Touch events (non-passive) ────────────────────────────
+  const handleTouchStart = useCallback((e: TouchEvent) => {
+    e.preventDefault()
+    isDrawRef.current = true
+    const t = e.touches[0]
+    applyDraw(t.clientX, t.clientY, true)
+  }, [applyDraw])
+
+  const handleTouchMove = useCallback((e: TouchEvent) => {
+    e.preventDefault()
+    if (!isDrawRef.current || toolRef.current === 'fill') return
+    const t = e.touches[0]
+    applyDraw(t.clientX, t.clientY, false)
+  }, [applyDraw])
+
+  const handleTouchEnd = useCallback((e: TouchEvent) => {
+    e.preventDefault()
+    isDrawRef.current = false
   }, [])
-
-  const handleMouseUp = useCallback(() => {
-    if (longPressTimerRef.current) {
-      clearTimeout(longPressTimerRef.current)
-      longPressTimerRef.current = null
-    }
-    if (!isDraggingRef.current) {
-      // Only scratch if click originated on the pet
-      if (isPetClickRef.current && !isDizzyRef.current) {
-        animatorRef.current?.setState('squish')
-        setStats(s => ({ ...s, happy: Math.min(100, s.happy + 10) }))
-        showFloat('⭐')
-        setTimeout(() => animatorRef.current?.setState('walk'), 600)
-      }
-      isPetClickRef.current = false
-      return
-    }
-    isPetClickRef.current = false
-    isDraggingRef.current = false
-    const vx = velRef.current.x * 0.8
-    const vy = velRef.current.y * 0.8
-
-    throwCountRef.current += 1
-    const triggerDizzy = throwCountRef.current >= 2 && !isDizzyRef.current
-    startBounce(vx, vy, triggerDizzy)
-  }, [startBounce, showFloat])
 
   useEffect(() => {
-    window.addEventListener('mousemove', handleMouseMove)
-    window.addEventListener('mouseup',   handleMouseUp)
+    const canvas = canvasRef.current
+    if (!canvas || step !== 'draw') return
+    canvas.addEventListener('touchstart', handleTouchStart, { passive: false })
+    canvas.addEventListener('touchmove',  handleTouchMove,  { passive: false })
+    canvas.addEventListener('touchend',   handleTouchEnd,   { passive: false })
     return () => {
-      window.removeEventListener('mousemove', handleMouseMove)
-      window.removeEventListener('mouseup',   handleMouseUp)
+      canvas.removeEventListener('touchstart', handleTouchStart)
+      canvas.removeEventListener('touchmove',  handleTouchMove)
+      canvas.removeEventListener('touchend',   handleTouchEnd)
     }
-  }, [handleMouseMove, handleMouseUp])
+  }, [step, handleTouchStart, handleTouchMove, handleTouchEnd])
 
-  const handleGoToPlaza = useCallback(() => {
-    if (doorPhase !== 'idle') return
-    setDoorPhase('appearing')
-  }, [doorPhase])
+  // ── Undo / Clear ──────────────────────────────────────────
+  const handleUndo = useCallback(() => {
+    if (historyRef.current.length === 0) return
+    const prev = historyRef.current[historyRef.current.length - 1]
+    historyRef.current = historyRef.current.slice(0, -1)
+    updateGrid(prev)
+  }, [updateGrid])
 
-  const isTransitioning = doorPhase !== 'idle'
-  const plazaReady = petSaved && !isTransitioning && !isDizzy && !isFainted && !isSleeping
+  const handleClear = useCallback(() => {
+    historyRef.current = [...historyRef.current.slice(-19), gridRef.current.map(r => [...r])]
+    updateGrid(makeGrid())
+  }, [updateGrid])
 
+  // ── Step: draw → decorate ────────────────────────────────
+  const handleMakeItLife = useCallback(() => {
+    if (!onnxScore || onnxScore < 0.6) return
+    setStep('decorate')
+  }, [onnxScore])
+
+  // ── Decorate: preview animation ───────────────────────────
+  const eyePosRef      = useRef(eyePos)
+  const selectedEyeRef = useRef(selectedEye)
+  useEffect(() => { eyePosRef.current = eyePos },      [eyePos])
+  useEffect(() => { selectedEyeRef.current = selectedEye }, [selectedEye])
+
+  useEffect(() => {
+    if (step !== 'decorate') return
+    const canvas = decorateRef.current
+    if (!canvas) return
+    const ctx = canvas.getContext('2d')!
+    ctx.imageSmoothingEnabled = false
+
+    const img  = new Image()
+    img.src    = gridToDataURL(gridRef.current)
+    img.onload = () => {
+      let frame = 0
+      const b   = blinkRef.current
+
+      const loop = () => {
+        ctx.clearRect(0, 0, CANVAS_PX, CANVAS_PX)
+
+        const bob = Math.floor(frame / 30) % 2 === 0 ? 0 : -1
+        ctx.drawImage(img, 0, bob, CANVAS_PX, CANVAS_PX)
+
+        b.countdown--
+        if (b.countdown <= 0) {
+          b.blinking = true; b.frame = 0
+          b.countdown = 180 + Math.round((Math.random() - 0.5) * 120)
+        }
+        const blink = b.blinking && b.frame <= 6
+        if (b.blinking) { b.frame++; if (b.frame > 6) b.blinking = false }
+
+        const ep  = eyePosRef.current
+        const eye = selectedEyeRef.current
+        const ex  = ep.col * CELL_SIZE
+        const ey  = ep.row * CELL_SIZE + bob
+        drawEye(ctx, eye.id, ex - 40, ey, 20, blink)
+        drawEye(ctx, eye.id, ex + 40, ey, 20, blink)
+
+        frame++
+        rafRef.current = requestAnimationFrame(loop)
+      }
+      rafRef.current = requestAnimationFrame(loop)
+    }
+    return () => cancelAnimationFrame(rafRef.current)
+  }, [step])
+
+  // ── Decorate: eye drag ────────────────────────────────────
+  const updateEyePos = useCallback((clientX: number, clientY: number) => {
+    const canvas = decorateRef.current!
+    const rect   = canvas.getBoundingClientRect()
+    const scaleX = CANVAS_PX / rect.width
+    const scaleY = CANVAS_PX / rect.height
+    setEyePos({
+      row: Math.max(5,  Math.min(GRID_SIZE - 5,  Math.floor((clientY - rect.top)  * scaleY / CELL_SIZE))),
+      col: Math.max(10, Math.min(GRID_SIZE - 10, Math.floor((clientX - rect.left) * scaleX / CELL_SIZE))),
+    })
+  }, [])
+
+  const handleDecMouseDown = useCallback((e: React.MouseEvent) => { isDragEyeRef.current = true;  updateEyePos(e.clientX, e.clientY) }, [updateEyePos])
+  const handleDecMouseMove = useCallback((e: React.MouseEvent) => { if (isDragEyeRef.current) updateEyePos(e.clientX, e.clientY) }, [updateEyePos])
+  const handleDecMouseUp   = useCallback(() => { isDragEyeRef.current = false }, [])
+
+  // ── Particles ──────────────────────────────────────────────
+  const spawnParticles = useCallback(() => {
+    const btn = btnRef.current
+    if (!btn) return
+    const rect = btn.getBoundingClientRect()
+    const cx   = rect.left + rect.width  / 2
+    const cy   = rect.top  + rect.height / 2
+    const ps   = Array.from({ length: 12 }, (_, i) => ({
+      id: Date.now() + i, char: CHARS[i % CHARS.length],
+      x: cx, y: cy, angle: (i / 12) * 360, distance: 60 + Math.random() * 60,
+    }))
+    setParticles(ps)
+    setTimeout(() => setParticles([]), 900)
+  }, [])
+
+  // ── Confirm ───────────────────────────────────────────────
+  const handleConfirm = useCallback(() => {
+    const finalName  = petName.trim() || 'My Pet'
+    const pixelData  = gridToDataURL(gridRef.current)
+    const ep         = eyePos
+
+    const coords: PetCoords = {
+      eyes: [
+        { x: (ep.col - 5) / GRID_SIZE, y: ep.row / GRID_SIZE },
+        { x: (ep.col + 5) / GRID_SIZE, y: ep.row / GRID_SIZE },
+      ],
+      legs:     [],
+      center:   { x: 0.5, y: 0.5 },
+      has_eyes: true,
+      has_legs: false,
+    }
+
+    localStorage.setItem('oodle_eye_style', selectedEye.id)
+    localStorage.removeItem('oodle_leg_style')
+
+    const newPet: StoredPet = { id: crypto.randomUUID(), pixelData, name: finalName }
+    const updated = [...storedPets, newPet].slice(-20)
+    setStoredPets(updated)
+    localStorage.setItem('oodle_pets', JSON.stringify(updated))
+
+    spawnParticles()
+    setStep('done')
+    onPetCreated(pixelData, coords, finalName)
+  }, [petName, eyePos, selectedEye, storedPets, spawnParticles, onPetCreated])
+
+
+  // ── Render ────────────────────────────────────────────────
   return (
     <div className={styles.page}>
-      <div className={styles.room} ref={roomRef}>
+      <div className={styles.titleBlock}>
+        <h1 className={styles.title}>OODLE</h1>
+        <p className={styles.sub}>draw a pixel pet. make it life.</p>
+      </div>
 
-        {/* Night overlay */}
-        {isNight && <div className={styles.nightOverlay} />}
-
-        {/* Top-left: HUD */}
-        <div className={styles.topLeft}>
-          <div className={styles.hud}>
-            <StatBar label="🍖" value={stats.hunger} color="var(--color-hunger)" maxWidth={80} />
-            <StatBar label="💛" value={stats.happy}  color="var(--color-happy)"  maxWidth={80} />
-            <StatBar label="⚡" value={stats.energy} color="var(--color-energy)" maxWidth={80} />
+      {step === 'draw' && (
+        <>
+          {/* Tab switcher */}
+          <div className={styles.tabRow}>
+            <button
+              className={`${styles.tab} ${tab === 'draw' ? styles.tabActive : ''}`}
+              onClick={() => setTab('draw')}
+            >DRAW</button>
+            <button
+              className={`${styles.tab} ${tab === 'ai' ? styles.tabActive : ''}`}
+              onClick={() => setTab('ai')}
+            >AI GENERATE</button>
           </div>
-        </div>
 
-        <div className={styles.dayCounter}>DAY {dayCount}</div>
-        <div className={styles.petNameDisplay}>{petData.name}</div>
-
-        {/* Door transition overlay */}
-        {isTransitioning && (
-          <div className={styles.doorContainer}>
-            <div className={`${styles.doorFrame} ${styles.doorFrameVisible}`}>
-              <div className={`${styles.doorLeft}  ${doorPhase !== 'appearing' ? styles.doorLeftOpen  : ''}`} />
-              <div className={`${styles.doorRight} ${doorPhase !== 'appearing' ? styles.doorRightOpen : ''}`} />
-              <div className={styles.doorTop}>TO PLAZA →</div>
+          {tab === 'ai' ? (
+            <div className={styles.aiPanel}>
+              <div className={styles.premiumBadge}>✨ AI GENERATE</div>
+              <p className={styles.aiDesc} style={{ color: '#FFE600', fontSize: '10px', marginTop: '24px' }}>COMING SOON</p>
+              <p className={styles.aiDesc}>AI pixel art generation is on the way!</p>
             </div>
-          </div>
-        )}
+          ) : (
+            <>
+              {/* Validation label */}
+              {onnxScore !== null && (
+                <p
+                  className={styles.validLabel}
+                  style={{
+                    color: onnxScore >= 0.6
+                      ? '#4CAF50'
+                      : onnxScore >= 0.3
+                      ? '#F5A623'
+                      : '#e94560',
+                  }}
+                >
+                  {onnxScore >= 0.6
+                    ? 'looks like a creature!'
+                    : onnxScore >= 0.3
+                    ? 'keep drawing...'
+                    : 'not sure yet...'
+                  } {Math.round(onnxScore * 100)}%
+                </p>
+              )}
 
-        {/* Like-balance panel (replaces energy panel) */}
-        <div className={styles.likePanel}>
-          <div className={styles.energyRow}>
-            <span className={styles.energyLabel}>❤️ LIKES</span>
-            <span className={styles.energyValue}>{likeBalance}</span>
-          </div>
-          <button
-            className={styles.convertBtn}
-            onClick={handleRedeemSmall}
-            disabled={likeBalance < 5}
-          >
-            🍎 SNACK
-            <span className={styles.costTag}>5 ❤️</span>
-            <span className={styles.foodCount}>{smallFood}</span>
-          </button>
-          <button
-            className={styles.convertBtn}
-            onClick={handleRedeemBig}
-            disabled={likeBalance < 20}
-          >
-            🍱 MEAL
-            <span className={styles.costTag}>20 ❤️</span>
-            <span className={styles.foodCount}>{bigFood}</span>
-          </button>
-        </div>
+              {/* Draw canvas */}
+              <div className={styles.canvasWrap}>
+                <canvas
+                  ref={canvasRef}
+                  width={CANVAS_PX}
+                  height={CANVAS_PX}
+                  className={styles.drawCanvas}
+                  style={{ cursor: tool === 'erase' ? 'cell' : tool === 'fill' ? 'url("data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'16\' height=\'16\'%3E%3Ctext y=\'14\' font-size=\'14\'%3E🪣%3C/text%3E%3C/svg%3E") 0 16, crosshair' : 'crosshair' }}
+                  onMouseDown={handleMouseDown}
+                  onMouseMove={handleMouseMove}
+                  onMouseUp={handleMouseUp}
+                  onMouseLeave={handleMouseUp}
+                />
+              </div>
 
-        {/* Pet */}
-        <div
-          className={styles.petWrapper}
-          ref={petWrapperRef}
-          onMouseDown={handlePetMouseDown}
-          style={{ cursor: isFainted ? 'not-allowed' : isDizzy ? 'not-allowed' : 'grab', userSelect: 'none' }}
-        >
-          {isFainted && (
-            <div style={{
-              position: 'absolute',
-              bottom: '100%',
-              left: '50%',
-              transform: 'translateX(-50%)',
-              fontFamily: 'var(--font-pixel)',
-              fontSize: '8px',
-              background: '#fff',
-              border: '2px solid #e94560',
-              boxShadow: '2px 2px 0 #2C2C2C',
-              padding: '3px 8px',
-              whiteSpace: 'nowrap',
-              color: '#e94560',
-              zIndex: 10,
-              marginBottom: '4px',
-            }}>
-              FEED ME! 😵
-            </div>
+              {/* ── Controls below canvas ── */}
+              <div className={styles.controls}>
+
+                {/* Row 1: Colour palette */}
+                <div className={styles.controlRow}>
+                  <div className={styles.palette}>
+                    {PALETTE.map(c => (
+                      <button
+                        key={c}
+                        className={`${styles.swatch} ${color === c && tool === 'draw' ? styles.swatchActive : ''}`}
+                        style={{ background: c }}
+                        onClick={() => { setColor(c); setTool('draw') }}
+                      />
+                    ))}
+                  </div>
+                </div>
+
+                {/* Row 2: Tools + Brush size + Undo/Clear + Grid */}
+                <div className={styles.controlRow}>
+                  {/* Tools */}
+                  <div className={styles.btnGroup}>
+                    <button
+                      className={`${styles.toolBtn} ${tool === 'draw'  ? styles.toolActive : ''}`}
+                      onClick={() => setTool('draw')}
+                    >✏️ Draw</button>
+                    <button
+                      className={`${styles.toolBtn} ${tool === 'erase' ? styles.toolActive : ''}`}
+                      onClick={() => setTool('erase')}
+                    >⬜ Erase</button>
+                    <button
+                      className={`${styles.toolBtn} ${tool === 'fill'  ? styles.toolActive : ''}`}
+                      onClick={() => setTool('fill')}
+                    >🪣 Fill</button>
+                  </div>
+
+                  <div className={styles.groupSep} />
+
+                  {/* Brush size */}
+                  <div className={styles.btnGroup}>
+                    {([1, 2, 4] as const).map(bs => (
+                      <button
+                        key={bs}
+                        className={`${styles.toolBtn} ${brushSize === bs ? styles.toolActive : ''}`}
+                        onClick={() => setBrushSize(bs)}
+                      >{bs}px</button>
+                    ))}
+                  </div>
+
+                  <div className={styles.groupSep} />
+
+                  {/* Undo / Clear / Grid */}
+                  <div className={styles.btnGroup}>
+                    <button className={styles.toolBtn} onClick={handleUndo}>↩ Undo</button>
+                    <button className={styles.toolBtn} onClick={handleClear}>🗑 Clear</button>
+                    <button
+                      className={`${styles.toolBtn} ${showGrid ? styles.toolActive : ''}`}
+                      onClick={() => setShowGrid(v => !v)}
+                    >⊞ Grid</button>
+                  </div>
+                </div>
+
+              </div>
+
+              <button
+                ref={btnRef}
+                className={styles.ctaBtn}
+                onClick={handleMakeItLife}
+                disabled={!onnxScore || onnxScore < 0.6}
+              >
+                ✦ MAKE IT LIFE ✦
+              </button>
+            </>
           )}
-          <canvas
-            ref={petCanvasRef}
-            width={petSize}
-            height={petSize}
-            style={{ display: 'block', background: 'transparent', border: 'none' }}
-          />
-          {bubble && <div className={styles.bubble} key={bubble.id}>{bubble.text}</div>}
-          {floatEmojis.map(e => (
-            <span key={e.id} className={styles.floatEmoji}>{e.char}</span>
-          ))}
-        </div>
-      </div>
+        </>
+      )}
 
-      <div className={styles.actionBar}>
-        <div className={styles.feedRow}>
+      {step === 'decorate' && (
+        <>
+          <p className={styles.decorateHint}>PICK EYES · CLICK TO POSITION</p>
+
+          <div className={styles.canvasWrap} style={{ cursor: 'crosshair' }}>
+            <canvas
+              ref={decorateRef}
+              width={CANVAS_PX}
+              height={CANVAS_PX}
+              className={styles.drawCanvas}
+              onMouseDown={handleDecMouseDown}
+              onMouseMove={handleDecMouseMove}
+              onMouseUp={handleDecMouseUp}
+              onMouseLeave={handleDecMouseUp}
+            />
+          </div>
+
+          {/* Eye picker */}
+          <div className={styles.section}>
+            <span className={styles.sectionLabel}>EYES</span>
+            <div className={styles.eyeGrid}>
+              {EYES.map(eye => (
+                <button
+                  key={eye.id}
+                  className={[
+                    styles.eyeBtn,
+                    selectedEye.id === eye.id ? styles.eyeSelected : '',
+                    !eye.free ? styles.eyeLocked : '',
+                  ].join(' ')}
+                  onClick={() => eye.free && setSelectedEye(eye)}
+                >
+                  <span className={styles.eyeLabel}>{eye.label}</span>
+                  {!eye.free && <span className={styles.lockBadge}>🔒</span>}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Name */}
+          <div className={styles.section}>
+            <span className={styles.sectionLabel}>PET NAME</span>
+            <input
+              className={styles.nameInput}
+              maxLength={16}
+              placeholder="Biscuit, Noodle, Zap..."
+              value={petName}
+              onChange={e => setPetName(e.target.value)}
+            />
+          </div>
+
           <button
-            className={styles.actionBtn}
-            onClick={() => handleFeed('small')}
-            disabled={smallFood <= 0 || todayEats >= DAILY_EAT_LIMIT || isSleeping}
+            className={`${styles.ctaBtn} ${styles.ctaBtnGreen}`}
+            onClick={handleConfirm}
           >
-            🍎 FEED SNACK
+            ✓ BRING IT TO LIFE!
           </button>
-          <button
-            className={styles.actionBtn}
-            onClick={() => handleFeed('big')}
-            disabled={bigFood <= 0 || todayEats >= DAILY_EAT_LIMIT || isSleeping}
-          >
-            🍱 FEED MEAL
-          </button>
-          <button
-            className={`${styles.actionBtn} ${styles.plazaBtn}`}
-            onClick={handleGoToPlaza}
-            disabled={!plazaReady}
-          >
-            {!petSaved ? 'SAVING...' : isTransitioning ? 'GOING...' : 'GO TO PLAZA →'}
-          </button>
-        </div>
-      </div>
+        </>
+      )}
+
+      {particles.map(p => (
+        <span
+          key={p.id}
+          className={styles.particle}
+          style={{
+            left: p.x, top: p.y,
+            '--angle': `${p.angle}deg`,
+            '--dist':  `${p.distance}px`,
+          } as React.CSSProperties}
+        >
+          {p.char}
+        </span>
+      ))}
     </div>
   )
 }
