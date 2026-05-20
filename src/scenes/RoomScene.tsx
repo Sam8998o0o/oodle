@@ -53,6 +53,8 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange }: RoomSc
   const walkRafRef    = useRef(0)
   const walkXRef      = useRef(80)
   const walkDirRef    = useRef(1)
+  const walkYRef      = useRef(0)
+  const walkDYRef     = useRef(0)
 
   // ── Drag / throw / dizzy refs ─────────────────────────────
   const isDraggingRef    = useRef(false)
@@ -116,8 +118,9 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange }: RoomSc
   // ── Door transition ───────────────────────────────────────
   const [doorPhase, setDoorPhase] = useState<DoorPhase>('idle')
   const [petSaved,  setPetSaved]  = useState(false)
-  const [isDizzy,   setIsDizzy]   = useState(false)
-  const [isFainted, setIsFainted] = useState(false)
+  const [isDizzy,    setIsDizzy]    = useState(false)
+  const [isFainted,  setIsFainted]  = useState(false)
+  const [isSleeping, setIsSleeping] = useState(false)
   const isFaintedRef = useRef(false)
   const isDizzyRef   = useRef(false)
 
@@ -215,17 +218,29 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange }: RoomSc
       if (isFaintedRef.current) return
       if (isDizzyRef.current)   return
 
-      if (!isSleepingRef.current && s.energy <= 0) {
-        // Energy depleted → fall asleep
+      if (!isSleepingRef.current && s.energy < 25) {
         isSleepingRef.current = true
+        setIsSleeping(true)
         animator.setState('sleep')
-        setBubble({ text: 'Zzz...', id: Date.now() })
-      } else if (isSleepingRef.current && s.energy <= 0) {
-        // Sleeping: recover energy
-        setStats(prev => ({ ...prev, energy: Math.min(100, prev.energy + 5) }))
-      } else if (isSleepingRef.current && s.energy >= 30) {
-        // Fully rested → wake up
+        setTimeout(() => {
+          const r = roomRef.current
+          const w = petWrapperRef.current
+          if (r && w && r.offsetWidth > 0) {
+            const cx = Math.round((r.offsetWidth - petSize) / 2)
+            walkXRef.current = cx
+            w.style.left = `${cx}px`
+          }
+        }, 200)
+        setBubble({ text: 'Zzz... 💤', id: Date.now() })
+      } else if (isSleepingRef.current && s.energy < 25) {
+        if (s.hunger > 20 && s.happy > 20) {
+          setBubble({ text: 'Zzz... 💤', id: Date.now() })
+        }
+        setStats((prev: PetStats) => ({ ...prev, energy: Math.min(100, prev.energy + 0.14) }))
+      } else if (isSleepingRef.current && s.energy >= 100) {
         isSleepingRef.current = false
+        setIsSleeping(false)
+        setBubble(null)
         animator.setState('walk')
       }
     }, 5000)
@@ -247,9 +262,11 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange }: RoomSc
   useEffect(() => {
     if (isNight) {
       isSleepingRef.current = true
+      setIsSleeping(true)
       animatorRef.current?.setState('sleep')
     } else if (!isNight && isSleepingRef.current) {
       isSleepingRef.current = false
+      setIsSleeping(false)
       animatorRef.current?.setState('walk')
     }
   }, [isNight])
@@ -272,6 +289,11 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange }: RoomSc
     let mounted = true
     walkXRef.current   = 80
     walkDirRef.current = 1
+    walkYRef.current   = 0
+    walkDYRef.current  = 0
+
+    // Set initial left position
+    wrapper.style.left = '80px'
 
     const coords: PetCoords = (petData.coords?.has_eyes) ? petData.coords : DEFAULT_COORDS
     const eyeStyle = localStorage.getItem('oodle_eye_style') || 'eye_round'
@@ -289,7 +311,7 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange }: RoomSc
 
     const walk = () => {
       if (!mounted) return
-      if (statsRef.current.energy >= 25) {
+      if (statsRef.current.energy >= 25 && !isFaintedRef.current && !isDizzyRef.current && !isSleepingRef.current) {
         const maxX = room.offsetWidth - petSize
         walkXRef.current += 0.3 * walkDirRef.current
         if (walkXRef.current >= maxX) walkDirRef.current = -1
@@ -362,20 +384,19 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange }: RoomSc
   const showBubble = useCallback((text: string) => {
     const id = Date.now()
     setBubble({ text, id })
-    setTimeout(() => setBubble(b => (b?.id === id ? null : b)), 2000)
+    setTimeout(() => setBubble((b: { text: string; id: number } | null) => (b?.id === id ? null : b)), 6000)
   }, [])
 
   // ── Warning bubbles when stats are low ───────────────────
   useEffect(() => {
     const id = setInterval(() => {
-      const s = statsRef.current
-      if (isFaintedRef.current) return
-      if (s.hunger > 0 && s.hunger <= 20) {
+      if (isFaintedRef.current || isSleepingRef.current) return
+      if (statsRef.current.hunger > 0 && statsRef.current.hunger <= 20) {
         showBubble('I\'m hungry... 🍖')
-      } else if (s.happy <= 20) {
+      } else if (statsRef.current.happy <= 20) {
         showBubble('I\'m unhappy... 😢')
       }
-    }, 30000)
+    }, 5000)
     return () => clearInterval(id)
   }, [showBubble])
   useEffect(() => {
@@ -432,25 +453,23 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange }: RoomSc
     if (size === 'small') {
       if (smallFood <= 0) { showBubble('Redeem likes for snacks! ❤️'); return }
       setSmallFood((f: number) => f - 1)
-      setStats(s => ({ ...s, hunger: Math.min(100, s.hunger + SMALL_HUNGER) }))
+      setStats((s: PetStats) => ({ ...s, hunger: Math.min(100, s.hunger + SMALL_HUNGER) }))
     } else {
       if (bigFood <= 0) { showBubble('Redeem likes for meals! ❤️'); return }
-      setBigFood((f: number) => f + 1)
-      setStats(s => ({ ...s, hunger: Math.min(100, s.hunger + BIG_HUNGER) }))
+      setBigFood((f: number) => f - 1)
+      setStats((s: PetStats) => ({ ...s, hunger: Math.min(100, s.hunger + BIG_HUNGER) }))
     }
-    setTodayEats(n => n + 1)
+    setTodayEats((n: number) => n + 1)
     showFloat('🍖')
     showBubble(pick(FEED_LINES))
     animatorRef.current?.setState('eat')
 
-    // Recover from faint if hunger was 0
+    // Recover from faint
     if (isFaintedRef.current) {
       isFaintedRef.current = false
       setIsFainted(false)
-      setTimeout(() => animatorRef.current?.setState('walk'), 2000)
-    } else {
-      setTimeout(() => animatorRef.current?.setState('walk'), 2000)
     }
+    setTimeout(() => animatorRef.current?.setState('walk'), 2000)
   }, [todayEats, smallFood, bigFood, showFloat, showBubble])
 
   // ── Pinch / drag / throw ─────────────────────────────────
@@ -462,6 +481,11 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange }: RoomSc
 
     cancelAnimationFrame(walkRafRef.current)
     cancelAnimationFrame(throwRafRef.current)
+
+    // Switch from bottom% to top px for physics
+    const currentBottom = room.offsetHeight * 0.22
+    wrapper.style.top    = `${room.offsetHeight - currentBottom - petSize}px`
+    wrapper.style.bottom = 'auto'
 
     let pvx = vx, pvy = vy
     const GRAVITY  = 0.5
@@ -494,9 +518,10 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange }: RoomSc
       if (Math.abs(pvx) > 0.2 || Math.abs(pvy) > 0.2) {
         throwRafRef.current = requestAnimationFrame(tick)
       } else {
-        // Bounce fully settled
-        walkXRef.current  = nx
-        wrapper.style.top = ''
+        // Bounce fully settled — restore CSS bottom positioning
+        walkXRef.current       = nx
+        wrapper.style.top      = ''
+        wrapper.style.bottom   = '22%'
 
         if (triggerDizzy) {
           // Trigger dizzy NOW after bounce settles
@@ -549,6 +574,25 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange }: RoomSc
 
   const handlePetMouseDown = useCallback((e: React.MouseEvent) => {
     if (isDizzyRef.current || isFaintedRef.current) return
+
+    // Wake up if sleeping and energy >= 30
+    if (isSleepingRef.current) {
+      if (statsRef.current.energy >= 30) {
+        isSleepingRef.current = false
+        setIsSleeping(false)
+        setBubble(null)
+        const wrapper = petWrapperRef.current
+        if (wrapper) {
+          wrapper.style.left      = `${walkXRef.current}px`
+          wrapper.style.transform = ''
+        }
+        animatorRef.current?.setState('walk')
+        showBubble('Good morning! 🌞')
+      } else {
+        showBubble('Still sleepy... 😴')
+      }
+      return
+    }
     const wrapper = petWrapperRef.current
     if (!wrapper) return
 
@@ -623,7 +667,7 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange }: RoomSc
   }, [doorPhase])
 
   const isTransitioning = doorPhase !== 'idle'
-  const plazaReady      = petSaved && !isTransitioning && !isDizzy && !isFainted
+  const plazaReady = petSaved && !isTransitioning && !isDizzy && !isFainted && !isSleeping
 
   return (
     <div className={styles.page}>
@@ -726,14 +770,14 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange }: RoomSc
           <button
             className={styles.actionBtn}
             onClick={() => handleFeed('small')}
-            disabled={smallFood <= 0 || todayEats >= DAILY_EAT_LIMIT}
+            disabled={smallFood <= 0 || todayEats >= DAILY_EAT_LIMIT || isSleeping}
           >
             🍎 FEED SNACK
           </button>
           <button
             className={styles.actionBtn}
             onClick={() => handleFeed('big')}
-            disabled={bigFood <= 0 || todayEats >= DAILY_EAT_LIMIT}
+            disabled={bigFood <= 0 || todayEats >= DAILY_EAT_LIMIT || isSleeping}
           >
             🍱 FEED MEAL
           </button>

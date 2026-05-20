@@ -143,8 +143,8 @@ export class PetAnimator {
         break
       }
       case 'sleep': {
-        // Snap immediately to lying on side
-        rotate     = Math.PI / 2
+        // Squish down — no rotation so closed eyes stay correct
+        scaleY     = 0.5
         translateY = Math.round(size * 0.25)
         break
       }

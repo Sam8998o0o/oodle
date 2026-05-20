@@ -515,8 +515,8 @@
 }
 
 @keyframes flyLTR {
-  0%   { transform: translateX(calc(100vw + 500px)); }
-  100% { transform: translateX(-500px); }
+  0%   { transform: translateX(calc(100vw + 600px)); }
+  100% { transform: translateX(-600px); }
 }
 
 .flyLTR {

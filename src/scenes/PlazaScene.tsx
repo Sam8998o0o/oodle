@@ -148,6 +148,11 @@ export default function PlazaScene({ petData, onGoToRoom, petSize }: PlazaSceneP
   const [todayLikedPets, setTodayLikedPets] = useState<Set<string>>(new Set())
   const [ownGlowing, setOwnGlowing]   = useState(true)
   const [doorPhase, setDoorPhase]     = useState<DoorPhase>('idle')
+  const [showAdModal, setShowAdModal] = useState(false)
+  const [adPlan, setAdPlan]           = useState('1 month')
+  const [adForm, setAdForm]           = useState({ company: '', email: '', bannerText: '', subText: '', logoUrl: '', destUrl: '' })
+  const [adSubmitted, setAdSubmitted] = useState(false)
+  const [adSubmitting, setAdSubmitting] = useState(false)
 
   // Keep petSizeRef in sync — used by spawnPet without causing re-spawn
   useEffect(() => { petSizeRef.current = petSize }, [petSize])
@@ -598,7 +603,7 @@ export default function PlazaScene({ petData, onGoToRoom, petSize }: PlazaSceneP
             return (
               <div
                 key={ad.id}
-                className={styles.flyLTR}
+                className={`${styles.flyLTR} ${styles.airplane}`}
                 style={{
                   position: 'absolute',
                   top: cfg.top,
@@ -609,36 +614,56 @@ export default function PlazaScene({ petData, onGoToRoom, petSize }: PlazaSceneP
                   animationDuration: `${cfg.duration}s`,
                   animationDelay: `${cfg.delay}s`,
                 }}
-                onClick={() => window.open(ad.url, '_blank', 'noopener')}
+                onClick={() => { if (!ad.logo_url) setShowAdModal(true); else window.open(ad.url, '_blank', 'noopener') }}
               >
-                {/* Pixel plane — nose points RIGHT */}
-                <svg width="90" height="44" viewBox="0 0 90 44" style={{ imageRendering: 'pixelated', flexShrink: 0, transform: 'scaleX(-1)' }}>
-                  {/* Fuselage */}
-                  <rect x="12" y="18" width="68" height="10" fill="#e8e8e8"/>
-                  {/* Nose — RIGHT side */}
-                  <rect x="78" y="19" width="8"  height="8"  fill="#d0d0d0"/>
-                  <rect x="84" y="21" width="6"  height="4"  fill="#bbb"/>
-                  {/* Tail — LEFT side */}
-                  <rect x="8"  y="12" width="8"  height="6"  fill="#d0d0d0"/>
-                  <rect x="8"  y="28" width="8"  height="6"  fill="#d0d0d0"/>
-                  <rect x="4"  y="14" width="6"  height="4"  fill="#bbb"/>
-                  <rect x="4"  y="28" width="6"  height="4"  fill="#bbb"/>
-                  {/* Main wing — center-right */}
-                  <rect x="38" y="8"  width="28" height="4"  fill="#c8c8c8"/>
-                  <rect x="34" y="12" width="32" height="6"  fill="#d8d8d8"/>
-                  <rect x="34" y="28" width="32" height="6"  fill="#d8d8d8"/>
-                  <rect x="38" y="34" width="28" height="4"  fill="#c8c8c8"/>
-                  {/* Windows — near nose */}
-                  <rect x="62" y="19" width="8"  height="6"  fill="#88ccff"/>
-                  <rect x="52" y="19" width="6"  height="6"  fill="#aaddff"/>
-                  {/* Engine under wing */}
-                  <rect x="44" y="34" width="12" height="5"  fill="#aaa"/>
-                  <rect x="46" y="39" width="8"  height="2"  fill="#888"/>
+                {/* Plane leads on left */}
+                <svg width="110" height="55" viewBox="0 0 530 220" style={{ imageRendering: 'pixelated', flexShrink: 0, transform: 'scaleX(-1)' }} xmlns="http://www.w3.org/2000/svg">
+                  <g transform="translate(80,20)">
+                    <rect x="0"   y="24"  width="32" height="48" fill="#cc2222"/>
+                    <rect x="8"   y="16"  width="24" height="8"  fill="#cc2222"/>
+                    <rect x="16"  y="8"   width="16" height="8"  fill="#cc2222"/>
+                    <rect x="24"  y="0"   width="8"  height="8"  fill="#cc2222"/>
+                    <rect x="0"   y="128" width="8"  height="8"  fill="#cc2222"/>
+                    <rect x="0"   y="120" width="16" height="8"  fill="#cc2222"/>
+                    <rect x="0"   y="112" width="32" height="8"  fill="#cc2222"/>
+                    <rect x="0"   y="104" width="40" height="8"  fill="#cc2222"/>
+                    <rect x="0"   y="72"  width="400" height="40" fill="#c8c8c8"/>
+                    <rect x="392" y="76"  width="24" height="32" fill="#d4d4d4"/>
+                    <rect x="408" y="80"  width="16" height="24" fill="#dcdcdc"/>
+                    <rect x="416" y="84"  width="16" height="16" fill="#e4e4e4"/>
+                    <rect x="424" y="88"  width="8"  height="8"  fill="#ececec"/>
+                    <rect x="240" y="64"  width="80" height="8"  fill="#b8b8b8"/>
+                    <rect x="200" y="56"  width="120" height="8"  fill="#c0c0c0"/>
+                    <rect x="160" y="48"  width="128" height="8"  fill="#c4c4c4"/>
+                    <rect x="120" y="40"  width="120" height="8"  fill="#c8c8c8"/>
+                    <rect x="88"  y="32"  width="96"  height="8"  fill="#cccccc"/>
+                    <rect x="72"  y="24"  width="56"  height="8"  fill="#cccccc"/>
+                    <rect x="240" y="112" width="80" height="8"  fill="#b8b8b8"/>
+                    <rect x="200" y="120" width="120" height="8"  fill="#c0c0c0"/>
+                    <rect x="160" y="128" width="128" height="8"  fill="#c4c4c4"/>
+                    <rect x="120" y="136" width="120" height="8"  fill="#c8c8c8"/>
+                    <rect x="88"  y="144" width="96"  height="8"  fill="#cccccc"/>
+                    <rect x="72"  y="152" width="56"  height="8"  fill="#cccccc"/>
+                    <rect x="168" y="120" width="72" height="16" fill="#aaaaaa"/>
+                    <rect x="176" y="136" width="56" height="8"  fill="#999999"/>
+                    <rect x="184" y="144" width="40" height="8"  fill="#888888"/>
+                    <rect x="320" y="80"  width="16" height="16" fill="#7799cc"/>
+                    <rect x="296" y="80"  width="16" height="16" fill="#7799cc"/>
+                    <rect x="272" y="80"  width="16" height="16" fill="#7799cc"/>
+                    <rect x="320" y="80"  width="6"  height="6"  fill="#aabbee"/>
+                    <rect x="296" y="80"  width="6"  height="6"  fill="#aabbee"/>
+                    <rect x="272" y="80"  width="6"  height="6"  fill="#aabbee"/>
+                    <rect x="0"   y="72"  width="400" height="2"  fill="#aaaaaa"/>
+                    <rect x="0"   y="110" width="400" height="2"  fill="#999999"/>
+                  </g>
                 </svg>
                 {/* Rope */}
                 <div className={styles.adRope} />
-                {/* Banner */}
-                <div className={styles.adBanner} onClick={() => window.open(ad.url, '_blank', 'noopener')}>
+                {/* Banner trails on left */}
+                <div className={styles.adBanner} onClick={() => {
+                  if (!ad.logo_url) { setShowAdModal(true) }
+                  else { window.open(ad.url, '_blank', 'noopener') }
+                }}>
                   {ad.logo_url && <img src={ad.logo_url} className={styles.adLogo} alt="" />}
                   <div>
                     <div className={styles.adText}>{ad.text}</div>
@@ -649,6 +674,120 @@ export default function PlazaScene({ petData, onGoToRoom, petSize }: PlazaSceneP
             )
           })}
         </div>
+
+        {/* ── Ad purchase modal ── */}
+        {showAdModal && (
+          <div
+            style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.75)', zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}
+            onClick={() => { setShowAdModal(false); setAdSubmitted(false) }}
+          >
+            <div
+              style={{ background: '#FDF6E3', border: '3px solid #2C2C2C', boxShadow: '8px 8px 0 #2C2C2C', padding: '28px 28px 24px', width: '100%', maxWidth: '420px', maxHeight: '92vh', overflowY: 'auto' }}
+              onClick={e => e.stopPropagation()}
+            >
+              {adSubmitted ? (
+                <div style={{ textAlign: 'center', padding: '32px 0' }}>
+                  <div style={{ fontSize: '48px', marginBottom: '16px' }}>✅</div>
+                  <div style={{ fontFamily: 'var(--font-pixel)', fontSize: '12px', marginBottom: '12px', letterSpacing: '2px' }}>REQUEST RECEIVED!</div>
+                  <div style={{ fontFamily: 'var(--font-retro)', fontSize: '17px', color: '#666', marginBottom: '24px', lineHeight: '1.5' }}>We will contact you within 24 hours to confirm payment and activate your ad.</div>
+                  <button
+                    style={{ fontFamily: 'var(--font-pixel)', fontSize: '10px', padding: '12px 28px', background: '#FFE600', border: '2px solid #2C2C2C', boxShadow: '3px 3px 0 #2C2C2C', cursor: 'pointer', letterSpacing: '1px' }}
+                    onClick={() => { setShowAdModal(false); setAdSubmitted(false) }}
+                  >CLOSE</button>
+                </div>
+              ) : (
+                <>
+                  {/* Header */}
+                  <div style={{ borderBottom: '2px solid #2C2C2C', paddingBottom: '16px', marginBottom: '20px' }}>
+                    <div style={{ fontFamily: 'var(--font-pixel)', fontSize: '8px', letterSpacing: '3px', color: '#888', marginBottom: '8px' }}>OODLE PLAZA</div>
+                    <div style={{ fontFamily: 'var(--font-pixel)', fontSize: '16px', marginBottom: '6px' }}>✈️  ADVERTISE HERE</div>
+                    <div style={{ fontFamily: 'var(--font-retro)', fontSize: '16px', color: '#666', lineHeight: '1.5' }}>Fly your brand across the plaza — seen by all players daily.</div>
+                  </div>
+
+                  {/* Plan selector */}
+                  <div style={{ fontFamily: 'var(--font-pixel)', fontSize: '9px', color: '#444', marginBottom: '10px', letterSpacing: '1px' }}>SELECT PLAN</div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px', marginBottom: '24px' }}>
+                    {[
+                      { dur: '1 WEEK', price: 'RM 29', note: 'one-time' },
+                      { dur: '1 MONTH', price: 'RM 89', note: 'best value' },
+                      { dur: '3 MONTHS', price: 'RM 199', note: 'save 25%' },
+                    ].map(p => (
+                      <div key={p.dur}
+                        onClick={() => setAdPlan(p.dur)}
+                        style={{ border: adPlan === p.dur ? '2px solid #2C2C2C' : '2px solid #ccc', padding: '12px 6px', textAlign: 'center', cursor: 'pointer', background: adPlan === p.dur ? '#FFE600' : '#fff' }}>
+                        <div style={{ fontFamily: 'var(--font-pixel)', fontSize: '7px', color: '#888', marginBottom: '6px' }}>{p.dur}</div>
+                        <div style={{ fontFamily: 'var(--font-pixel)', fontSize: '12px', color: '#2C2C2C', marginBottom: '4px' }}>{p.price}</div>
+                        <div style={{ fontFamily: 'var(--font-retro)', fontSize: '12px', color: '#888' }}>{p.note}</div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Fields */}
+                  {([
+                    { label: 'Company Name', key: 'company', ph: 'Acme Sdn Bhd', type: 'text', req: true },
+                    { label: 'Contact Email', key: 'email', ph: 'hello@company.com', type: 'email', req: true },
+                    { label: 'Banner Text', key: 'bannerText', ph: 'SHOPEE MY  (max 20 chars)', type: 'text', req: true },
+                    { label: 'Sub Text', key: 'subText', ph: 'shopee.com.my  (max 30 chars)', type: 'text', req: false },
+                    { label: 'Logo URL', key: 'logoUrl', ph: 'https://...logo.png', type: 'url', req: false },
+                    { label: 'Website URL', key: 'destUrl', ph: 'https://yoursite.com', type: 'url', req: true },
+                  ] as { label: string; key: keyof typeof adForm; ph: string; type: string; req: boolean }[]).map(f => (
+                    <div key={f.key} style={{ marginBottom: '14px' }}>
+                      <div style={{ fontFamily: 'var(--font-pixel)', fontSize: '8px', color: '#444', marginBottom: '6px', letterSpacing: '1px' }}>
+                        {f.label}{f.req && <span style={{ color: '#e94560' }}> *</span>}
+                      </div>
+                      <input
+                        type={f.type}
+                        maxLength={f.key === 'bannerText' ? 20 : f.key === 'subText' ? 30 : undefined}
+                        placeholder={f.ph}
+                        value={adForm[f.key]}
+                        onChange={e => setAdForm(prev => ({ ...prev, [f.key]: e.target.value }))}
+                        style={{ width: '100%', fontFamily: 'var(--font-retro)', fontSize: '16px', padding: '10px 12px', border: '2px solid #2C2C2C', background: '#fff', outline: 'none', boxSizing: 'border-box' as const }}
+                      />
+                    </div>
+                  ))}
+
+                  <div style={{ height: '8px' }} />
+                  <button
+                    disabled={adSubmitting}
+                    onClick={async () => {
+                      if (!adForm.company || !adForm.email || !adForm.bannerText || !adForm.destUrl) {
+                        alert('Please fill in all required fields (*).')
+                        return
+                      }
+                      setAdSubmitting(true)
+                      try {
+                        await fetch('https://api.web3forms.com/submit', {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({
+                            access_key: 'YOUR_WEB3FORMS_KEY',
+                            subject: `[Oodle Ad] ${adForm.company} — ${adPlan}`,
+                            company: adForm.company,
+                            email: adForm.email,
+                            plan: adPlan,
+                            banner_text: adForm.bannerText,
+                            sub_text: adForm.subText,
+                            logo_url: adForm.logoUrl,
+                            website: adForm.destUrl,
+                          }),
+                        })
+                      } catch { /* ignore */ }
+                      setAdSubmitting(false)
+                      setAdSubmitted(true)
+                      setAdForm({ company: '', email: '', bannerText: '', subText: '', logoUrl: '', destUrl: '' })
+                    }}
+                    style={{ width: '100%', fontFamily: 'var(--font-pixel)', fontSize: '10px', padding: '14px', background: adSubmitting ? '#ccc' : '#FFE600', color: '#2C2C2C', border: '2px solid #2C2C2C', boxShadow: '4px 4px 0 #2C2C2C', cursor: adSubmitting ? 'not-allowed' : 'pointer', letterSpacing: '2px' }}
+                  >
+                    {adSubmitting ? 'SENDING...' : 'SUBMIT REQUEST →'}
+                  </button>
+                  <div style={{ fontFamily: 'var(--font-retro)', fontSize: '13px', color: '#888', textAlign: 'center', marginTop: '10px' }}>
+                    We will contact you within 24 hours to confirm payment.
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* Door overlay — appears during transition back to room */}
         {doorPhase !== 'idle' && (
