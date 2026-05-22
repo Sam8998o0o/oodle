@@ -254,11 +254,20 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange }: RoomSc
   useEffect(() => {
     const interval = isWeekend ? 60000 : 30000
     const decay = setInterval(() => {
-      setStats((s: PetStats) => ({
-        hunger: Math.max(0, s.hunger - 0.08),
-        happy:  Math.max(0, s.happy  - 0.06),
-        energy: Math.max(0, s.energy - 0.11),
-      }))
+      if (isSleepingRef.current) {
+        // Sleeping: energy handled by sleep effect, hunger/happy decay at half rate
+        setStats((s: PetStats) => ({
+          hunger: Math.max(0, s.hunger - 0.04),
+          happy:  Math.max(0, s.happy  - 0.03),
+          energy: s.energy,
+        }))
+      } else {
+        setStats((s: PetStats) => ({
+          hunger: Math.max(0, s.hunger - 0.08),
+          happy:  Math.max(0, s.happy  - 0.06),
+          energy: Math.max(0, s.energy - 0.11),
+        }))
+      }
     }, interval)
     return () => clearInterval(decay)
   }, [isWeekend])
