@@ -541,6 +541,11 @@
   margin-top: 4px;
 }
 
+@keyframes bannerWave {
+  0%, 100% { transform: rotate(-2deg); }
+  50%       { transform: rotate(2deg); }
+}
+
 .adBanner {
   display: flex;
   align-items: center;
@@ -550,6 +555,8 @@
   box-shadow: 3px 3px 0 rgba(0,0,0,0.25);
   padding: 5px 10px;
   min-width: 120px;
+  transform-origin: left center;
+  animation: bannerWave 2s ease-in-out infinite;
 }
 
 .adBanner:hover {

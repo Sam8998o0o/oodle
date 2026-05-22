@@ -592,31 +592,44 @@ export default function PlazaScene({ petData, onGoToRoom, isPremium, petSize }: 
                 style={{ top, animationDuration: `${ad.duration}s`, animationDelay: `${delay}s` }}
                 onClick={() => window.open(ad.url, '_blank', 'noopener')}
               >
-                {dir === 'ltr' ? (
-                  <>
-                    <span className={styles.planeBody}>✈️</span>
-                    <div className={styles.adRope} />
-                    <div className={styles.adBanner}>
-                      {ad.logo_url && <img src={ad.logo_url} className={styles.adLogo} alt="" />}
-                      <div>
-                        <div className={styles.adText}>{ad.text}</div>
-                        {ad.sub_text && <div className={styles.adTextSmall}>{ad.sub_text}</div>}
-                      </div>
+                <>
+                  <svg width="80" height="50" viewBox="0 0 80 50" xmlns="http://www.w3.org/2000/svg" style={{ imageRendering: 'pixelated', display: 'block', flexShrink: 0 }}>
+                    {/* Body */}
+                    <rect x="10" y="18" width="50" height="14" fill="#cc2200"/>
+                    {/* Nose */}
+                    <rect x="60" y="20" width="12" height="10" fill="#cc2200"/>
+                    <rect x="70" y="22" width="8" height="6" fill="#aa1100"/>
+                    {/* Top wing */}
+                    <rect x="20" y="6" width="36" height="8" fill="#cc2200"/>
+                    <rect x="20" y="6" width="36" height="2" fill="#ff4422"/>
+                    {/* Bottom wing */}
+                    <rect x="24" y="32" width="28" height="6" fill="#cc2200"/>
+                    {/* Tail */}
+                    <rect x="8" y="12" width="10" height="8" fill="#cc2200"/>
+                    <rect x="6" y="32" width="10" height="6" fill="#cc2200"/>
+                    {/* Cockpit */}
+                    <rect x="36" y="14" width="14" height="10" fill="#88ccff"/>
+                    <rect x="37" y="15" width="12" height="8" fill="#aaddff"/>
+                    {/* Propeller */}
+                    <rect x="76" y="14" width="4" height="22" fill="#554433"/>
+                    <rect x="74" y="22" width="8" height="6" fill="#776655"/>
+                    {/* Outlines */}
+                    <rect x="10" y="18" width="50" height="14" fill="none" stroke="#2C2C2C" strokeWidth="1"/>
+                    <rect x="20" y="6" width="36" height="8" fill="none" stroke="#2C2C2C" strokeWidth="1"/>
+                    <rect x="24" y="32" width="28" height="6" fill="none" stroke="#2C2C2C" strokeWidth="1"/>
+                    {/* Wing struts */}
+                    <rect x="28" y="14" width="2" height="18" fill="#2C2C2C"/>
+                    <rect x="42" y="14" width="2" height="18" fill="#2C2C2C"/>
+                  </svg>
+                  <div className={styles.adRope} />
+                  <div className={styles.adBanner}>
+                    {ad.logo_url && <img src={ad.logo_url} className={styles.adLogo} alt="" />}
+                    <div>
+                      <div className={styles.adText}>{ad.text}</div>
+                      {ad.sub_text && <div className={styles.adTextSmall}>{ad.sub_text}</div>}
                     </div>
-                  </>
-                ) : (
-                  <>
-                    <div className={styles.adBanner}>
-                      {ad.logo_url && <img src={ad.logo_url} className={styles.adLogo} alt="" />}
-                      <div>
-                        <div className={styles.adText}>{ad.text}</div>
-                        {ad.sub_text && <div className={styles.adTextSmall}>{ad.sub_text}</div>}
-                      </div>
-                    </div>
-                    <div className={styles.adRope} />
-                    <span className={styles.planeBody}>✈️</span>
-                  </>
-                )}
+                  </div>
+                </>
               </div>
             )
           })}
