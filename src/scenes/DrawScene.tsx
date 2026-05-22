@@ -495,84 +495,86 @@ export default function DrawScene({ onPetCreated, isPremium, onSubscribeClick }:
                   </div>
                 </div>
 
-                {/* Draw canvas */}
-                <div className={styles.canvasWrap}>
-                <canvas
-                  ref={canvasRef}
-                  width={CANVAS_PX}
-                  height={CANVAS_PX}
-                  className={styles.drawCanvas}
-                  style={{ cursor: tool === 'erase' ? 'cell' : tool === 'fill' ? 'url("data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'16\' height=\'16\'%3E%3Ctext y=\'14\' font-size=\'14\'%3E🪣%3C/text%3E%3C/svg%3E") 0 16, crosshair' : 'crosshair' }}
-                  onMouseDown={handleMouseDown}
-                  onMouseMove={handleMouseMove}
-                  onMouseUp={handleMouseUp}
-                  onMouseLeave={handleMouseUp}
-                />
-              </div>
+                <div className={styles.canvasColumn}>
+                  {/* Draw canvas */}
+                  <div className={styles.canvasWrap}>
+                    <canvas
+                      ref={canvasRef}
+                      width={CANVAS_PX}
+                      height={CANVAS_PX}
+                      className={styles.drawCanvas}
+                      style={{ cursor: tool === 'erase' ? 'cell' : tool === 'fill' ? 'url("data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'16\' height=\'16\'%3E%3Ctext y=\'14\' font-size=\'14\'%3E🪣%3C/text%3E%3C/svg%3E") 0 16, crosshair' : 'crosshair' }}
+                      onMouseDown={handleMouseDown}
+                      onMouseMove={handleMouseMove}
+                      onMouseUp={handleMouseUp}
+                      onMouseLeave={handleMouseUp}
+                    />
+                  </div>
+
+                  {/* ── Controls below canvas ── */}
+                  <div className={styles.controls}>
+
+                    {/* Row 1: Colour palette */}
+                    <div className={styles.controlRow}>
+                      <div className={styles.palette}>
+                        {PALETTE.map(c => (
+                          <button
+                            key={c}
+                            className={`${styles.swatch} ${color === c && tool === 'draw' ? styles.swatchActive : ''}`}
+                            style={{ background: c }}
+                            onClick={() => { setColor(c); setTool('draw') }}
+                          />
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Row 2: Tools + Brush size + Undo/Clear + Grid */}
+                    <div className={styles.controlRow}>
+                      {/* Tools */}
+                      <div className={styles.btnGroup}>
+                        <button
+                          className={`${styles.toolBtn} ${tool === 'draw'  ? styles.toolActive : ''}`}
+                          onClick={() => setTool('draw')}
+                        >✏️ Draw</button>
+                        <button
+                          className={`${styles.toolBtn} ${tool === 'erase' ? styles.toolActive : ''}`}
+                          onClick={() => setTool('erase')}
+                        >⬜ Erase</button>
+                        <button
+                          className={`${styles.toolBtn} ${tool === 'fill'  ? styles.toolActive : ''}`}
+                          onClick={() => setTool('fill')}
+                        >🪣 Fill</button>
+                      </div>
+
+                      <div className={styles.groupSep} />
+
+                      {/* Brush size */}
+                      <div className={styles.btnGroup}>
+                        {([1, 2, 4] as const).map(bs => (
+                          <button
+                            key={bs}
+                            className={`${styles.toolBtn} ${brushSize === bs ? styles.toolActive : ''}`}
+                            onClick={() => setBrushSize(bs)}
+                          >{bs}px</button>
+                        ))}
+                      </div>
+
+                      <div className={styles.groupSep} />
+
+                      {/* Undo / Clear / Grid */}
+                      <div className={styles.btnGroup}>
+                        <button className={styles.toolBtn} onClick={handleUndo}>↩ Undo</button>
+                        <button className={styles.toolBtn} onClick={handleClear}>🗑 Clear</button>
+                        <button
+                          className={`${styles.toolBtn} ${showGrid ? styles.toolActive : ''}`}
+                          onClick={() => setShowGrid(v => !v)}
+                        >⊞ Grid</button>
+                      </div>
+                    </div>
+
+                  </div>{/* end controls */}
+                </div>{/* end canvasColumn */}
               </div>{/* end canvasRow */}
-
-              {/* ── Controls below canvas ── */}
-              <div className={styles.controls}>
-
-                {/* Row 1: Colour palette */}
-                <div className={styles.controlRow}>
-                  <div className={styles.palette}>
-                    {PALETTE.map(c => (
-                      <button
-                        key={c}
-                        className={`${styles.swatch} ${color === c && tool === 'draw' ? styles.swatchActive : ''}`}
-                        style={{ background: c }}
-                        onClick={() => { setColor(c); setTool('draw') }}
-                      />
-                    ))}
-                  </div>
-                </div>
-
-                {/* Row 2: Tools + Brush size + Undo/Clear + Grid */}
-                <div className={styles.controlRow}>
-                  {/* Tools */}
-                  <div className={styles.btnGroup}>
-                    <button
-                      className={`${styles.toolBtn} ${tool === 'draw'  ? styles.toolActive : ''}`}
-                      onClick={() => setTool('draw')}
-                    >✏️ Draw</button>
-                    <button
-                      className={`${styles.toolBtn} ${tool === 'erase' ? styles.toolActive : ''}`}
-                      onClick={() => setTool('erase')}
-                    >⬜ Erase</button>
-                    <button
-                      className={`${styles.toolBtn} ${tool === 'fill'  ? styles.toolActive : ''}`}
-                      onClick={() => setTool('fill')}
-                    >🪣 Fill</button>
-                  </div>
-
-                  <div className={styles.groupSep} />
-
-                  {/* Brush size */}
-                  <div className={styles.btnGroup}>
-                    {([1, 2, 4] as const).map(bs => (
-                      <button
-                        key={bs}
-                        className={`${styles.toolBtn} ${brushSize === bs ? styles.toolActive : ''}`}
-                        onClick={() => setBrushSize(bs)}
-                      >{bs}px</button>
-                    ))}
-                  </div>
-
-                  <div className={styles.groupSep} />
-
-                  {/* Undo / Clear / Grid */}
-                  <div className={styles.btnGroup}>
-                    <button className={styles.toolBtn} onClick={handleUndo}>↩ Undo</button>
-                    <button className={styles.toolBtn} onClick={handleClear}>🗑 Clear</button>
-                    <button
-                      className={`${styles.toolBtn} ${showGrid ? styles.toolActive : ''}`}
-                      onClick={() => setShowGrid(v => !v)}
-                    >⊞ Grid</button>
-                  </div>
-                </div>
-
-              </div>
 
               <button
                 ref={btnRef}

@@ -16,6 +16,14 @@
   gap: 12px;
 }
 
+/* ── Canvas + controls column ───────────────────────────── */
+.canvasColumn {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: flex-start;
+}
+
 /* ── Drawing guide ──────────────────────────────────────── */
 .drawGuide {
   background: var(--color-surface);
