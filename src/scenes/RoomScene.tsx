@@ -3,6 +3,8 @@ import StatBar from '../ui/StatBar'
 import { PetAnimator } from '../engine/PetAnimator'
 import type { PetCoords } from '../api/aiRecognize'
 import { savePet, getLikeBalance, redeemLikesForFood } from '../lib/petService'
+import { supabase } from '../lib/supabase'
+import { useAuthStore } from '../lib/auth'
 import styles from './RoomScene.module.css'
 
 interface PetStats {
@@ -81,12 +83,25 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange }: RoomSc
         if (offlineMins > 1) {
           const isWeekendNow = [0, 6].includes(new Date().getDay())
           const decayMult    = isWeekendNow ? 0.5 : 1
-          const intervals    = offlineMins * 2 * decayMult
-          p = {
-            hunger: Math.max(0, p.hunger - intervals * 0.08),
-            happy:  Math.max(0, p.happy  - intervals * 0.06),
-            energy: Math.max(0, p.energy - intervals * 0.11),
+          // Simulate sleep cycles offline:
+          // Every 30s interval: if energy < 25 → sleep (energy recovers, hunger/happy still decay slowly)
+          // This prevents energy from hitting 0 after long offline periods
+          let { hunger, happy, energy } = p
+          const totalIntervals = Math.floor(offlineMins * 2 * decayMult)
+          for (let i = 0; i < totalIntervals; i++) {
+            if (energy < 25) {
+              // Sleeping: energy recovers, hunger/happy decay at half rate
+              energy = Math.min(100, energy + 0.3)
+              hunger = Math.max(0, hunger - 0.04)
+              happy  = Math.max(0, happy  - 0.03)
+            } else {
+              // Awake: normal decay
+              energy = Math.max(0, energy - 0.11)
+              hunger = Math.max(0, hunger - 0.08)
+              happy  = Math.max(0, happy  - 0.06)
+            }
           }
+          p = { hunger, happy, energy }
         }
       }
       return p
@@ -148,11 +163,50 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange }: RoomSc
       .catch(() => setPetSaved(true))
   }, [petData])
 
-  // ── Load like balance from Supabase ───────────────────────
+  // ── Load like balance + poll every 10s + notify on new like ─
   useEffect(() => {
-    getLikeBalance()
-      .then((b: number) => setLikeBalance(b))
-      .catch(() => {})
+    let prevBalance = 0
+
+    const fetchBalance = async () => {
+      const b = await getLikeBalance().catch(() => 0)
+      if (b > prevBalance && prevBalance > 0) {
+        const gained = b - prevBalance
+        setBubble({ text: `+${gained} ❤️ someone liked you!`, id: Date.now() })
+      }
+      prevBalance = b
+      setLikeBalance(b)
+    }
+
+    fetchBalance()
+    const timer = setInterval(fetchBalance, 10000)
+
+    // Realtime: subscribe to like_balance changes for this user
+    const userId = useAuthStore.getState().userId
+    let channel: ReturnType<typeof supabase.channel> | null = null
+    if (userId) {
+      channel = supabase
+        .channel('like-balance-' + userId)
+        .on('postgres_changes', {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'like_balance',
+          filter: `user_id=eq.${userId}`,
+        }, payload => {
+          const newBal = (payload.new as { balance: number }).balance
+          setLikeBalance(prev => {
+            if (newBal > prev) {
+              setBubble({ text: `+${newBal - prev} ❤️ someone liked you!`, id: Date.now() })
+            }
+            return newBal
+          })
+        })
+        .subscribe()
+    }
+
+    return () => {
+      clearInterval(timer)
+      if (channel) supabase.removeChannel(channel)
+    }
   }, [])
 
   // ── Load localStorage (food, day, growth only — stats handled above) ─
