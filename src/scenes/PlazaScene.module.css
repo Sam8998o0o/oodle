@@ -516,13 +516,13 @@
 }
 
 @keyframes flyLTR {
-  0%   { transform: translateX(-420px); }
-  100% { transform: translateX(calc(100vw + 60px)); }
+  0%   { transform: translateX(calc(100vw + 600px)); }
+  100% { transform: translateX(-600px); }
 }
 
 @keyframes flyRTL {
-  0%   { transform: translateX(calc(100vw + 420px)) scaleX(-1); }
-  100% { transform: translateX(-60px) scaleX(-1); }
+  0%   { transform: translateX(calc(100vw + 600px)); }
+  100% { transform: translateX(-600px); }
 }
 
 .flyLTR { animation: flyLTR linear infinite; }
