@@ -193,3 +193,76 @@ $$;
 
 -- ── Realtime for shouts ───────────────────────────────────
 ALTER PUBLICATION supabase_realtime ADD TABLE shouts;
+
+-- ══════════════════════════════════════════════════════════
+-- Stripe subscription system
+-- ══════════════════════════════════════════════════════════
+
+CREATE TABLE IF NOT EXISTS subscriptions (
+  id                     uuid        PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id                uuid        NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  status                 text        NOT NULL DEFAULT 'active',
+  stripe_subscription_id text,
+  stripe_customer_id     text,
+  current_period_start   timestamptz NOT NULL DEFAULT now(),
+  current_period_end     timestamptz NOT NULL DEFAULT now() + interval '30 days',
+  created_at             timestamptz NOT NULL DEFAULT now(),
+  UNIQUE (user_id)
+);
+ALTER TABLE subscriptions ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "subscriptions_select_own"
+  ON subscriptions FOR SELECT TO authenticated USING (auth.uid() = user_id);
+
+CREATE OR REPLACE FUNCTION check_subscription(p_user_id uuid)
+RETURNS boolean LANGUAGE plpgsql SECURITY DEFINER AS $$
+BEGIN
+  RETURN EXISTS (
+    SELECT 1 FROM subscriptions
+    WHERE user_id = p_user_id
+      AND status = 'active'
+      AND current_period_end > now()
+  );
+END;
+$$;
+
+-- ══════════════════════════════════════════════════════════
+-- Airplane ads
+-- ══════════════════════════════════════════════════════════
+
+CREATE TABLE IF NOT EXISTS ads (
+  id          uuid        PRIMARY KEY DEFAULT gen_random_uuid(),
+  text        text        NOT NULL,
+  sub_text    text        NOT NULL DEFAULT '',
+  logo_url    text,
+  url         text        NOT NULL,
+  is_active   boolean     NOT NULL DEFAULT true,
+  duration    integer     NOT NULL DEFAULT 25,
+  created_at  timestamptz NOT NULL DEFAULT now()
+);
+ALTER TABLE ads ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "ads_select_all" ON ads FOR SELECT TO anon, authenticated USING (is_active = true);
+
+CREATE OR REPLACE FUNCTION upsert_subscription(
+  p_user_id            uuid,
+  p_stripe_sub_id      text,
+  p_stripe_customer_id text,
+  p_status             text,
+  p_period_start       timestamptz,
+  p_period_end         timestamptz
+) RETURNS void LANGUAGE plpgsql SECURITY DEFINER AS $$
+BEGIN
+  INSERT INTO subscriptions (
+    user_id, stripe_subscription_id, stripe_customer_id,
+    status, current_period_start, current_period_end
+  ) VALUES (
+    p_user_id, p_stripe_sub_id, p_stripe_customer_id,
+    p_status, p_period_start, p_period_end
+  )
+  ON CONFLICT (user_id) DO UPDATE SET
+    stripe_subscription_id = EXCLUDED.stripe_subscription_id,
+    stripe_customer_id     = EXCLUDED.stripe_customer_id,
+    status                 = EXCLUDED.status,
+    current_period_start   = EXCLUDED.current_period_start,
+    current_period_end     = EXCLUDED.current_period_end;
+END;
+$$;

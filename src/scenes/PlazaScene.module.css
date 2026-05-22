@@ -504,3 +504,87 @@
   color: #888;
   margin-top: 2px;
 }
+
+/* ── Airplane ads ─────────────────────────────────────── */
+.skyLayer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 45%;
+  pointer-events: none;
+  z-index: 3;
+  overflow: hidden;
+}
+
+.airplane {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  pointer-events: auto;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+@keyframes flyLTR {
+  0%   { transform: translateX(-420px); }
+  100% { transform: translateX(calc(100vw + 60px)); }
+}
+
+@keyframes flyRTL {
+  0%   { transform: translateX(calc(100vw + 420px)) scaleX(-1); }
+  100% { transform: translateX(-60px) scaleX(-1); }
+}
+
+.flyLTR { animation: flyLTR linear infinite; }
+.flyRTL { animation: flyRTL linear infinite; }
+
+.planeBody {
+  font-size: 28px;
+  line-height: 1;
+  filter: drop-shadow(2px 2px 0 rgba(0,0,0,0.2));
+}
+
+.adRope {
+  width: 32px;
+  height: 2px;
+  background: #888;
+  margin-top: 4px;
+}
+
+.adBanner {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: #fff;
+  border: 2px solid #2C2C2C;
+  box-shadow: 3px 3px 0 rgba(0,0,0,0.25);
+  padding: 5px 10px;
+  min-width: 120px;
+}
+
+.adBanner:hover {
+  border-color: #FFE600;
+  box-shadow: 3px 3px 0 #FFE600;
+}
+
+.adLogo {
+  width: 22px;
+  height: 22px;
+  object-fit: contain;
+  image-rendering: pixelated;
+}
+
+.adText {
+  font-family: var(--font-pixel);
+  font-size: 7px;
+  color: #2C2C2C;
+  letter-spacing: 1px;
+}
+
+.adTextSmall {
+  font-family: var(--font-pixel);
+  font-size: 5px;
+  color: #888;
+  margin-top: 2px;
+}

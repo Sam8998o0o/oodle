@@ -4,7 +4,9 @@ import type { PetCoords } from '../api/aiRecognize'
 import {
   fetchAllPets, getAllLikeCounts, likePet, getTodayLikedPetIds,
   postShout, getActiveShouts, countTodayShouts, likeShout,
+  fetchAds,
 } from '../lib/petService'
+import type { AdRecord } from '../lib/petService'
 import { subscribeToNewPets } from '../lib/realtimeService'
 import styles from './PlazaScene.module.css'
 
@@ -73,9 +75,17 @@ const DEFAULT_COORDS: PetCoords = {
   has_legs: false,
 }
 
+const DEFAULT_ADS: AdRecord[] = [
+  { id: 'd1', text: 'ADVERTISE HERE',   sub_text: 'contact@oodle.game',    logo_url: null, url: 'mailto:contact@oodle.game', duration: 22 },
+  { id: 'd2', text: 'YOUR BRAND HERE',  sub_text: 'oodle.game/advertise',  logo_url: null, url: 'mailto:contact@oodle.game', duration: 28 },
+  { id: 'd3', text: 'REACH PET OWNERS', sub_text: 'click to advertise',    logo_url: null, url: 'mailto:contact@oodle.game', duration: 32 },
+]
+
 interface PlazaSceneProps {
   petData: { pixelData: string; coords: PetCoords; name: string }
   onGoToRoom: () => void
+  isPremium: boolean
+  petSize: number
 }
 
 interface PlazaPet {
@@ -114,7 +124,8 @@ function mergePets(existing: PlazaPet[], incoming: PlazaPet[]): PlazaPet[] {
   return Array.from(map.values())
 }
 
-export default function PlazaScene({ petData, onGoToRoom }: PlazaSceneProps) {
+export default function PlazaScene({ petData, onGoToRoom, isPremium, petSize }: PlazaSceneProps) {
+  const dailyShoutLimit = isPremium ? 30 : 10
   const roomRef    = useRef<HTMLDivElement>(null)
 
   // DOM refs — keyed by pet id
@@ -140,19 +151,27 @@ export default function PlazaScene({ petData, onGoToRoom }: PlazaSceneProps) {
 
   // ── Shout system ──────────────────────────────────────────
   const [shoutInput,   setShoutInput]   = useState('')
-  const [shoutLeft,    setShoutLeft]    = useState(SHOUT_DAILY_LIMIT)
+  const [shoutLeft,    setShoutLeft]    = useState(dailyShoutLimit)
   const [activeShouts, setActiveShouts] = useState<Record<string, { message: string; shoutId: string }>>({})
   const [likedShouts,  setLikedShouts]  = useState<Set<string>>(new Set())
+  const [ads, setAds] = useState<AdRecord[]>([])
 
   useEffect(() => {
     const t = setTimeout(() => setOwnGlowing(false), 8000)
     return () => clearTimeout(t)
   }, [])
 
+  useEffect(() => {
+    fetchAds().then(data => {
+      if (data.length > 0) setAds(data)
+      else setAds(DEFAULT_ADS)
+    }).catch(() => setAds(DEFAULT_ADS))
+  }, [])
+
   // ── Shout: load today's count on mount ────────────────────
   useEffect(() => {
     countTodayShouts()
-      .then(n => setShoutLeft(SHOUT_DAILY_LIMIT - n))
+      .then(n => setShoutLeft(dailyShoutLimit - n))
       .catch(() => {})
   }, [])
 
@@ -162,6 +181,11 @@ export default function PlazaScene({ petData, onGoToRoom }: PlazaSceneProps) {
       setTodayLikedPets(ids)
       setLikeLeft(Math.max(0, LIKE_DAILY_LIMIT - ids.size))
     }).catch(() => {})
+  }, [])
+
+  // ── Clear stale localStorage on Plaza mount ────────────────
+  useEffect(() => {
+    localStorage.removeItem('oodle_pets')
   }, [])
 
   // ── Shout: poll active shouts every 5 s ───────────────────
@@ -254,20 +278,26 @@ export default function PlazaScene({ petData, onGoToRoom }: PlazaSceneProps) {
       return
     }
 
+    const size = pet.isOwn ? petSize : PET_SIZE
+    canvas.width  = size
+    canvas.height = size
+    wrapper.style.width  = `${size}px`
+    wrapper.style.height = `${size + 20}px`
+
     const eyeStyle  = localStorage.getItem('oodle_eye_style') ?? 'eye_round'
     const animator  = new PetAnimator(canvas, {
       imageDataURL: pet.pixelData,
       coords:       pet.coords,
-      size:         PET_SIZE,
+      size,
       eyeStyle,
     })
     animator.setState('walk')
     animator.start()
     animMap.current.set(pet.id, animator)
 
-    const rightBound = rW - RIGHT_PAD - PET_SIZE
+    const rightBound = rW - RIGHT_PAD - size
     const yRatio     = WALK_Y_MIN + Math.random() * (WALK_Y_MAX - WALK_Y_MIN)
-    const y          = yRatio * rH - PET_SIZE
+    const y          = yRatio * rH - size
     const x          = LEFT_BOUND + Math.random() * (rightBound - LEFT_BOUND)
     const dir        = Math.random() < 0.5 ? 1 : -1
     const dirY       = Math.random() < 0.5 ? 1 : -1
@@ -280,7 +310,7 @@ export default function PlazaScene({ petData, onGoToRoom }: PlazaSceneProps) {
     wrapper.style.top           = `${y}px`
     canvas.style.transform      = dir === -1 ? 'scaleX(-1)' : 'none'
     canvas.style.imageRendering = 'pixelated'
-  }, [])
+  }, [petSize])
 
   // ── Walk loop — starts once on mount, never stops ─────────
   useEffect(() => {
@@ -365,36 +395,11 @@ export default function PlazaScene({ petData, onGoToRoom }: PlazaSceneProps) {
     }
     setPets([ownPet])
 
-    const loadFromLocalStorage = () => {
-      try {
-        const raw = localStorage.getItem('oodle_pets')
-        if (!raw) return
-        const stored = JSON.parse(raw) as StoredPet[]
-        const ownLocalId = localStorage.getItem('oodle_pet_local_id')
-        const others: PlazaPet[] = stored
-          .filter(p => p.id !== ownLocalId)
-          .map((p, i) => ({
-            id:        p.id,
-            pixelData: p.pixelData,
-            coords:    DEFAULT_COORDS,
-            name:      p.name ?? `Pet #${i + 1}`,
-            createdAt: p.createdAt ?? new Date().toISOString(),
-            isOwn:     false,
-          }))
-        setPets(prev => mergePets(prev, [ownPet, ...others]))
-      } catch { /* ignore */ }
-      try {
-        const rawLikes = localStorage.getItem('oodle_likes')
-        if (rawLikes) setLikes(JSON.parse(rawLikes) as Record<string, number>)
-      } catch { /* ignore */ }
-    }
-
     const loadFromSupabase = async () => {
       const [records, likeCounts] = await Promise.all([
         fetchAllPets(),
         getAllLikeCounts(),
       ])
-      if (records.length === 0) { loadFromLocalStorage(); return }
       const ownSupabaseId = localStorage.getItem('oodle_pet_supabase_id')
       const others: PlazaPet[] = records
         .filter(r => r.id !== ownSupabaseId)
@@ -410,7 +415,7 @@ export default function PlazaScene({ petData, onGoToRoom }: PlazaSceneProps) {
       setLikes(likeCounts)
     }
 
-    loadFromSupabase().catch(() => loadFromLocalStorage())
+    loadFromSupabase()
   }, [petData])
 
   // ── Realtime ──────────────────────────────────────────────
@@ -503,6 +508,52 @@ export default function PlazaScene({ petData, onGoToRoom }: PlazaSceneProps) {
     <div className={styles.page}>
       <div className={styles.room} ref={roomRef}>
         <div className={styles.petCount}>🐾 {pets.length} PETS HERE</div>
+
+        {/* ── Airplane ads ── */}
+        <div className={styles.skyLayer}>
+          {ads.map((ad, i) => {
+            const directions = ['ltr', 'rtl', 'ltr'] as const
+            const tops       = ['12%', '28%', '42%']
+            const delays     = [0, 8, 16]
+            const dir        = directions[i % directions.length]
+            const top        = tops[i % tops.length]
+            const delay      = delays[i % delays.length]
+            return (
+              <div
+                key={ad.id}
+                className={`${styles.airplane} ${dir === 'ltr' ? styles.flyLTR : styles.flyRTL}`}
+                style={{ top, animationDuration: `${ad.duration}s`, animationDelay: `${delay}s` }}
+                onClick={() => window.open(ad.url, '_blank', 'noopener')}
+              >
+                {dir === 'ltr' ? (
+                  <>
+                    <span className={styles.planeBody}>✈️</span>
+                    <div className={styles.adRope} />
+                    <div className={styles.adBanner}>
+                      {ad.logo_url && <img src={ad.logo_url} className={styles.adLogo} alt="" />}
+                      <div>
+                        <div className={styles.adText}>{ad.text}</div>
+                        {ad.sub_text && <div className={styles.adTextSmall}>{ad.sub_text}</div>}
+                      </div>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div className={styles.adBanner}>
+                      {ad.logo_url && <img src={ad.logo_url} className={styles.adLogo} alt="" />}
+                      <div>
+                        <div className={styles.adText}>{ad.text}</div>
+                        {ad.sub_text && <div className={styles.adTextSmall}>{ad.sub_text}</div>}
+                      </div>
+                    </div>
+                    <div className={styles.adRope} />
+                    <span className={styles.planeBody}>✈️</span>
+                  </>
+                )}
+              </div>
+            )
+          })}
+        </div>
 
         {/* Door overlay — appears during transition back to room */}
         {doorPhase !== 'idle' && (
@@ -629,7 +680,7 @@ export default function PlazaScene({ petData, onGoToRoom }: PlazaSceneProps) {
             SHOUT
           </button>
           <span className={styles.shoutCount}>
-            SHOUT {SHOUT_DAILY_LIMIT - shoutLeft}/{SHOUT_DAILY_LIMIT}
+            SHOUT {dailyShoutLimit - shoutLeft}/{dailyShoutLimit}
           </span>
         </div>
       </div>

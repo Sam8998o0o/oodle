@@ -285,3 +285,54 @@ export async function redeemLikesForFood(cost: 5 | 20): Promise<boolean> {
   }
   return (data as boolean) ?? false
 }
+
+// ══════════════════════════════════════════════════════════
+// Subscription
+// ══════════════════════════════════════════════════════════
+
+export async function checkSubscription(): Promise<boolean> {
+  const userId = useAuthStore.getState().userId
+  if (!userId) return false
+  try {
+    const { data, error } = await supabase.rpc('check_subscription', { p_user_id: userId })
+    if (error) return false
+    return (data as boolean) ?? false
+  } catch {
+    return false
+  }
+}
+
+export interface AdRecord {
+  id:       string
+  text:     string
+  sub_text: string
+  logo_url: string | null
+  url:      string
+  duration: number
+}
+
+export async function fetchAds(): Promise<AdRecord[]> {
+  const { data, error } = await supabase
+    .from('ads')
+    .select('*')
+    .eq('is_active', true)
+    .order('created_at', { ascending: true })
+  if (error) return []
+  return (data ?? []) as AdRecord[]
+}
+
+export async function getPetAge(): Promise<number | null> {
+  const petId = localStorage.getItem('oodle_pet_supabase_id')
+  if (!petId) return null
+  try {
+    const { data, error } = await supabase
+      .from('pets')
+      .select('created_at')
+      .eq('id', petId)
+      .single()
+    if (error || !data) return null
+    return Math.floor((Date.now() - new Date((data as { created_at: string }).created_at).getTime()) / 86400000)
+  } catch {
+    return null
+  }
+}

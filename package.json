@@ -19,6 +19,7 @@
     "onnxruntime-web": "^1.25.1",
     "react": "^19.2.5",
     "react-dom": "^19.2.5",
+    "stripe": "^22.1.1",
     "zustand": "^5.0.12"
   },
   "devDependencies": {

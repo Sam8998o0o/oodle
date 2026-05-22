@@ -433,3 +433,21 @@
 .actionBtn:disabled { opacity: 0.4; cursor: not-allowed; box-shadow: none; }
 
 .plazaBtn { background: var(--color-cta); color: #000; }
+
+/* ── manage plan button ───────────────────────────────── */
+.managePlanBtn {
+  position: absolute;
+  top: 52px;
+  right: 12px;
+  font-family: var(--font-pixel);
+  font-size: 7px;
+  padding: 6px 10px;
+  background: var(--color-pixel-green);
+  color: #000;
+  border: 2px solid var(--color-border);
+  box-shadow: var(--shadow-pixel-sm);
+  cursor: pointer;
+  z-index: 10;
+}
+
+.managePlanBtn:active { transform: translate(1px,1px); box-shadow: none; }

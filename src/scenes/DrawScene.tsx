@@ -32,6 +32,8 @@ interface StoredPet { id: string; pixelData: string; name: string }
 
 interface DrawSceneProps {
   onPetCreated: (pixelData: string, coords: PetCoords, name: string) => void
+  isPremium: boolean
+  onSubscribeClick: () => void
 }
 
 const EYES: EyeOption[] = [
@@ -143,7 +145,7 @@ function gridToSmallCanvas(grid: string[][]): HTMLCanvasElement {
 }
 
 // ── Component ──────────────────────────────────────────────
-export default function DrawScene({ onPetCreated }: DrawSceneProps) {
+export default function DrawScene({ onPetCreated, isPremium, onSubscribeClick }: DrawSceneProps) {
   const canvasRef  = useRef<HTMLCanvasElement>(null)
   const decorateRef = useRef<HTMLCanvasElement>(null)
   const rafRef     = useRef(0)
@@ -438,11 +440,23 @@ export default function DrawScene({ onPetCreated }: DrawSceneProps) {
 
           {tab === 'ai' ? (
             <div className={styles.aiPanel}>
-              <div className={styles.premiumBadge}>🔒 PREMIUM</div>
-              <p className={styles.aiDesc}>Let AI draw your pixel pet for you!</p>
-              <input className={styles.aiInput} placeholder="a chubby space cat..." disabled />
-              <button className={styles.generateBtn} disabled>GENERATE</button>
-              <p className={styles.comingSoon}>COMING SOON</p>
+              {!isPremium ? (
+                <>
+                  <div className={styles.premiumBadge}>🔒 PREMIUM</div>
+                  <p className={styles.aiDesc}>Let AI draw your pixel pet for you!</p>
+                  <input className={styles.aiInput} placeholder="a chubby space cat..." disabled />
+                  <button className={styles.generateBtn} disabled>GENERATE</button>
+                  <button className={styles.subscribeUnlockBtn} onClick={onSubscribeClick}>
+                    SUBSCRIBE TO UNLOCK
+                  </button>
+                </>
+              ) : (
+                <>
+                  <p className={styles.aiDesc}>Let AI draw your pixel pet for you!</p>
+                  <input className={styles.aiInput} placeholder="a chubby space cat..." />
+                  <button className={styles.generateBtn}>GENERATE</button>
+                </>
+              )}
             </div>
           ) : (
             <>
@@ -579,20 +593,23 @@ export default function DrawScene({ onPetCreated }: DrawSceneProps) {
           <div className={styles.section}>
             <span className={styles.sectionLabel}>EYES</span>
             <div className={styles.eyeGrid}>
-              {EYES.map(eye => (
-                <button
-                  key={eye.id}
-                  className={[
-                    styles.eyeBtn,
-                    selectedEye.id === eye.id ? styles.eyeSelected : '',
-                    !eye.free ? styles.eyeLocked : '',
-                  ].join(' ')}
-                  onClick={() => eye.free && setSelectedEye(eye)}
-                >
-                  <span className={styles.eyeLabel}>{eye.label}</span>
-                  {!eye.free && <span className={styles.lockBadge}>🔒</span>}
-                </button>
-              ))}
+              {EYES.map(eye => {
+                const isLocked = !isPremium && ['eye_star', 'eye_heart', 'eye_x'].includes(eye.id)
+                return (
+                  <button
+                    key={eye.id}
+                    className={[
+                      styles.eyeBtn,
+                      selectedEye.id === eye.id ? styles.eyeSelected : '',
+                      isLocked ? styles.eyeLocked : '',
+                    ].join(' ')}
+                    onClick={() => !isLocked && setSelectedEye(eye)}
+                  >
+                    <span className={styles.eyeLabel}>{eye.label}</span>
+                    {isLocked && <span className={styles.lockBadge}>🔒</span>}
+                  </button>
+                )
+              })}
             </div>
           </div>
 
