@@ -7,6 +7,33 @@
   padding: 24px 16px 100px;
   background: #FDF6E3;
   min-height: 100vh;
+  position: relative;
+}
+
+/* ── Drawing guide ──────────────────────────────────────── */
+.drawGuide {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: var(--color-surface);
+  border: 2px solid var(--color-border);
+  box-shadow: 3px 3px 0 var(--color-border);
+  padding: 10px 14px;
+}
+
+.drawGuideTitle {
+  font-family: var(--font-pixel);
+  font-size: 8px;
+  color: var(--color-cta);
+  margin-bottom: 8px;
+}
+
+.drawGuideTips {
+  font-family: var(--font-pixel);
+  font-size: 7px;
+  color: #888;
+  line-height: 2;
 }
 
 /* ── Title ──────────────────────────────────────────────── */

@@ -303,7 +303,7 @@ export default function DrawScene({ onPetCreated, isPremium, onSubscribeClick }:
 
   // ── Step: draw → decorate ────────────────────────────────
   const handleMakeItLife = useCallback(() => {
-    if (!onnxScore || onnxScore < 0.6) return
+    if (!onnxScore || onnxScore < 0.65) return
     setStep('decorate')
   }, [onnxScore])
 
@@ -466,14 +466,14 @@ export default function DrawScene({ onPetCreated, isPremium, onSubscribeClick }:
                 <p
                   className={styles.validLabel}
                   style={{
-                    color: onnxScore >= 0.6
+                    color: onnxScore >= 0.65
                       ? '#4CAF50'
                       : onnxScore >= 0.3
                       ? '#F5A623'
                       : '#e94560',
                   }}
                 >
-                  {onnxScore >= 0.6
+                  {onnxScore >= 0.65
                     ? 'looks like a creature!'
                     : onnxScore >= 0.3
                     ? 'keep drawing...'
@@ -481,6 +481,18 @@ export default function DrawScene({ onPetCreated, isPremium, onSubscribeClick }:
                   } {Math.round(onnxScore * 100)}%
                 </p>
               )}
+
+              {/* Drawing guide */}
+              <div className={styles.drawGuide}>
+                <div className={styles.drawGuideTitle}>HOW TO DRAW</div>
+                <div className={styles.drawGuideTips}>
+                  <div>1. DRAW AN OUTLINE</div>
+                  <div>2. FILL WITH COLOURS</div>
+                  <div>3. USE 3+ COLORS</div>
+                  <div>4. ADD EYES / FACE</div>
+                  <div>5. NEED 65% TO PASS</div>
+                </div>
+              </div>
 
               {/* Draw canvas */}
               <div className={styles.canvasWrap}>
@@ -564,7 +576,7 @@ export default function DrawScene({ onPetCreated, isPremium, onSubscribeClick }:
                 ref={btnRef}
                 className={styles.ctaBtn}
                 onClick={handleMakeItLife}
-                disabled={!onnxScore || onnxScore < 0.6}
+                disabled={!onnxScore || onnxScore < 0.65}
               >
                 ✦ MAKE IT LIFE ✦
               </button>
