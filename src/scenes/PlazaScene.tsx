@@ -83,12 +83,6 @@ const DEFAULT_COORDS: PetCoords = {
   has_legs: false,
 }
 
-const DEFAULT_ADS: AdRecord[] = [
-  { id: 'd1', text: 'ADVERTISE HERE',   sub_text: 'contact@oodle.game',    logo_url: null, url: 'mailto:contact@oodle.game', duration: 22 },
-  { id: 'd2', text: 'YOUR BRAND HERE',  sub_text: 'oodle.game/advertise',  logo_url: null, url: 'mailto:contact@oodle.game', duration: 28 },
-  { id: 'd3', text: 'REACH PET OWNERS', sub_text: 'click to advertise',    logo_url: null, url: 'mailto:contact@oodle.game', duration: 32 },
-]
-
 interface PlazaSceneProps {
   petData:    { pixelData: string; coords: PetCoords; name: string }
   onGoToRoom: () => void
@@ -172,7 +166,6 @@ export default function PlazaScene({ petData, onGoToRoom, isPremium, petSize }: 
   const [shoutLeft,    setShoutLeft]    = useState(dailyShoutLimit)
   const [activeShouts, setActiveShouts] = useState<Record<string, { message: string; shoutId: string }>>({})
   const [likedShouts,  setLikedShouts]  = useState<Set<string>>(new Set())
-  const [ads, setAds] = useState<AdRecord[]>([])
 
   useEffect(() => {
     const t = setTimeout(() => setOwnGlowing(false), 8000)
@@ -337,18 +330,13 @@ export default function PlazaScene({ petData, onGoToRoom, isPremium, petSize }: 
       return
     }
 
-    const size = pet.isOwn ? petSize : PET_SIZE
+    const size = pet.isOwn ? petSizeRef.current : PET_SIZE
     canvas.width  = size
     canvas.height = size
     wrapper.style.width  = `${size}px`
     wrapper.style.height = `${size + 20}px`
 
     const eyeStyle  = localStorage.getItem('oodle_eye_style') ?? 'eye_round'
-    const size      = pet.isOwn ? petSizeRef.current : PET_SIZE
-    canvas.width    = size
-    canvas.height   = size
-    wrapper.style.width  = `${size}px`
-    wrapper.style.height = `${size + 20}px`
     const animator  = new PetAnimator(canvas, {
       imageDataURL: pet.pixelData,
       coords:       pet.coords,
