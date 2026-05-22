@@ -9,8 +9,6 @@ import { createCheckoutSession } from './lib/stripe'
 import type { PetCoords } from './api/aiRecognize'
 import PaywallScene from './scenes/PaywallScene'
 import { checkSubscription, getPetAge } from './lib/petService'
-import { createCheckoutSession } from './lib/stripe'
-import { useAuthStore, linkGoogle } from './lib/auth'
 
 export interface PetData {
   pixelData: string
