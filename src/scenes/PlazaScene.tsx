@@ -4,7 +4,7 @@ import type { PetCoords } from '../api/aiRecognize'
 import {
   fetchAllPets, getAllLikeCounts, likePet, getTodayLikedPetIds,
   postShout, getActiveShouts, countTodayShouts, likeShout,
-  fetchAds,
+  fetchAds, setOnline,
 } from '../lib/petService'
 import type { AdRecord } from '../lib/petService'
 import { subscribeToNewPets } from '../lib/realtimeService'
@@ -143,8 +143,6 @@ export default function PlazaScene({ petData, onGoToRoom, isPremium, petSize }: 
   const [todayLikedPets, setTodayLikedPets] = useState<Set<string>>(new Set())
   const [ownGlowing, setOwnGlowing]   = useState(true)
   const [doorPhase, setDoorPhase]     = useState<DoorPhase>('idle')
-  const [adSubmitted, setAdSubmitted] = useState(false)
-  const [adSubmitting, setAdSubmitting] = useState(false)
 
   // Keep petSizeRef in sync — used by spawnPet without causing re-spawn
   useEffect(() => { petSizeRef.current = petSize }, [petSize])
