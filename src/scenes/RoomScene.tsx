@@ -87,12 +87,12 @@ export default function RoomScene({ petData, onGoToPlaza, isPremium, onSizeChang
           const isWeekendNow = [0, 6].includes(new Date().getDay())
           const decayMult    = isWeekendNow ? 0.5 : 1
           // Simulate sleep cycles offline:
-          // Every 30s interval: if energy < 25 → sleep (energy recovers, hunger/happy still decay slowly)
+          // Every 30s interval: if energy <= 0 → sleep (energy recovers, hunger/happy still decay slowly)
           // This prevents energy from hitting 0 after long offline periods
           let { hunger, happy, energy } = p
           const totalIntervals = Math.floor(offlineMins * 2 * decayMult)
           for (let i = 0; i < totalIntervals; i++) {
-            if (energy < 25) {
+            if (energy <= 0) {
               // Sleeping: energy recovers, hunger/happy decay at half rate
               energy = Math.min(100, energy + 0.3)
               hunger = Math.max(0, hunger - 0.04)
