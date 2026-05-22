@@ -8,6 +8,7 @@ import {
 } from '../lib/petService'
 import type { AdRecord } from '../lib/petService'
 import { subscribeToNewPets } from '../lib/realtimeService'
+import { useAuthStore } from '../lib/auth'
 import styles from './PlazaScene.module.css'
 
 // ── Default ads (shown when no advertisers in Supabase) ───
@@ -477,8 +478,13 @@ export default function PlazaScene({ petData, onGoToRoom, petSize }: PlazaSceneP
       ])
       if (records.length === 0) { loadFromLocalStorage(); return }
       const ownSupabaseId = localStorage.getItem('oodle_pet_supabase_id')
+      const ownUserId = useAuthStore.getState().userId
       const others: PlazaPet[] = records
-        .filter(r => r.id !== ownSupabaseId && r.pixel_data !== petData.pixelData)
+        .filter(r =>
+          r.id !== ownSupabaseId &&
+          r.user_id !== ownUserId &&
+          r.pixel_data !== petData.pixelData
+        )
         .map(r => ({
           id:        r.id,
           pixelData: r.pixel_data,
@@ -505,8 +511,10 @@ export default function PlazaScene({ petData, onGoToRoom, petSize }: PlazaSceneP
   // ── Realtime ──────────────────────────────────────────────
   useEffect(() => {
     const ownSupabaseId = localStorage.getItem('oodle_pet_supabase_id')
+    const ownUserId = useAuthStore.getState().userId
     const unsubscribe = subscribeToNewPets(newPet => {
       if (newPet.id === ownSupabaseId) return
+      if (newPet.user_id === ownUserId) return
       if (newPet.pixel_data === petData.pixelData) return
       setPets(prev => {
         if (prev.some(p => p.id === newPet.id)) return prev
