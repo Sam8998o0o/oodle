@@ -143,9 +143,6 @@ export default function PlazaScene({ petData, onGoToRoom, isPremium, petSize }: 
   const [todayLikedPets, setTodayLikedPets] = useState<Set<string>>(new Set())
   const [ownGlowing, setOwnGlowing]   = useState(true)
   const [doorPhase, setDoorPhase]     = useState<DoorPhase>('idle')
-  const [showAdModal, setShowAdModal] = useState(false)
-  const [adPlan, setAdPlan]           = useState('1 month')
-  const [adForm, setAdForm]           = useState({ company: '', email: '', bannerText: '', subText: '', logoUrl: '', destUrl: '' })
   const [adSubmitted, setAdSubmitted] = useState(false)
   const [adSubmitting, setAdSubmitting] = useState(false)
 
