@@ -593,7 +593,7 @@ export default function PlazaScene({ petData, onGoToRoom, isPremium, petSize }: 
                 onClick={() => window.open(ad.url, '_blank', 'noopener')}
               >
                 <>
-                  <svg width="80" height="50" viewBox="0 0 80 50" xmlns="http://www.w3.org/2000/svg" style={{ imageRendering: 'pixelated', display: 'block', flexShrink: 0 }}>
+                  <svg width="120" height="75" viewBox="0 0 80 50" xmlns="http://www.w3.org/2000/svg" style={{ imageRendering: 'pixelated', display: 'block', flexShrink: 0, transform: 'scaleX(-1)' }}>
                     {/* Body */}
                     <rect x="10" y="18" width="50" height="14" fill="#cc2200"/>
                     {/* Nose */}

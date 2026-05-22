@@ -535,7 +535,7 @@
 }
 
 .adRope {
-  width: 32px;
+  width: 80px;
   height: 2px;
   background: #888;
   margin-top: 4px;
@@ -553,8 +553,8 @@
   background: #fff;
   border: 2px solid #2C2C2C;
   box-shadow: 3px 3px 0 rgba(0,0,0,0.25);
-  padding: 5px 10px;
-  min-width: 120px;
+  padding: 10px 20px;
+  min-width: 240px;
   transform-origin: left center;
   animation: bannerWave 2s ease-in-out infinite;
 }
@@ -565,22 +565,22 @@
 }
 
 .adLogo {
-  width: 22px;
-  height: 22px;
+  width: 40px;
+  height: 40px;
   object-fit: contain;
   image-rendering: pixelated;
 }
 
 .adText {
   font-family: var(--font-pixel);
-  font-size: 7px;
+  font-size: 12px;
   color: #2C2C2C;
   letter-spacing: 1px;
 }
 
 .adTextSmall {
   font-family: var(--font-pixel);
-  font-size: 5px;
+  font-size: 9px;
   color: #888;
   margin-top: 2px;
 }
