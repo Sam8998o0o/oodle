@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react'
 import DrawScene from './scenes/DrawScene'
 import RoomScene from './scenes/RoomScene'
 import PlazaScene from './scenes/PlazaScene'
-import ArrestedScene from './scenes/ArrestedScene'
 import AuthButton from './components/AuthButton'
 import { initAuth, linkGoogle, useAuthStore } from './lib/auth'
 import { createCheckoutSession } from './lib/stripe'
@@ -18,8 +17,8 @@ export interface PetData {
 
 type Scene = 'draw' | 'room' | 'plaza' | 'paywall'
 
-const PET_STORAGE_KEY    = 'oodle_pet_data'
-const FREE_TRIAL_DAYS    = 14
+const PET_STORAGE_KEY = 'oodle_pet_data'
+const FREE_TRIAL_DAYS = 14
 
 function loadSavedPet(): PetData | null {
   try {
@@ -44,13 +43,31 @@ function App() {
   const [petAge, setPetAge]       = useState<number | null>(null)
   const [petSize, setPetSize]     = useState(60)
 
+  const { userId, isAnonymous } = useAuthStore()
+
+  const handleLoginClick = async () => {
+    await linkGoogle()
+  }
+
+  const handleSubscribeClick = async () => {
+    const uid = useAuthStore.getState().userId
+    if (!uid) {
+      await linkGoogle()
+    }
+    const currentUid = useAuthStore.getState().userId
+    if (currentUid) {
+      const url = await createCheckoutSession(currentUid)
+      if (url) window.location.href = url
+    }
+  }
+
   useEffect(() => { initAuth() }, [])
 
   // Check trial expiry on mount
   useEffect(() => {
     if (!petData || isPremium) return
     const age = getPetAgeDays()
-    if (age >= FREE_TRIAL_DAYS) setScene('arrested')
+    if (age >= FREE_TRIAL_DAYS) setScene('paywall')
   }, [petData, isPremium])
 
   // Handle Stripe success callback
@@ -58,8 +75,9 @@ function App() {
     const params = new URLSearchParams(window.location.search)
     if (params.get('subscribed') === 'true') {
       window.history.replaceState({}, '', '/')
-      setIsPremium(true)
-      setScene('room')
+      checkSubscription().then(ok => {
+        if (ok) { setIsPremium(true); setScene('room') }
+      })
     }
   }, [])
 
@@ -71,16 +89,6 @@ function App() {
       if (!premium && age !== null && age >= 14) setScene('paywall')
     })
   }, [petData])
-
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search)
-    if (params.get('subscribed') === 'true') {
-      window.history.replaceState({}, '', '/')
-      checkSubscription().then(ok => {
-        if (ok) { setIsPremium(true); setScene('room') }
-      })
-    }
-  }, [])
 
   const handlePetCreated = (pixelData: string, coords: PetCoords, name: string) => {
     const data: PetData = { pixelData, coords, name }
@@ -99,8 +107,8 @@ function App() {
         <AuthButton />
         <PaywallScene
           petData={petData}
-          isLoggedIn={!!useAuthStore.getState().userId}
-          userId={useAuthStore.getState().userId}
+          isLoggedIn={!!userId}
+          userId={userId}
           onSubscribed={() => { setIsPremium(true); setScene('room') }}
           onLoginAndSubscribe={async () => {
             await linkGoogle()
@@ -125,17 +133,6 @@ function App() {
           onSubscribeClick={() => setScene('paywall')}
         />
       </>
-    )
-  }
-
-  if (scene === 'arrested') {
-    return (
-      <ArrestedScene
-        petData={petData}
-        isLoggedIn={!isAnonymous}
-        onSubscribeClick={handleSubscribeClick}
-        onLoginClick={handleLoginClick}
-      />
     )
   }
 
@@ -204,7 +201,6 @@ function App() {
           petSize={petSize}
           onGoToRoom={() => setScene('room')}
           isPremium={isPremium}
-          petSize={petSize}
         />
       </>
     )
