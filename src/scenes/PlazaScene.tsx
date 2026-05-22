@@ -71,7 +71,6 @@ const WALK_Y_MAX = 0.88   // bottom of walkable ground area
 
 // No obstacle zones — pets walk freely across the plaza
 
-const SHOUT_DAILY_LIMIT = 10
 const LIKE_DAILY_LIMIT  = 10
 const SHOUT_DURATION_MS = 15_000
 
@@ -97,13 +96,6 @@ interface PlazaPet {
   name: string
   createdAt: string
   isOwn: boolean
-}
-
-interface StoredPet {
-  id: string
-  pixelData: string
-  name?: string
-  createdAt?: string
 }
 
 interface Walker {

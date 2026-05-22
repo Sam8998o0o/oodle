@@ -40,25 +40,12 @@ function App() {
   const [petData, setPetData] = useState<PetData | null>(() => loadSavedPet())
   const [scene, setScene]     = useState<Scene>(() => loadSavedPet() ? 'room' : 'draw')
   const [isPremium, setIsPremium] = useState(false)
-  const [petAge, setPetAge]       = useState<number | null>(null)
   const [petSize, setPetSize]     = useState(60)
 
   const { userId, isAnonymous } = useAuthStore()
 
   const handleLoginClick = async () => {
     await linkGoogle()
-  }
-
-  const handleSubscribeClick = async () => {
-    const uid = useAuthStore.getState().userId
-    if (!uid) {
-      await linkGoogle()
-    }
-    const currentUid = useAuthStore.getState().userId
-    if (currentUid) {
-      const url = await createCheckoutSession(currentUid)
-      if (url) window.location.href = url
-    }
   }
 
   useEffect(() => { initAuth() }, [])
@@ -85,7 +72,6 @@ function App() {
     if (!petData) return
     Promise.all([checkSubscription(), getPetAge()]).then(([premium, age]) => {
       setIsPremium(premium)
-      setPetAge(age)
       if (!premium && age !== null && age >= 14) setScene('paywall')
     })
   }, [petData])
@@ -212,7 +198,6 @@ function App() {
       <RoomScene
         petData={petData}
         onGoToPlaza={() => setScene('plaza')}
-        isPremium={isPremium}
         onSizeChange={(size) => setPetSize(size)}
       />
     </>
