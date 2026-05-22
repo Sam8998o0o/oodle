@@ -113,7 +113,6 @@ export default function RoomScene({ petData, onGoToPlaza, isPremium, onSizeChang
   const [dayCount, setDayCount]       = useState(1)
   const [floatEmojis, setFloatEmojis] = useState<FloatEmoji[]>([])
   const [bubble, setBubble]           = useState<{ text: string; id: number } | null>(null)
-  const isSleepingRef = useRef(false)
 
   // ── Like-exchange food system ────────────────────────────
   const [likeBalance, setLikeBalance] = useState(0)
@@ -317,6 +316,9 @@ export default function RoomScene({ petData, onGoToPlaza, isPremium, onSizeChang
           // Refresh Zzz bubble while still sleeping
           setBubble({ text: 'Zzz... 💤', id: Date.now() })
         }
+        setStats(prev => ({ ...prev, energy: Math.min(100, prev.energy + 2) }))
+      } else if (isSleepingRef.current && s.energy < 100) {
+        // Continue recovering energy throughout entire sleep cycle until 100
         setStats(prev => ({ ...prev, energy: Math.min(100, prev.energy + 2) }))
       } else if (isSleepingRef.current && s.energy >= 100) {
         isSleepingRef.current = false
