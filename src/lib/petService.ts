@@ -10,6 +10,7 @@ export interface PetRecord {
   pixel_data: string
   coords:     PetCoords | null
   created_at: string
+  is_online:  boolean
 }
 
 // localStorage key used to avoid re-inserting the same pet
@@ -53,6 +54,18 @@ export async function savePet(pet: {
   return id
 }
 
+// ── setOnline ────────────────────────────────────────────
+// Marks the current user's pet as online or offline in Supabase.
+export async function setOnline(online: boolean): Promise<void> {
+  const petId = localStorage.getItem('oodle_pet_supabase_id')
+  if (!petId) return
+  const { error } = await supabase
+    .from('pets')
+    .update({ is_online: online })
+    .eq('id', petId)
+  if (error) console.error('[petService] setOnline failed:', error.message)
+}
+
 // ── fetchAllPets ──────────────────────────────────────────
 // Returns up to 50 recent pets from Supabase.
 // Returns [] on failure (caller should fall back to localStorage).
@@ -60,6 +73,7 @@ export async function fetchAllPets(): Promise<PetRecord[]> {
   const { data, error } = await supabase
     .from('pets')
     .select('*')
+    .eq('is_online', true)
     .order('created_at', { ascending: false })
     .limit(50)
 
@@ -183,10 +197,10 @@ export async function postShout(petId: string, message: string): Promise<string 
 }
 
 // ── getActiveShouts ───────────────────────────────────────
-// Returns all shouts created in the last 20 seconds, newest first.
+// Returns all shouts created in the last 30 seconds, newest first.
 // One row per shout — caller groups by pet_id.
 export async function getActiveShouts(): Promise<ShoutRecord[]> {
-  const cutoff = new Date(Date.now() - 20_000).toISOString()
+  const cutoff = new Date(Date.now() - 30_000).toISOString()
 
   const { data, error } = await supabase
     .from('shouts')

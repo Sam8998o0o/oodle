@@ -416,6 +416,7 @@ export default function DrawScene({ onPetCreated, isPremium, onSubscribeClick }:
     onPetCreated(pixelData, coords, finalName)
   }, [petName, eyePos, selectedEye, storedPets, spawnParticles, onPetCreated])
 
+
   // ── Render ────────────────────────────────────────────────
   return (
     <div className={styles.page}>

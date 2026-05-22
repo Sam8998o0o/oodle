@@ -2,15 +2,17 @@ import { useState, useEffect } from 'react'
 import DrawScene from './scenes/DrawScene'
 import RoomScene from './scenes/RoomScene'
 import PlazaScene from './scenes/PlazaScene'
+import ArrestedScene from './scenes/ArrestedScene'
 import AuthButton from './components/AuthButton'
-import { initAuth } from './lib/auth'
+import { initAuth, linkGoogle, useAuthStore } from './lib/auth'
+import { createCheckoutSession } from './lib/stripe'
 import type { PetCoords } from './api/aiRecognize'
 import PaywallScene from './scenes/PaywallScene'
 import { checkSubscription, getPetAge } from './lib/petService'
 import { createCheckoutSession } from './lib/stripe'
 import { useAuthStore, linkGoogle } from './lib/auth'
 
-interface PetData {
+export interface PetData {
   pixelData: string
   coords: PetCoords
   name: string
@@ -18,16 +20,23 @@ interface PetData {
 
 type Scene = 'draw' | 'room' | 'plaza' | 'paywall'
 
-const PET_STORAGE_KEY = 'oodle_pet_data'
+const PET_STORAGE_KEY    = 'oodle_pet_data'
+const FREE_TRIAL_DAYS    = 14
 
 function loadSavedPet(): PetData | null {
   try {
     const raw = localStorage.getItem(PET_STORAGE_KEY)
     if (!raw) return null
     return JSON.parse(raw) as PetData
-  } catch {
-    return null
-  }
+  } catch { return null }
+}
+
+function getPetAgeDays(): number {
+  try {
+    const created = localStorage.getItem('oodle_pet_created_at')
+    if (!created) return 0
+    return Math.floor((Date.now() - parseInt(created, 10)) / 86400000)
+  } catch { return 0 }
 }
 
 function App() {
@@ -37,8 +46,23 @@ function App() {
   const [petAge, setPetAge]       = useState<number | null>(null)
   const [petSize, setPetSize]     = useState(60)
 
+  useEffect(() => { initAuth() }, [])
+
+  // Check trial expiry on mount
   useEffect(() => {
-    initAuth()
+    if (!petData || isPremium) return
+    const age = getPetAgeDays()
+    if (age >= FREE_TRIAL_DAYS) setScene('arrested')
+  }, [petData, isPremium])
+
+  // Handle Stripe success callback
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    if (params.get('subscribed') === 'true') {
+      window.history.replaceState({}, '', '/')
+      setIsPremium(true)
+      setScene('room')
+    }
   }, [])
 
   useEffect(() => {
@@ -64,6 +88,10 @@ function App() {
     const data: PetData = { pixelData, coords, name }
     setPetData(data)
     localStorage.setItem(PET_STORAGE_KEY, JSON.stringify(data))
+    // Record creation time for trial calculation
+    if (!localStorage.getItem('oodle_pet_created_at')) {
+      localStorage.setItem('oodle_pet_created_at', String(Date.now()))
+    }
     setScene('room')
   }
 
@@ -102,12 +130,80 @@ function App() {
     )
   }
 
+  if (scene === 'arrested') {
+    return (
+      <ArrestedScene
+        petData={petData}
+        isLoggedIn={!isAnonymous}
+        onSubscribeClick={handleSubscribeClick}
+        onLoginClick={handleLoginClick}
+      />
+    )
+  }
+
   if (scene === 'plaza') {
+    // Require Google login to enter plaza
+    if (isAnonymous) {
+      return (
+        <>
+          <AuthButton />
+          <div style={{
+            minHeight: '100vh',
+            background: '#FDF6E3',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontFamily: 'var(--font-pixel)',
+            gap: '20px',
+          }}>
+            <div style={{ fontSize: '14px', color: '#2C2C2C', textAlign: 'center', lineHeight: 2 }}>
+              LOGIN TO ENTER<br />THE PLAZA
+            </div>
+            <div style={{ fontSize: '9px', color: '#888', textAlign: 'center', lineHeight: 2 }}>
+              Sign in with Google to meet<br />other pets, like & shout!
+            </div>
+            <button
+              onClick={handleLoginClick}
+              style={{
+                fontFamily: 'var(--font-pixel)',
+                fontSize: '10px',
+                padding: '14px 24px',
+                background: '#FFE600',
+                color: '#2C2C2C',
+                border: '3px solid #2C2C2C',
+                boxShadow: '4px 4px 0 #2C2C2C',
+                cursor: 'pointer',
+                letterSpacing: '2px',
+              }}
+            >
+              G SIGN IN
+            </button>
+            <button
+              onClick={() => setScene('room')}
+              style={{
+                fontFamily: 'var(--font-pixel)',
+                fontSize: '8px',
+                padding: '10px 18px',
+                background: 'transparent',
+                color: '#888',
+                border: '2px solid #ccc',
+                cursor: 'pointer',
+              }}
+            >
+              ← BACK TO ROOM
+            </button>
+          </div>
+        </>
+      )
+    }
+
     return (
       <>
         <AuthButton />
         <PlazaScene
           petData={petData}
+          petSize={petSize}
           onGoToRoom={() => setScene('room')}
           isPremium={isPremium}
           petSize={petSize}

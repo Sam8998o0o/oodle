@@ -17,18 +17,6 @@
   background-repeat: no-repeat;
 }
 
-.room::after {
-  content: '';
-  position: absolute;
-  bottom: 18%;
-  left: 0;
-  right: 0;
-  height: 2px;
-  background: var(--color-border);
-  pointer-events: none;
-  z-index: 1;
-}
-
 /* ── night overlay ────────────────────────────────────── */
 .nightOverlay {
   position: absolute;
@@ -125,10 +113,11 @@
 /* ── pet wrapper ──────────────────────────────────────── */
 .petWrapper {
   position: absolute;
-  bottom: 18%;
-  width: 160px;
-  height: 160px;
+  bottom: 22%;
+  width: 100px;
+  height: 100px;
   background: transparent;
+  overflow: visible;
 }
 
 .petWrapper canvas {
@@ -140,15 +129,15 @@
 /* ── speech bubble ────────────────────────────────────── */
 .bubble {
   position: absolute;
-  bottom: 54px;
+  bottom: 110%;
   left: 50%;
   transform: translateX(-50%);
   background: var(--color-surface);
   border: 2px solid var(--color-border);
   box-shadow: var(--shadow-pixel);
-  padding: 4px 8px;
+  padding: 6px 12px;
   font-family: var(--font-retro);
-  font-size: 16px;
+  font-size: 22px;
   color: var(--color-text);
   white-space: nowrap;
   pointer-events: none;
@@ -265,18 +254,18 @@
   font-family: var(--font-pixel);
   font-size: 8px;
   padding: 8px 10px;
-  background: var(--color-panel);
-  color: var(--color-text);
+  background: var(--color-cta);
+  color: #000;
   border: 2px solid var(--color-border);
-  box-shadow: var(--shadow-pixel-sm);
+  box-shadow: var(--shadow-pixel);
   cursor: pointer;
   display: flex;
   align-items: center;
   gap: 6px;
 }
 
-.convertBtn:active { transform: translate(1px,1px); box-shadow: none; }
-.convertBtn:disabled { opacity: 0.4; cursor: not-allowed; box-shadow: none; }
+.convertBtn:active { transform: translate(2px,2px); box-shadow: none; }
+.convertBtn:disabled { opacity: 0.35; cursor: not-allowed; box-shadow: none; background: var(--color-panel); color: var(--color-text-dim); }
 
 .costTag {
   font-family: var(--font-pixel);

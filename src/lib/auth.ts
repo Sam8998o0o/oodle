@@ -52,10 +52,15 @@ if (error) {
 }
 
 // ── linkGoogle ────────────────────────────────────────────
-// Upgrades an anonymous account to a real Google account.
-// All existing data (pets, likes) is preserved because user_id stays the same.
+// Signs in with Google OAuth. If user is anonymous, Supabase will
+// merge the anonymous session with the Google account automatically.
 export async function linkGoogle(): Promise<void> {
-  const { error } = await supabase.auth.linkIdentity({ provider: 'google' })
+  const { error } = await supabase.auth.signInWithOAuth({
+    provider: 'google',
+    options: {
+      redirectTo: window.location.origin,
+    },
+  })
   if (error) console.error('[auth] linkGoogle failed:', error.message)
 }
 

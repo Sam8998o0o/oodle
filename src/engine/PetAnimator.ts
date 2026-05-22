@@ -8,7 +8,7 @@ export interface PetAnimData {
   eyeStyle?: string
 }
 
-export type PetState = 'idle' | 'walk' | 'eat' | 'play' | 'sleep' | 'sad' | 'squish' | 'dizzy'
+export type PetState = 'idle' | 'walk' | 'eat' | 'play' | 'sleep' | 'sad' | 'squish' | 'dizzy' | 'faint'
 
 export class PetAnimator {
   private canvas: HTMLCanvasElement
@@ -28,6 +28,7 @@ export class PetAnimator {
   private sadF   = 0
   private squishF = 0
   private dizzyF  = 0
+  private faintF  = 0
   private jumpF   = 0
   private jumpCount = 0
   private isJumping = false
@@ -89,6 +90,7 @@ export class PetAnimator {
     if (s === 'walk')  { this.walkF = 0 }
     if (s === 'squish'){ this.squishF = 0 }
     if (s === 'dizzy') { this.dizzyF = 0 }
+    if (s === 'faint') { this.faintF = 0 }
   }
 
   private tick(): void {
@@ -141,8 +143,8 @@ export class PetAnimator {
         break
       }
       case 'sleep': {
-        // Snap immediately to lying on side
-        rotate     = Math.PI / 2
+        // Squish down — no rotation so closed eyes stay correct
+        scaleY     = 0.5
         translateY = Math.round(size * 0.25)
         break
       }
@@ -170,6 +172,16 @@ export class PetAnimator {
         translateX = Math.floor(this.dizzyF / 6) % 2 === 0 ? 2 : -2
         break
       }
+      case 'faint': {
+        this.faintF++
+        // Don't use rotate — it moves pet out of canvas bounds
+        // Instead: squish vertically and push to bottom to simulate lying down
+        scaleY     = 0.45
+        translateY = Math.round(size * 0.28)
+        translateX = Math.floor(this.faintF / 30) % 2 === 0 ? 0 : 1
+        alpha      = 0.9
+        break
+      }
     }
 
     // ── Draw body ──────────────────────────────────────────────────
@@ -193,6 +205,8 @@ export class PetAnimator {
       blink = true
     } else if (state === 'sad') {
       blink = true
+    } else if (state === 'faint') {
+      blink = false  // eye_x shows open X eyes
     } else {
       this.blinkCountdown--
       if (this.blinkCountdown <= 0) {
@@ -208,7 +222,7 @@ export class PetAnimator {
     }
 
     // ── Draw pixel eyes ────────────────────────────────────────────
-    const eyeStyleToUse = state === 'dizzy' ? 'eye_x' : (data.eyeStyle ?? 'eye_round')
+    const eyeStyleToUse = (state === 'dizzy' || state === 'faint') ? 'eye_x' : (data.eyeStyle ?? 'eye_round')
     if (coords.eyes.length > 0) {
       const eyeSize = Math.round(size * 0.09)
       const ex = coords.eyes.reduce((s, e) => s + e.x, 0) / coords.eyes.length * size
@@ -235,7 +249,8 @@ export class PetAnimator {
 
     if (state === 'sleep') this.drawZzz(size)
     if (state === 'sad')   this.drawSweat(size)
-    if (state === 'dizzy') this.drawDizzy(size)
+    if (state === 'dizzy') this.drawDizzy(size, this.dizzyF)
+    if (state === 'faint') this.drawDizzy(size, this.faintF)
   }
 
   private drawZzz(size: number): void {
@@ -271,15 +286,14 @@ export class PetAnimator {
     ctx.restore()
   }
 
-  private drawDizzy(size: number): void {
+  private drawDizzy(size: number, frameCount: number): void {
     const ctx  = this.ctx
     const cx   = size / 2
     const cy   = size * 0.08
     const rad  = size * 0.22
     const count = 3
     for (let i = 0; i < count; i++) {
-      // Step every 4 frames
-      const step  = Math.floor(this.dizzyF / 4)
+      const step  = Math.floor(frameCount / 4)
       const angle = ((step + i * (count * 4 / count)) / (count * 4)) * Math.PI * 2
       const x     = Math.round(cx + Math.cos(angle) * rad)
       const y     = Math.round(cy + Math.sin(angle) * rad * 0.4)
@@ -288,7 +302,7 @@ export class PetAnimator {
       ctx.font        = `${Math.round(size * 0.18)}px monospace`
       ctx.textAlign   = 'center'
       ctx.textBaseline = 'middle'
-      ctx.fillText('*', x, y)
+      ctx.fillText('💫', x, y)
       ctx.restore()
     }
   }

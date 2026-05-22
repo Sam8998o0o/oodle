@@ -10,21 +10,14 @@
   flex: 1;
   position: relative;
   overflow: hidden;
-  min-height: 100vh;
-  background: #0f3460;
+  min-height: 0;
+  background-image: url('/plaza-bg.svg');
+  background-size: cover;
+  background-position: center bottom;
+  background-repeat: no-repeat;
+  background-color: #5ba3e0;
 }
 
-.room::after {
-  content: '';
-  position: absolute;
-  bottom: 18%;
-  left: 0;
-  right: 0;
-  height: 2px;
-  background: var(--color-border);
-  pointer-events: none;
-  z-index: 1;
-}
 
 /* ── night overlay ────────────────────────────────────── */
 .nightOverlay {
@@ -122,9 +115,6 @@
 /* ── pet slot ─────────────────────────────────────────── */
 .petSlot {
   position: absolute;
-  /* top and left are set by JS */
-  width: 120px;
-  height: 140px;   /* extra space for name tag above */
   cursor: pointer;
   display: flex;
   flex-direction: column;
@@ -152,8 +142,6 @@
 
 .petCanvas {
   display: block;
-  width: 120px;
-  height: 120px;
   image-rendering: pixelated;
   background: transparent;
   border: none;
@@ -237,15 +225,16 @@
 /* ── speech bubble ────────────────────────────────────── */
 .speechBubble {
   position: absolute;
-  bottom: 110px;
-  left: 70%;
-  transform: none;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-10%);
+  margin-bottom: 6px;
   background: var(--color-surface);
   border: 2px solid var(--color-border);
   box-shadow: var(--shadow-pixel);
   padding: 6px 12px;
   max-width: 220px;
-  min-width: 80px;
+  min-width: 60px;
   width: max-content;
   word-break: normal;
   white-space: nowrap;
