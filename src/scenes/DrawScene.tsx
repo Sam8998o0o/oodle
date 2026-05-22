@@ -482,20 +482,21 @@ export default function DrawScene({ onPetCreated, isPremium, onSubscribeClick }:
                 </p>
               )}
 
-              {/* Drawing guide */}
-              <div className={styles.drawGuide}>
-                <div className={styles.drawGuideTitle}>HOW TO DRAW</div>
-                <div className={styles.drawGuideTips}>
-                  <div>1. DRAW AN OUTLINE</div>
-                  <div>2. FILL WITH COLOURS</div>
-                  <div>3. USE 3+ COLORS</div>
-                  <div>4. ADD EYES / FACE</div>
-                  <div>5. NEED 65% TO PASS</div>
+              {/* Canvas + guide row */}
+              <div className={styles.canvasRow}>
+                <div className={styles.drawGuide}>
+                  <div className={styles.drawGuideTitle}>HOW TO DRAW</div>
+                  <div className={styles.drawGuideTips}>
+                    <div>1. DRAW AN OUTLINE</div>
+                    <div>2. FILL WITH COLOURS</div>
+                    <div>3. USE 3+ COLORS</div>
+                    <div>4. ADD EYES / FACE</div>
+                    <div>5. NEED 65% TO PASS</div>
+                  </div>
                 </div>
-              </div>
 
-              {/* Draw canvas */}
-              <div className={styles.canvasWrap}>
+                {/* Draw canvas */}
+                <div className={styles.canvasWrap}>
                 <canvas
                   ref={canvasRef}
                   width={CANVAS_PX}
@@ -508,6 +509,7 @@ export default function DrawScene({ onPetCreated, isPremium, onSubscribeClick }:
                   onMouseLeave={handleMouseUp}
                 />
               </div>
+              </div>{/* end canvasRow */}
 
               {/* ── Controls below canvas ── */}
               <div className={styles.controls}>

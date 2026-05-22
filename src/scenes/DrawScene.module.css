@@ -7,19 +7,23 @@
   padding: 24px 16px 100px;
   background: #FDF6E3;
   min-height: 100vh;
-  position: relative;
+}
+
+/* ── Canvas + guide row ─────────────────────────────────── */
+.canvasRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
 }
 
 /* ── Drawing guide ──────────────────────────────────────── */
 .drawGuide {
-  position: absolute;
-  left: 12px;
-  top: 50%;
-  transform: translateY(-50%);
   background: var(--color-surface);
   border: 2px solid var(--color-border);
   box-shadow: 3px 3px 0 var(--color-border);
   padding: 10px 14px;
+  flex-shrink: 0;
+  align-self: center;
 }
 
 .drawGuideTitle {
