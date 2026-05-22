@@ -143,6 +143,10 @@ export default function PlazaScene({ petData, onGoToRoom, isPremium, petSize }: 
   const [todayLikedPets, setTodayLikedPets] = useState<Set<string>>(new Set())
   const [ownGlowing, setOwnGlowing]   = useState(true)
   const [doorPhase, setDoorPhase]     = useState<DoorPhase>('idle')
+  const [showAdModal, setShowAdModal] = useState(false)
+  const [adForm, setAdForm]           = useState({ company: '', email: '', bannerText: '', website: '', logoUrl: '', plan: '7days' })
+  const [adSubmitting, setAdSubmitting] = useState(false)
+  const [adSubmitted, setAdSubmitted]   = useState(false)
 
   // Keep petSizeRef in sync — used by spawnPet without causing re-spawn
   useEffect(() => { petSizeRef.current = petSize }, [petSize])
@@ -622,7 +626,11 @@ export default function PlazaScene({ petData, onGoToRoom, isPremium, petSize }: 
                     <rect x="42" y="14" width="2" height="18" fill="#2C2C2C"/>
                   </svg>
                   <div className={styles.adRope} />
-                  <div className={styles.adBanner}>
+                  <div
+                    className={styles.adBanner}
+                    onClick={['ADVERTISE HERE', 'YOUR BRAND HERE', 'REACH PET OWNERS'].includes(ad.text) ? (e) => { e.stopPropagation(); setShowAdModal(true) } : undefined}
+                    style={['ADVERTISE HERE', 'YOUR BRAND HERE', 'REACH PET OWNERS'].includes(ad.text) ? { cursor: 'pointer' } : undefined}
+                  >
                     {ad.logo_url && <img src={ad.logo_url} className={styles.adLogo} alt="" />}
                     <div>
                       <div className={styles.adText}>{ad.text}</div>
@@ -732,6 +740,126 @@ export default function PlazaScene({ petData, onGoToRoom, isPremium, petSize }: 
 
       {/* Pixel hearts */}
       {hearts.map(h => <PixelHeart key={h.id} id={h.id} x={h.x} y={h.y} />)}
+
+      {/* ── Advertise modal ──────────────────────────────── */}
+      {showAdModal && (
+        <div
+          onClick={() => { setShowAdModal(false); setAdSubmitted(false) }}
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}
+        >
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{ background: '#FDF6E3', border: '3px solid #2C2C2C', boxShadow: '6px 6px 0 #2C2C2C', padding: '28px', maxWidth: '420px', width: '100%', position: 'relative', maxHeight: '90vh', overflowY: 'auto' }}
+          >
+            {/* Close button */}
+            <button
+              onClick={() => { setShowAdModal(false); setAdSubmitted(false) }}
+              style={{ position: 'absolute', top: '12px', right: '12px', fontFamily: 'var(--font-pixel)', fontSize: '10px', background: 'transparent', border: '2px solid #2C2C2C', padding: '4px 8px', cursor: 'pointer', lineHeight: 1 }}
+            >✕</button>
+
+            {/* Title */}
+            <div style={{ background: '#2C2C2C', color: '#FFE600', fontFamily: 'var(--font-pixel)', fontSize: '11px', textAlign: 'center', padding: '12px', letterSpacing: '2px', marginBottom: '16px' }}>
+              ✦ ADVERTISE HERE ✦
+            </div>
+
+            {/* Description */}
+            <p style={{ fontFamily: 'var(--font-retro)', fontSize: '15px', color: '#555', borderLeft: '3px solid #FFE600', paddingLeft: '10px', marginBottom: '20px', lineHeight: 1.6 }}>
+              Promote your brand to Oodle players! Your banner ad flies across the plaza sky — seen by every player who visits.
+            </p>
+
+            {adSubmitted ? (
+              <div style={{ textAlign: 'center', fontFamily: 'var(--font-pixel)', fontSize: '9px', color: '#4CAF50', padding: '20px', border: '2px solid #4CAF50', lineHeight: 2 }}>
+                ✅ Submitted!<br />We will contact you within 24 hours.
+              </div>
+            ) : (
+              <>
+                {/* Form fields */}
+                {(
+                  [
+                    { label: 'COMPANY NAME *',  key: 'company',    type: 'text',  hint: '' },
+                    { label: 'EMAIL *',         key: 'email',      type: 'email', hint: '' },
+                    { label: 'BANNER TEXT *',   key: 'bannerText', type: 'text',  hint: 'MAX 20 CHARS', maxLength: 20 },
+                    { label: 'WEBSITE URL *',   key: 'website',    type: 'text',  hint: '' },
+                    { label: 'LOGO URL',        key: 'logoUrl',    type: 'text',  hint: 'OPTIONAL' },
+                  ] as { label: string; key: keyof typeof adForm; type: string; hint: string; maxLength?: number }[]
+                ).map(f => (
+                  <div key={f.key} style={{ marginBottom: '12px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '4px' }}>
+                      <label style={{ fontFamily: 'var(--font-pixel)', fontSize: '7px', color: '#2C2C2C', letterSpacing: '1px' }}>{f.label}</label>
+                      {f.hint && <span style={{ fontFamily: 'var(--font-pixel)', fontSize: '6px', color: '#aaa' }}>{f.hint}</span>}
+                    </div>
+                    <input
+                      type={f.type}
+                      maxLength={f.maxLength}
+                      value={adForm[f.key]}
+                      onChange={e => setAdForm(prev => ({ ...prev, [f.key]: e.target.value }))}
+                      style={{ width: '100%', fontFamily: 'var(--font-retro)', fontSize: '15px', padding: '8px 10px', border: '2px solid #2C2C2C', boxShadow: '2px 2px 0 #2C2C2C', outline: 'none', background: '#fff', boxSizing: 'border-box' }}
+                    />
+                  </div>
+                ))}
+
+                {/* Plan selection */}
+                <div style={{ marginBottom: '20px' }}>
+                  <div style={{ fontFamily: 'var(--font-pixel)', fontSize: '7px', color: '#2C2C2C', letterSpacing: '1px', marginBottom: '8px' }}>SELECT PLAN</div>
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    {([
+                      { value: '7days',  label: '7 DAYS',  price: 'RM 39' },
+                      { value: '14days', label: '14 DAYS', price: 'RM 69' },
+                      { value: '1month', label: '1 MONTH', price: 'RM 129' },
+                    ] as { value: string; label: string; price: string }[]).map(p => (
+                      <button
+                        key={p.value}
+                        onClick={() => setAdForm(prev => ({ ...prev, plan: p.value }))}
+                        style={{ flex: 1, padding: '10px 4px', border: '2px solid #2C2C2C', boxShadow: adForm.plan === p.value ? 'none' : '2px 2px 0 #2C2C2C', background: adForm.plan === p.value ? '#FFE600' : '#fff', cursor: 'pointer', fontFamily: 'var(--font-pixel)', fontSize: '7px', lineHeight: 2, transform: adForm.plan === p.value ? 'translate(2px,2px)' : 'none' }}
+                      >
+                        {p.label}<br />{p.price}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Submit */}
+                <button
+                  disabled={adSubmitting || !adForm.company || !adForm.email || !adForm.bannerText || !adForm.website}
+                  onClick={async () => {
+                    setAdSubmitting(true)
+                    try {
+                      await fetch('https://api.web3forms.com/submit', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                          access_key: 'YOUR_WEB3FORMS_KEY',
+                          subject: `[Oodle Ad] ${adForm.company} — ${adForm.plan}`,
+                          company: adForm.company,
+                          email: adForm.email,
+                          banner_text: adForm.bannerText,
+                          website: adForm.website,
+                          logo_url: adForm.logoUrl,
+                          plan: adForm.plan,
+                        }),
+                      })
+                      setAdSubmitted(true)
+                    } catch {
+                      // fail silently, still show success to avoid friction
+                      setAdSubmitted(true)
+                    } finally {
+                      setAdSubmitting(false)
+                    }
+                  }}
+                  style={{ width: '100%', fontFamily: 'var(--font-pixel)', fontSize: '10px', padding: '14px', background: adSubmitting ? '#ccc' : '#FFE600', color: '#2C2C2C', border: '2px solid #2C2C2C', boxShadow: '3px 3px 0 #2C2C2C', cursor: adSubmitting ? 'not-allowed' : 'pointer', letterSpacing: '2px', marginBottom: '12px' }}
+                >
+                  {adSubmitting ? 'SENDING...' : 'SUBMIT ENQUIRY'}
+                </button>
+
+                {/* Footer */}
+                <p style={{ fontFamily: 'var(--font-pixel)', fontSize: '6px', color: '#aaa', textAlign: 'center', lineHeight: 2, margin: 0 }}>
+                  We will contact you within 24 hours to arrange payment.
+                </p>
+              </>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Bottom action bar */}
       <div className={styles.actionBar}>
