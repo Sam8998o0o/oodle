@@ -46,6 +46,43 @@ const DEFAULT_COORDS: PetCoords = {
   has_legs: false,
 }
 
+// ── Shop / Rewards data ───────────────────────────────────
+interface ShopItem { id: string; label: string; emoji: string; price: number; rare?: boolean }
+
+const REWARD_DAYS: Array<{ emoji: string; label: string; snacks: number; meals: number; rare: boolean; claimMsg: string }> = [
+  { emoji: '🍪',      label: '1 Snack',      snacks: 1, meals: 0, rare: false, claimMsg: '+1 SNACK ADDED!'    },
+  { emoji: '🍪🍪',    label: '2 Snacks',      snacks: 2, meals: 0, rare: false, claimMsg: '+2 SNACKS ADDED!'   },
+  { emoji: '🍖',      label: '1 Meal',        snacks: 0, meals: 1, rare: false, claimMsg: '+1 MEAL ADDED!'     },
+  { emoji: '🪴',      label: 'Plant Deco',    snacks: 0, meals: 0, rare: false, claimMsg: '🪴 COMING SOON!'    },
+  { emoji: '🎩',      label: 'Hat Deco',      snacks: 0, meals: 0, rare: false, claimMsg: '🎩 COMING SOON!'    },
+  { emoji: '🍖+🍪',   label: 'Meal+Snack',    snacks: 1, meals: 1, rare: false, claimMsg: '+1 MEAL +1 SNACK!' },
+  { emoji: '👑+🍖🍖', label: 'Crown+2 Meals', snacks: 0, meals: 2, rare: true,  claimMsg: '👑 +2 MEALS ADDED!' },
+]
+
+const SHOP_HATS: ShopItem[]    = [
+  { id: 'hat_top',    label: 'Top Hat',   emoji: '🎩', price: 20 },
+  { id: 'hat_straw',  label: 'Straw Hat', emoji: '👒', price: 30 },
+  { id: 'hat_grad',   label: 'Grad Cap',  emoji: '🎓', price: 40 },
+  { id: 'hat_wizard', label: 'Wizard',    emoji: '🪄', price: 50 },
+  { id: 'hat_crown',  label: 'Crown',     emoji: '👑', price: 100, rare: true },
+]
+const SHOP_GLASSES: ShopItem[] = [
+  { id: 'glasses_star',  label: 'Star Eyes',  emoji: '⭐', price: 25 },
+  { id: 'glasses_heart', label: 'Heart Eyes', emoji: '💕', price: 25 },
+]
+const SHOP_EYES: ShopItem[]    = [
+  { id: 'eye_round',  label: 'Round',  emoji: '👁', price: 0  },
+  { id: 'eye_happy',  label: 'Happy',  emoji: '😊', price: 0  },
+  { id: 'eye_sleepy', label: 'Sleepy', emoji: '😴', price: 0  },
+  { id: 'eye_star',   label: 'Star',   emoji: '✦', price: 20 },
+  { id: 'eye_heart',  label: 'Heart',  emoji: '♥', price: 20 },
+  { id: 'eye_x',      label: 'X Eyes', emoji: '✕', price: 20 },
+]
+const SHOP_ROOM: ShopItem[]    = [
+  { id: 'room_plant',    label: 'Plant',    emoji: '🪴', price: 15 },
+  { id: 'room_painting', label: 'Painting', emoji: '🖼️', price: 25 },
+]
+
 export default function RoomScene({ petData, onGoToPlaza, onSizeChange }: RoomSceneProps) {
   const { isAnonymous } = useAuthStore()
   const roomRef       = useRef<HTMLDivElement>(null)
@@ -143,6 +180,33 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange }: RoomSc
   const [showMore,    setShowMore]    = useState(false)
   const [showRewards, setShowRewards] = useState(false)
   const [showShop,    setShowShop]    = useState(false)
+
+  // ── Rewards state ─────────────────────────────────────────
+  const [streak, setStreak] = useState<number>(() => {
+    try { return Math.max(1, parseInt(localStorage.getItem('oodle_streak') ?? '1', 10)) }
+    catch { return 1 }
+  })
+  const [streakClaimedToday, setStreakClaimedToday] = useState<boolean>(() => {
+    try { return localStorage.getItem('oodle_streak_claimed_today') === new Date().toDateString() }
+    catch { return false }
+  })
+  const [rewardMsg, setRewardMsg] = useState('')
+
+  // ── Shop state ─────────────────────────────────────────────
+  const [shopTab, setShopTab] = useState<'food' | 'hats' | 'glasses' | 'eyes' | 'room'>('food')
+  const [ownedItems, setOwnedItems] = useState<Set<string>>(() => {
+    try {
+      const saved = JSON.parse(localStorage.getItem('oodle_owned_items') ?? '[]') as string[]
+      return new Set(['eye_round', 'eye_happy', 'eye_sleepy', ...saved])
+    } catch { return new Set<string>(['eye_round', 'eye_happy', 'eye_sleepy']) }
+  })
+  const [equippedHat, setEquippedHat] = useState<string>(() => {
+    try { return localStorage.getItem('oodle_equipped_hat') ?? '' } catch { return '' }
+  })
+  const [equippedEye, setEquippedEye] = useState<string>(() => {
+    try { return localStorage.getItem('oodle_eye_style') ?? 'eye_round' } catch { return 'eye_round' }
+  })
+
   const isFaintedRef = useRef(false)
   const isDizzyRef   = useRef(false)
 
@@ -153,6 +217,25 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange }: RoomSc
     document.addEventListener('click', handler)
     return () => document.removeEventListener('click', handler)
   }, [showMore])
+
+  // Check streak reset when rewards modal opens
+  useEffect(() => {
+    if (!showRewards) { setRewardMsg(''); return }
+    try {
+      const today    = new Date().toDateString()
+      const lastDate = localStorage.getItem('oodle_streak_last_date')
+      setStreakClaimedToday(localStorage.getItem('oodle_streak_claimed_today') === today)
+      if (lastDate && lastDate !== today) {
+        const diff = Math.floor((Date.now() - new Date(lastDate).getTime()) / 86400000)
+        if (diff > 1) {
+          setStreak(1)
+          localStorage.setItem('oodle_streak', '1')
+          setStreakClaimedToday(false)
+          localStorage.removeItem('oodle_streak_claimed_today')
+        }
+      }
+    } catch { /**/ }
+  }, [showRewards])
 
   // ── Growth system (day-based) ─────────────────────────────
   const [growthPoints, setGrowthPoints] = useState(() => {
@@ -902,45 +985,219 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange }: RoomSc
         </div>
       </div>
 
-      {/* Rewards placeholder modal */}
-      {showRewards && (
-        <div
-          onClick={() => setShowRewards(false)}
-          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-        >
-          <div
-            onClick={e => e.stopPropagation()}
-            style={{ background: '#FDF6E3', border: '3px solid #2C2C2C', boxShadow: '6px 6px 0 #2C2C2C', padding: '40px 32px', textAlign: 'center', position: 'relative', minWidth: '260px' }}
-          >
-            <button
-              onClick={() => setShowRewards(false)}
-              style={{ position: 'absolute', top: '10px', right: '10px', fontFamily: 'var(--font-pixel)', fontSize: '10px', background: '#fff', border: '2px solid #2C2C2C', boxShadow: '2px 2px 0 #2C2C2C', width: '26px', height: '26px', cursor: 'pointer' }}
-            >✕</button>
-            <div style={{ fontFamily: 'var(--font-pixel)', fontSize: '11px', color: '#2C2C2C', marginBottom: '12px' }}>🎁 REWARDS</div>
-            <div style={{ fontFamily: 'var(--font-pixel)', fontSize: '9px', color: '#888', lineHeight: 2 }}>🚧 COMING SOON</div>
-          </div>
-        </div>
-      )}
+      {/* ── REWARDS MODAL ─────────────────────────────────── */}
+      {showRewards && (() => {
+        const dayIndex   = (streak - 1) % 7           // 0-based index into REWARD_DAYS
+        const dayInCycle = dayIndex + 1                // 1-based for display
 
-      {/* Shop placeholder modal */}
-      {showShop && (
-        <div
-          onClick={() => setShowShop(false)}
-          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-        >
-          <div
-            onClick={e => e.stopPropagation()}
-            style={{ background: '#FDF6E3', border: '3px solid #2C2C2C', boxShadow: '6px 6px 0 #2C2C2C', padding: '40px 32px', textAlign: 'center', position: 'relative', minWidth: '260px' }}
-          >
-            <button
-              onClick={() => setShowShop(false)}
-              style={{ position: 'absolute', top: '10px', right: '10px', fontFamily: 'var(--font-pixel)', fontSize: '10px', background: '#fff', border: '2px solid #2C2C2C', boxShadow: '2px 2px 0 #2C2C2C', width: '26px', height: '26px', cursor: 'pointer' }}
-            >✕</button>
-            <div style={{ fontFamily: 'var(--font-pixel)', fontSize: '11px', color: '#2C2C2C', marginBottom: '12px' }}>🛒 SHOP</div>
-            <div style={{ fontFamily: 'var(--font-pixel)', fontSize: '9px', color: '#888', lineHeight: 2 }}>🚧 COMING SOON</div>
+        const handleClaim = () => {
+          const reward = REWARD_DAYS[dayIndex]
+          if (reward.snacks > 0) setSmallFood((n: number) => n + reward.snacks)
+          if (reward.meals  > 0) setBigFood((n: number)   => n + reward.meals)
+          const nextStreak = streak + 1
+          const today      = new Date().toDateString()
+          setStreak(nextStreak)
+          localStorage.setItem('oodle_streak',              String(nextStreak))
+          localStorage.setItem('oodle_streak_last_date',    today)
+          localStorage.setItem('oodle_streak_claimed_today', today)
+          setStreakClaimedToday(true)
+          setRewardMsg(reward.claimMsg)
+        }
+
+        return (
+          <div onClick={() => setShowRewards(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
+            <div onClick={e => e.stopPropagation()} style={{ background: '#FDF6E3', border: '3px solid #2C2C2C', boxShadow: '6px 6px 0 #2C2C2C', maxWidth: '420px', width: '100%', maxHeight: '90vh', overflowY: 'auto', position: 'relative' }}>
+              {/* Header */}
+              <div style={{ background: '#2C2C2C', color: '#FFE600', fontFamily: 'var(--font-pixel)', fontSize: '11px', textAlign: 'center', padding: '14px', letterSpacing: '2px' }}>
+                🔥 DAILY LOGIN REWARD
+              </div>
+              <button onClick={() => setShowRewards(false)} style={{ position: 'absolute', top: '8px', right: '8px', fontFamily: 'var(--font-pixel)', fontSize: '12px', background: 'transparent', border: '2px solid #FFE600', color: '#FFE600', width: '28px', height: '28px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>✕</button>
+
+              <div style={{ padding: '20px' }}>
+                {/* Streak counter */}
+                <div style={{ textAlign: 'center', fontFamily: 'var(--font-pixel)', fontSize: '13px', color: '#cc2200', marginBottom: '16px', letterSpacing: '1px' }}>
+                  🔥 DAY {streak} STREAK!
+                </div>
+
+                {/* 7-day grid */}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '5px', marginBottom: '20px' }}>
+                  {REWARD_DAYS.map((day, i) => {
+                    const n       = i + 1
+                    const isPast  = n < dayInCycle || (n === dayInCycle && streakClaimedToday)
+                    const isToday = n === dayInCycle && !streakClaimedToday
+                    const isFuture = n > dayInCycle
+                    return (
+                      <div key={n} style={{ border: `2px solid ${day.rare ? '#9B59B6' : '#2C2C2C'}`, background: isPast ? '#d4f5d4' : isToday ? '#FFE600' : '#fff', padding: '6px 2px', textAlign: 'center', opacity: isFuture ? 0.4 : 1, position: 'relative' }}>
+                        <div style={{ fontFamily: 'var(--font-pixel)', fontSize: '5px', color: '#888', marginBottom: '3px' }}>DAY {n}</div>
+                        <div style={{ fontSize: '14px', lineHeight: 1.2 }}>{day.emoji}</div>
+                        <div style={{ fontFamily: 'var(--font-pixel)', fontSize: '4px', color: day.rare ? '#9B59B6' : '#555', lineHeight: 1.4, marginTop: '2px' }}>{day.label}</div>
+                        {isPast  && <div style={{ position: 'absolute', top: 1, right: 2, fontSize: '9px', color: '#4CAF50' }}>✓</div>}
+                        {isToday && <div style={{ fontFamily: 'var(--font-pixel)', fontSize: '4px', color: '#cc2200', marginTop: '2px' }}>TODAY</div>}
+                      </div>
+                    )
+                  })}
+                </div>
+
+                {/* Claim area */}
+                {rewardMsg ? (
+                  <div style={{ textAlign: 'center', fontFamily: 'var(--font-pixel)', fontSize: '9px', color: '#4CAF50', padding: '14px', border: '2px solid #4CAF50', lineHeight: 2 }}>
+                    ✅ REWARD CLAIMED!<br />{rewardMsg}
+                  </div>
+                ) : streakClaimedToday ? (
+                  <div style={{ textAlign: 'center', fontFamily: 'var(--font-pixel)', fontSize: '8px', color: '#888', padding: '14px', border: '2px solid #ddd', lineHeight: 2 }}>
+                    ✓ CLAIMED TODAY<br />COME BACK TOMORROW!
+                  </div>
+                ) : (
+                  <button onClick={handleClaim} style={{ width: '100%', fontFamily: 'var(--font-pixel)', fontSize: '10px', padding: '14px', background: '#FFE600', color: '#2C2C2C', border: '2px solid #2C2C2C', boxShadow: '4px 4px 0 #2C2C2C', cursor: 'pointer', letterSpacing: '2px' }}>
+                    🎁 CLAIM REWARD
+                  </button>
+                )}
+
+                {/* Warning + login hint */}
+                <p style={{ fontFamily: 'var(--font-pixel)', fontSize: '6px', color: '#cc2200', textAlign: 'center', marginTop: '12px', lineHeight: 2 }}>⚠ Miss a day and streak resets!</p>
+                {isAnonymous && <p style={{ fontFamily: 'var(--font-pixel)', fontSize: '6px', color: '#888', textAlign: 'center', marginTop: '4px', lineHeight: 2 }}>* Login with Google to claim rewards</p>}
+              </div>
+            </div>
           </div>
-        </div>
-      )}
+        )
+      })()}
+
+      {/* ── SHOP MODAL ──────────────────────────────────────── */}
+      {showShop && (() => {
+        const isOwned = (id: string) => ownedItems.has(id)
+
+        const handleBuyItem = (item: ShopItem) => {
+          if (likeBalance < item.price || isOwned(item.id)) return
+          setLikeBalance((prev: number) => prev - item.price)
+          const next = new Set([...ownedItems, item.id])
+          setOwnedItems(next)
+          localStorage.setItem('oodle_owned_items', JSON.stringify(Array.from(next)))
+        }
+
+        const handleEquipHat = (id: string) => {
+          const next = equippedHat === id ? '' : id
+          setEquippedHat(next)
+          localStorage.setItem('oodle_equipped_hat', next)
+        }
+
+        const handleEquipEye = (id: string) => {
+          setEquippedEye(id)
+          localStorage.setItem('oodle_eye_style', id)
+        }
+
+        const shopTabs: Array<{ id: 'food' | 'hats' | 'glasses' | 'eyes' | 'room'; label: string }> = [
+          { id: 'food',    label: '🍖 FOOD'    },
+          { id: 'hats',    label: '🎩 HATS'    },
+          { id: 'glasses', label: '👓 GLASS'   },
+          { id: 'eyes',    label: '👁 EYES'    },
+          { id: 'room',    label: '🪴 ROOM'    },
+        ]
+
+        const ItemCard = ({ item, equippedId, onEquip }: { item: ShopItem; equippedId?: string; onEquip?: (id: string) => void }) => {
+          const owned     = isOwned(item.id)
+          const equipped  = equippedId === item.id
+          const canAfford = likeBalance >= item.price
+          return (
+            <div style={{ border: `2px solid ${item.rare ? '#9B59B6' : '#2C2C2C'}`, boxShadow: '2px 2px 0 #2C2C2C', padding: '10px 6px', textAlign: 'center', background: equipped ? '#FFE600' : owned ? '#f0fff0' : '#fff', position: 'relative' }}>
+              <div style={{ fontSize: '22px', marginBottom: '4px' }}>{item.emoji}</div>
+              <div style={{ fontFamily: 'var(--font-pixel)', fontSize: '5px', color: item.rare ? '#9B59B6' : '#2C2C2C', marginBottom: '6px', lineHeight: 1.4 }}>{item.label}</div>
+              {equipped && <div style={{ fontFamily: 'var(--font-pixel)', fontSize: '5px', color: '#4CAF50', marginBottom: '4px' }}>ON</div>}
+              {owned && !equipped && onEquip && (
+                <button onClick={() => onEquip(item.id)} style={{ fontFamily: 'var(--font-pixel)', fontSize: '5px', padding: '4px 6px', background: '#2C2C2C', color: '#FFE600', border: 'none', cursor: 'pointer', width: '100%' }}>EQUIP</button>
+              )}
+              {owned && !onEquip && !equipped && <div style={{ fontFamily: 'var(--font-pixel)', fontSize: '5px', color: '#4CAF50' }}>OWNED</div>}
+              {!owned && item.price === 0 && <div style={{ fontFamily: 'var(--font-pixel)', fontSize: '5px', color: '#4CAF50' }}>FREE</div>}
+              {!owned && item.price > 0 && (
+                <button
+                  onClick={() => handleBuyItem(item)}
+                  disabled={!canAfford}
+                  style={{ fontFamily: 'var(--font-pixel)', fontSize: '5px', padding: '4px 6px', background: canAfford ? '#FFE600' : '#eee', color: '#2C2C2C', border: `1px solid ${item.rare ? '#9B59B6' : '#2C2C2C'}`, cursor: canAfford ? 'pointer' : 'not-allowed', width: '100%' }}
+                >
+                  ❤️ {item.price}
+                </button>
+              )}
+            </div>
+          )
+        }
+
+        return (
+          <div onClick={() => setShowShop(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
+            <div onClick={e => e.stopPropagation()} style={{ background: '#FDF6E3', border: '3px solid #2C2C2C', boxShadow: '6px 6px 0 #2C2C2C', maxWidth: '480px', width: '100%', maxHeight: '90vh', overflowY: 'auto', position: 'relative' }}>
+              {/* Header */}
+              <div style={{ background: '#2C2C2C', color: '#FFE600', fontFamily: 'var(--font-pixel)', fontSize: '11px', textAlign: 'center', padding: '14px', letterSpacing: '2px' }}>
+                🛒 SHOP
+              </div>
+              <button onClick={() => setShowShop(false)} style={{ position: 'absolute', top: '8px', right: '8px', fontFamily: 'var(--font-pixel)', fontSize: '12px', background: 'transparent', border: '2px solid #FFE600', color: '#FFE600', width: '28px', height: '28px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>✕</button>
+
+              {/* Like balance */}
+              <div style={{ fontFamily: 'var(--font-pixel)', fontSize: '9px', color: '#cc2200', textAlign: 'center', padding: '10px', background: '#fff8e1', borderBottom: '2px solid #2C2C2C' }}>
+                ❤️ BALANCE: {likeBalance} LIKES
+              </div>
+
+              {/* Tab bar */}
+              <div style={{ display: 'flex', borderBottom: '2px solid #2C2C2C' }}>
+                {shopTabs.map(t => (
+                  <button key={t.id} onClick={() => setShopTab(t.id)} style={{ flex: 1, fontFamily: 'var(--font-pixel)', fontSize: '5px', padding: '8px 2px', background: shopTab === t.id ? '#FFE600' : '#fff', border: 'none', borderRight: '1px solid #2C2C2C', cursor: 'pointer', color: '#2C2C2C' }}>
+                    {t.label}
+                  </button>
+                ))}
+              </div>
+
+              {/* Tab content */}
+              <div style={{ padding: '16px' }}>
+                {shopTab === 'food' && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                    {[
+                      { label: '🍪 SNACK',     price: 3,  onBuy: () => { if (likeBalance >= 3) { setLikeBalance((p: number) => p - 3); setSmallFood((p: number) => p + 1) } } },
+                      { label: '🍖 MEAL',      price: 5,  onBuy: () => { if (likeBalance >= 5) { setLikeBalance((p: number) => p - 5); setBigFood((p: number)   => p + 1) } } },
+                    ].map(f => (
+                      <div key={f.label} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', border: '2px solid #2C2C2C', boxShadow: '2px 2px 0 #2C2C2C', padding: '12px 14px', background: '#fff' }}>
+                        <span style={{ fontFamily: 'var(--font-pixel)', fontSize: '9px', color: '#2C2C2C' }}>{f.label}</span>
+                        <button onClick={f.onBuy} disabled={likeBalance < f.price} style={{ fontFamily: 'var(--font-pixel)', fontSize: '8px', padding: '6px 12px', background: likeBalance >= f.price ? '#FFE600' : '#eee', color: '#2C2C2C', border: '2px solid #2C2C2C', boxShadow: likeBalance >= f.price ? '2px 2px 0 #2C2C2C' : 'none', cursor: likeBalance >= f.price ? 'pointer' : 'not-allowed' }}>
+                          ❤️ {f.price}
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {shopTab === 'hats' && (
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px' }}>
+                    {SHOP_HATS.map(item => <ItemCard key={item.id} item={item} equippedId={equippedHat} onEquip={handleEquipHat} />)}
+                  </div>
+                )}
+
+                {shopTab === 'glasses' && (
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '8px' }}>
+                    {SHOP_GLASSES.map(item => <ItemCard key={item.id} item={item} equippedId={equippedHat} onEquip={handleEquipHat} />)}
+                  </div>
+                )}
+
+                {shopTab === 'eyes' && (
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px' }}>
+                    {SHOP_EYES.map(item => <ItemCard key={item.id} item={item} equippedId={equippedEye} onEquip={item.price === 0 || isOwned(item.id) ? handleEquipEye : undefined} />)}
+                  </div>
+                )}
+
+                {shopTab === 'room' && (
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '8px' }}>
+                    {SHOP_ROOM.map(item => <ItemCard key={item.id} item={item} />)}
+                  </div>
+                )}
+              </div>
+
+              {/* Footer */}
+              {(equippedHat || equippedEye) && (
+                <div style={{ fontFamily: 'var(--font-pixel)', fontSize: '6px', color: '#555', textAlign: 'center', padding: '10px', borderTop: '2px solid #ddd', lineHeight: 2 }}>
+                  {equippedHat && `🎩 ${SHOP_HATS.find(h => h.id === equippedHat)?.label ?? ''} equipped`}
+                  {equippedHat && equippedEye && '  ·  '}
+                  {equippedEye && `👁 ${SHOP_EYES.find(e => e.id === equippedEye)?.label ?? ''} eyes`}
+                </div>
+              )}
+            </div>
+          </div>
+        )
+      })()}
     </div>
   )
 }
