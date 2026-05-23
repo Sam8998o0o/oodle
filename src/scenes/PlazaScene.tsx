@@ -754,7 +754,7 @@ export default function PlazaScene({ petData, onGoToRoom, isPremium, petSize }: 
             {/* Close button */}
             <button
               onClick={() => { setShowAdModal(false); setAdSubmitted(false) }}
-              style={{ position: 'absolute', top: '12px', right: '12px', fontFamily: 'var(--font-pixel)', fontSize: '10px', background: 'transparent', border: '2px solid #2C2C2C', padding: '4px 8px', cursor: 'pointer', lineHeight: 1 }}
+              style={{ position: 'absolute', top: '12px', right: '12px', fontFamily: 'var(--font-pixel)', fontSize: '14px', background: '#fff', border: '2px solid #2C2C2C', boxShadow: '2px 2px 0 #2C2C2C', width: '28px', height: '28px', cursor: 'pointer', lineHeight: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}
             >✕</button>
 
             {/* Title */}
@@ -785,15 +785,15 @@ export default function PlazaScene({ petData, onGoToRoom, isPremium, petSize }: 
                 ).map(f => (
                   <div key={f.key} style={{ marginBottom: '12px' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '4px' }}>
-                      <label style={{ fontFamily: 'var(--font-pixel)', fontSize: '7px', color: '#2C2C2C', letterSpacing: '1px' }}>{f.label}</label>
-                      {f.hint && <span style={{ fontFamily: 'var(--font-pixel)', fontSize: '6px', color: '#aaa' }}>{f.hint}</span>}
+                      <label style={{ fontFamily: 'var(--font-pixel)', fontSize: '9px', color: '#2C2C2C', letterSpacing: '1px' }}>{f.label}</label>
+                      {f.hint && <span style={{ fontFamily: 'var(--font-pixel)', fontSize: '7px', color: '#888' }}>{f.hint}</span>}
                     </div>
                     <input
                       type={f.type}
                       maxLength={f.maxLength}
                       value={adForm[f.key]}
                       onChange={e => setAdForm(prev => ({ ...prev, [f.key]: e.target.value }))}
-                      style={{ width: '100%', fontFamily: 'var(--font-retro)', fontSize: '15px', padding: '8px 10px', border: '2px solid #2C2C2C', boxShadow: '2px 2px 0 #2C2C2C', outline: 'none', background: '#fff', boxSizing: 'border-box' }}
+                      style={{ width: '100%', fontFamily: 'var(--font-retro)', fontSize: '15px', padding: '10px 12px', border: '2px solid #2C2C2C', boxShadow: '2px 2px 0 #2C2C2C', outline: 'none', background: '#fff', boxSizing: 'border-box' }}
                     />
                   </div>
                 ))}
@@ -810,7 +810,7 @@ export default function PlazaScene({ petData, onGoToRoom, isPremium, petSize }: 
                       <button
                         key={p.value}
                         onClick={() => setAdForm(prev => ({ ...prev, plan: p.value }))}
-                        style={{ flex: 1, padding: '10px 4px', border: '2px solid #2C2C2C', boxShadow: adForm.plan === p.value ? 'none' : '2px 2px 0 #2C2C2C', background: adForm.plan === p.value ? '#FFE600' : '#fff', cursor: 'pointer', fontFamily: 'var(--font-pixel)', fontSize: '7px', lineHeight: 2, transform: adForm.plan === p.value ? 'translate(2px,2px)' : 'none' }}
+                        style={{ flex: 1, padding: '10px 4px', border: '2px solid #2C2C2C', boxShadow: adForm.plan === p.value ? '2px 2px 0 #2C2C2C' : '2px 2px 0 #2C2C2C', background: adForm.plan === p.value ? '#FFE600' : '#fff', cursor: 'pointer', fontFamily: 'var(--font-pixel)', fontSize: '7px', lineHeight: 2, transform: adForm.plan === p.value ? 'translate(2px,2px)' : 'none', outline: adForm.plan === p.value ? '2px solid #2C2C2C' : 'none', outlineOffset: '2px' }}
                       >
                         {p.label}<br />{p.price}
                       </button>
@@ -846,13 +846,13 @@ export default function PlazaScene({ petData, onGoToRoom, isPremium, petSize }: 
                       setAdSubmitting(false)
                     }
                   }}
-                  style={{ width: '100%', fontFamily: 'var(--font-pixel)', fontSize: '10px', padding: '14px', background: adSubmitting ? '#ccc' : '#FFE600', color: '#2C2C2C', border: '2px solid #2C2C2C', boxShadow: '3px 3px 0 #2C2C2C', cursor: adSubmitting ? 'not-allowed' : 'pointer', letterSpacing: '2px', marginBottom: '12px' }}
+                  style={{ width: '100%', fontFamily: 'var(--font-pixel)', fontSize: '10px', padding: '16px', background: adSubmitting ? '#ccc' : '#FFE600', color: '#2C2C2C', border: '3px solid #2C2C2C', boxShadow: '5px 5px 0 #2C2C2C', cursor: adSubmitting ? 'not-allowed' : 'pointer', letterSpacing: '2px', marginBottom: '12px' }}
                 >
                   {adSubmitting ? 'SENDING...' : 'SUBMIT ENQUIRY'}
                 </button>
 
                 {/* Footer */}
-                <p style={{ fontFamily: 'var(--font-pixel)', fontSize: '6px', color: '#aaa', textAlign: 'center', lineHeight: 2, margin: 0 }}>
+                <p style={{ fontFamily: 'var(--font-retro)', fontSize: '13px', color: '#555', textAlign: 'center', lineHeight: 1.8, margin: 0 }}>
                   We will contact you within 24 hours to arrange payment.
                 </p>
               </>
