@@ -544,6 +544,17 @@ export default function PlazaScene({ petData, onGoToRoom, isPremium, petSize }: 
 
     likePet(petId).catch(() => {})
 
+    // Track daily plaza likes for the Daily Tasks system
+    const todayKey  = new Date().toDateString()
+    const likeData  = JSON.parse(localStorage.getItem('oodle_daily_plaza_likes') ?? '{"date":"","count":0}') as { date: string; count: number }
+    if (likeData.date === todayKey) {
+      likeData.count += 1
+    } else {
+      likeData.date  = todayKey
+      likeData.count = 1
+    }
+    localStorage.setItem('oodle_daily_plaza_likes', JSON.stringify(likeData))
+
     // Spawn pixel heart
     const canvas = canvasMap.current.get(petId)
     if (canvas) {
@@ -600,6 +611,17 @@ export default function PlazaScene({ petData, onGoToRoom, isPremium, petSize }: 
     if (likedShouts.has(shoutId)) return
     setLikedShouts(prev => new Set([...prev, shoutId]))
     likeShout(shoutId).catch(() => {})
+
+    // Track daily plaza likes for the Daily Tasks system
+    const todayKey  = new Date().toDateString()
+    const likeData  = JSON.parse(localStorage.getItem('oodle_daily_plaza_likes') ?? '{"date":"","count":0}') as { date: string; count: number }
+    if (likeData.date === todayKey) {
+      likeData.count += 1
+    } else {
+      likeData.date  = todayKey
+      likeData.count = 1
+    }
+    localStorage.setItem('oodle_daily_plaza_likes', JSON.stringify(likeData))
   }, [likedShouts])
 
   return (
