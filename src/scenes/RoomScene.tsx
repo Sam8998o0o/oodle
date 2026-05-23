@@ -845,7 +845,7 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange }: RoomSc
         </div>
       </div>
 
-      <div className={styles.actionBar}>
+      <div className={styles.actionBar} style={{ position: 'relative', justifyContent: 'center' }}>
         {/* MORE popup */}
         {showMore && (
           <div
@@ -867,38 +867,39 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange }: RoomSc
           </div>
         )}
 
-        {/* LEFT: MORE button */}
+        {/* MORE button — absolutely positioned far left */}
         <button
           className={`${styles.actionBtn} ${showMore ? styles.moreActive : ''}`}
+          style={{ position: 'absolute', left: '16px' }}
           onClick={e => { e.stopPropagation(); setShowMore(v => !v) }}
         >
           ☰ MORE
         </button>
 
-        <div style={{ flex: 1 }} />
-
-        {/* RIGHT: feed + plaza */}
-        <button
-          className={styles.actionBtn}
-          onClick={() => handleFeed('small')}
-          disabled={smallFood <= 0 || todayEats >= DAILY_EAT_LIMIT || isSleeping}
-        >
-          🍎 FEED SNACK
-        </button>
-        <button
-          className={styles.actionBtn}
-          onClick={() => handleFeed('big')}
-          disabled={bigFood <= 0 || todayEats >= DAILY_EAT_LIMIT || isSleeping}
-        >
-          🍱 FEED MEAL
-        </button>
-        <button
-          className={`${styles.actionBtn} ${styles.plazaBtn}`}
-          onClick={handleGoToPlaza}
-          disabled={!plazaReady}
-        >
-          {!petSaved ? 'SAVING...' : isTransitioning ? 'GOING...' : 'GO TO PLAZA →'}
-        </button>
+        {/* CENTRE: feed + plaza */}
+        <div style={{ display: 'flex', gap: '8px' }}>
+          <button
+            className={styles.actionBtn}
+            onClick={() => handleFeed('small')}
+            disabled={smallFood <= 0 || todayEats >= DAILY_EAT_LIMIT || isSleeping}
+          >
+            🍎 FEED SNACK
+          </button>
+          <button
+            className={styles.actionBtn}
+            onClick={() => handleFeed('big')}
+            disabled={bigFood <= 0 || todayEats >= DAILY_EAT_LIMIT || isSleeping}
+          >
+            🍱 FEED MEAL
+          </button>
+          <button
+            className={`${styles.actionBtn} ${styles.plazaBtn}`}
+            onClick={handleGoToPlaza}
+            disabled={!plazaReady}
+          >
+            {!petSaved ? 'SAVING...' : isTransitioning ? 'GOING...' : 'GO TO PLAZA →'}
+          </button>
+        </div>
       </div>
 
       {/* Rewards placeholder modal */}
