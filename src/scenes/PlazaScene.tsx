@@ -4,7 +4,7 @@ import type { PetCoords } from '../api/aiRecognize'
 import {
   fetchAllPets, getAllLikeCounts, likePet, getTodayLikedPetIds,
   postShout, getActiveShouts, countTodayShouts, likeShout,
-  fetchAds, updateGrowth,
+  fetchAds, updateGrowth, updateLastSeen,
 } from '../lib/petService'
 import type { AdRecord } from '../lib/petService'
 import { subscribeToNewPets } from '../lib/realtimeService'
@@ -476,6 +476,13 @@ export default function PlazaScene({ petData, onGoToRoom, isPremium, petSize }: 
     loadFromSupabase()
     updateGrowth().catch(() => {})
   }, [petData])
+
+  // ── Last-seen heartbeat — keep pet visible in Plaza ───────
+  useEffect(() => {
+    updateLastSeen().catch(() => {})
+    const interval = setInterval(() => updateLastSeen().catch(() => {}), 3 * 60 * 1000)
+    return () => clearInterval(interval)
+  }, [])
 
   // ── Poll for new pets every 15 s ──────────────────────────
   useEffect(() => {

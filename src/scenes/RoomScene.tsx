@@ -338,6 +338,7 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange }: RoomSc
 
     const fetchBalance = async () => {
       const b = await getLikeBalance().catch(() => 0)
+      console.log('[likes] balance:', b)
       if (b > prevBalance && prevBalance > 0) {
         const gained = b - prevBalance
         setBubble({ text: `+${gained} ❤️ someone liked you!`, id: Date.now() })
@@ -362,6 +363,7 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange }: RoomSc
           filter: `user_id=eq.${userId}`,
         }, payload => {
           const newBal = (payload.new as { balance: number }).balance
+          console.log('[likes] realtime update:', newBal)
           setLikeBalance(prev => {
             if (newBal > prev) {
               setBubble({ text: `+${newBal - prev} ❤️ someone liked you!`, id: Date.now() })
@@ -369,7 +371,10 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange }: RoomSc
             return newBal
           })
         })
-        .subscribe()
+        .subscribe((status, err) => {
+          if (err) console.error('[likes] realtime subscription error:', err)
+          else console.log('[likes] realtime status:', status)
+        })
     }
 
     return () => {

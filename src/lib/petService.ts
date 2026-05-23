@@ -77,13 +77,23 @@ export async function updateGrowth(): Promise<void> {
   await supabase.from('pets').update({ growth_points: growth }).eq('id', petId)
 }
 
+// ── updateLastSeen ────────────────────────────────────────
+// Heartbeat: stamps the pet row so it stays visible in Plaza (10-min window).
+export async function updateLastSeen(): Promise<void> {
+  const petId = localStorage.getItem('oodle_pet_supabase_id')
+  if (!petId) return
+  await supabase.from('pets').update({ last_seen: new Date().toISOString() }).eq('id', petId)
+}
+
 // ── fetchAllPets ──────────────────────────────────────────
-// Returns up to 50 recent pets from Supabase.
+// Returns pets seen in the last 10 minutes, ordered newest first.
 // Returns [] on failure (caller should fall back to localStorage).
 export async function fetchAllPets(): Promise<PetRecord[]> {
+  const tenMinsAgo = new Date(Date.now() - 10 * 60 * 1000).toISOString()
   const { data, error } = await supabase
     .from('pets')
     .select('*')
+    .gte('last_seen', tenMinsAgo)
     .order('created_at', { ascending: false })
     .limit(50)
 
