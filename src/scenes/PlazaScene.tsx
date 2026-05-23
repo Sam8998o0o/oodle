@@ -4,7 +4,7 @@ import type { PetCoords } from '../api/aiRecognize'
 import {
   fetchAllPets, getAllLikeCounts, likePet, getTodayLikedPetIds,
   postShout, getActiveShouts, countTodayShouts, likeShout,
-  fetchAds,
+  fetchAds, updateGrowth,
 } from '../lib/petService'
 import type { AdRecord } from '../lib/petService'
 import { subscribeToNewPets } from '../lib/realtimeService'
@@ -90,12 +90,18 @@ interface PlazaSceneProps {
 }
 
 interface PlazaPet {
-  id: string
-  pixelData: string
-  coords: PetCoords
-  name: string
-  createdAt: string
-  isOwn: boolean
+  id:            string
+  pixelData:     string
+  coords:        PetCoords
+  name:          string
+  createdAt:     string
+  isOwn:         boolean
+  growth_points: number
+}
+
+// Maps growth_points (0-100) to canvas size (60-160 px)
+function growthToSize(gp: number): number {
+  return Math.round(60 + (Math.min(100, Math.max(0, gp)) / 100) * 100)
 }
 
 interface Walker {
@@ -321,7 +327,7 @@ export default function PlazaScene({ petData, onGoToRoom, isPremium, petSize }: 
       return
     }
 
-    const size = pet.isOwn ? petSizeRef.current : PET_SIZE
+    const size = pet.isOwn ? petSizeRef.current : growthToSize(pet.growth_points)
     canvas.width  = size
     canvas.height = size
     wrapper.style.width  = `${size}px`
@@ -385,7 +391,7 @@ export default function PlazaScene({ petData, onGoToRoom, isPremium, petSize }: 
         if (!wr || !cv) return
 
         // Use actual canvas size for own pet bounds
-        const sz         = id === 'own' ? petSizeRef.current : PET_SIZE
+        const sz         = cv.width > 0 ? cv.width : (id === 'own' ? petSizeRef.current : PET_SIZE)
         const ownRight   = rW - RIGHT_PAD - sz
         const ownTop     = WALK_Y_MIN * rH - sz
         const ownBottom  = WALK_Y_MAX * rH - sz
@@ -431,12 +437,13 @@ export default function PlazaScene({ petData, onGoToRoom, isPremium, petSize }: 
   // ── Load pets ─────────────────────────────────────────────
   useEffect(() => {
     const ownPet: PlazaPet = {
-      id:        'own',
-      pixelData: petData.pixelData,
-      coords:    petData.coords,
-      name:      petData.name,
-      createdAt: new Date().toISOString(),
-      isOwn:     true,
+      id:            'own',
+      pixelData:     petData.pixelData,
+      coords:        petData.coords,
+      name:          petData.name,
+      createdAt:     new Date().toISOString(),
+      isOwn:         true,
+      growth_points: parseInt(localStorage.getItem('oodle_growth') ?? '0', 10),
     }
     setPets([ownPet])
 
@@ -454,19 +461,46 @@ export default function PlazaScene({ petData, onGoToRoom, isPremium, petSize }: 
           r.pixel_data !== petData.pixelData
         )
         .map(r => ({
-          id:        r.id,
-          pixelData: r.pixel_data,
-          coords:    r.coords ?? DEFAULT_COORDS,
-          name:      r.name,
-          createdAt: r.created_at,
-          isOwn:     false,
+          id:            r.id,
+          pixelData:     r.pixel_data,
+          coords:        r.coords ?? DEFAULT_COORDS,
+          name:          r.name,
+          createdAt:     r.created_at,
+          isOwn:         false,
+          growth_points: r.growth_points ?? 0,
         }))
       setPets(prev => mergePets(prev, [ownPet, ...others]))
       setLikes(likeCounts)
     }
 
     loadFromSupabase()
+    updateGrowth().catch(() => {})
   }, [petData])
+
+  // ── Poll for new pets every 15 s ──────────────────────────
+  useEffect(() => {
+    const poll = setInterval(async () => {
+      const records = await fetchAllPets()
+      const ownSupabaseId = localStorage.getItem('oodle_pet_supabase_id')
+      const ownUserId = useAuthStore.getState().userId
+      setPets(prev => {
+        const newOthers = records
+          .filter(r => r.id !== ownSupabaseId && r.user_id !== ownUserId)
+          .map(r => ({
+            id:            r.id,
+            pixelData:     r.pixel_data,
+            coords:        r.coords ?? DEFAULT_COORDS,
+            name:          r.name,
+            createdAt:     r.created_at,
+            isOwn:         false,
+            growth_points: r.growth_points ?? 0,
+          }))
+        const ownPet = prev.find(p => p.isOwn)
+        return ownPet ? [ownPet, ...newOthers] : newOthers
+      })
+    }, 15000)
+    return () => clearInterval(poll)
+  }, [])
 
   // ── Realtime ──────────────────────────────────────────────
   useEffect(() => {
@@ -479,12 +513,13 @@ export default function PlazaScene({ petData, onGoToRoom, isPremium, petSize }: 
       setPets(prev => {
         if (prev.some(p => p.id === newPet.id)) return prev
         return [...prev, {
-          id:        newPet.id,
-          pixelData: newPet.pixel_data,
-          coords:    newPet.coords ?? DEFAULT_COORDS,
-          name:      newPet.name,
-          createdAt: newPet.created_at,
-          isOwn:     false,
+          id:            newPet.id,
+          pixelData:     newPet.pixel_data,
+          coords:        newPet.coords ?? DEFAULT_COORDS,
+          name:          newPet.name,
+          createdAt:     newPet.created_at,
+          isOwn:         false,
+          growth_points: newPet.growth_points ?? 0,
         }]
       })
     })
@@ -692,8 +727,8 @@ export default function PlazaScene({ petData, onGoToRoom, isPremium, petSize }: 
                     canvasMap.current.delete(pet.id)
                   }
                 }}
-                width={pet.isOwn ? petSize : PET_SIZE}
-                height={pet.isOwn ? petSize : PET_SIZE}
+                width={pet.isOwn ? petSize : growthToSize(pet.growth_points)}
+                height={pet.isOwn ? petSize : growthToSize(pet.growth_points)}
                 className={styles.petCanvas}
               />
             </div>

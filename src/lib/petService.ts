@@ -4,13 +4,14 @@ import type { PetCoords } from '../api/aiRecognize'
 
 // ── Types ─────────────────────────────────────────────────
 export interface PetRecord {
-  id:         string
-  user_id:    string
-  name:       string
-  pixel_data: string
-  coords:     PetCoords | null
-  created_at: string
-  is_online:  boolean
+  id:            string
+  user_id:       string
+  name:          string
+  pixel_data:    string
+  coords:        PetCoords | null
+  created_at:    string
+  is_online:     boolean
+  growth_points: number
 }
 
 // localStorage key used to avoid re-inserting the same pet
@@ -36,10 +37,11 @@ export async function savePet(pet: {
   const { data, error } = await supabase
     .from('pets')
     .insert({
-      user_id:    userId,
-      name:       pet.name,
-      pixel_data: pet.pixelData,
-      coords:     pet.coords,
+      user_id:       userId,
+      name:          pet.name,
+      pixel_data:    pet.pixelData,
+      coords:        pet.coords,
+      growth_points: parseInt(localStorage.getItem('oodle_growth') ?? '0', 10),
     })
     .select('id')
     .single()
@@ -64,6 +66,15 @@ export async function setOnline(online: boolean): Promise<void> {
     .update({ is_online: online })
     .eq('id', petId)
   if (error) console.error('[petService] setOnline failed:', error.message)
+}
+
+// ── updateGrowth ──────────────────────────────────────────
+// Syncs the current user's growth_points to Supabase.
+export async function updateGrowth(): Promise<void> {
+  const petId = localStorage.getItem('oodle_pet_supabase_id')
+  if (!petId) return
+  const growth = parseInt(localStorage.getItem('oodle_growth') ?? '0', 10)
+  await supabase.from('pets').update({ growth_points: growth }).eq('id', petId)
 }
 
 // ── fetchAllPets ──────────────────────────────────────────
