@@ -88,17 +88,20 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange }: RoomSc
           // This prevents energy from hitting 0 after long offline periods
           let { hunger, happy, energy } = p
           const totalIntervals = Math.floor(offlineMins * 2 * decayMult)
+          let sleeping = energy <= 0
           for (let i = 0; i < totalIntervals; i++) {
-            if (energy <= 0) {
-              // Sleeping: energy recovers, hunger/happy decay at half rate
-              energy = Math.min(100, energy + 0.3)
+            if (sleeping) {
+              // Sleeping: energy recovers fast, hunger/happy decay at half rate
+              energy = Math.min(100, energy + 2)
               hunger = Math.max(0, hunger - 0.04)
               happy  = Math.max(0, happy  - 0.03)
+              if (energy >= 100) sleeping = false
             } else {
               // Awake: normal decay
               energy = Math.max(0, energy - 0.11)
               hunger = Math.max(0, hunger - 0.08)
               happy  = Math.max(0, happy  - 0.06)
+              if (energy <= 0) sleeping = true
             }
           }
           p = { hunger, happy, energy }
