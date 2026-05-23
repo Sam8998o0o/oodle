@@ -47,6 +47,7 @@ const DEFAULT_COORDS: PetCoords = {
 }
 
 export default function RoomScene({ petData, onGoToPlaza, onSizeChange }: RoomSceneProps) {
+  const { isAnonymous } = useAuthStore()
   const roomRef       = useRef<HTMLDivElement>(null)
   const petWrapperRef = useRef<HTMLDivElement>(null)
   const petCanvasRef  = useRef<HTMLCanvasElement>(null)
@@ -139,8 +140,19 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange }: RoomSc
   const [isDizzy,    setIsDizzy]    = useState(false)
   const [isFainted,  setIsFainted]  = useState(false)
   const [isSleeping, setIsSleeping] = useState(false)
+  const [showMore,    setShowMore]    = useState(false)
+  const [showRewards, setShowRewards] = useState(false)
+  const [showShop,    setShowShop]    = useState(false)
   const isFaintedRef = useRef(false)
   const isDizzyRef   = useRef(false)
+
+  // Close MORE popup on outside click
+  useEffect(() => {
+    if (!showMore) return
+    const handler = () => setShowMore(false)
+    document.addEventListener('click', handler)
+    return () => document.removeEventListener('click', handler)
+  }, [showMore])
 
   // ── Growth system (day-based) ─────────────────────────────
   const [growthPoints, setGrowthPoints] = useState(() => {
@@ -834,30 +846,100 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange }: RoomSc
       </div>
 
       <div className={styles.actionBar}>
-        <div className={styles.feedRow}>
-          <button
-            className={styles.actionBtn}
-            onClick={() => handleFeed('small')}
-            disabled={smallFood <= 0 || todayEats >= DAILY_EAT_LIMIT || isSleeping}
+        {/* MORE popup */}
+        {showMore && (
+          <div
+            className={styles.morePopup}
+            onClick={e => e.stopPropagation()}
           >
-            🍎 FEED SNACK
-          </button>
-          <button
-            className={styles.actionBtn}
-            onClick={() => handleFeed('big')}
-            disabled={bigFood <= 0 || todayEats >= DAILY_EAT_LIMIT || isSleeping}
-          >
-            🍱 FEED MEAL
-          </button>
-          <button
-            className={`${styles.actionBtn} ${styles.plazaBtn}`}
-            onClick={handleGoToPlaza}
-            disabled={!plazaReady}
-          >
-            {!petSaved ? 'SAVING...' : isTransitioning ? 'GOING...' : 'GO TO PLAZA →'}
-          </button>
-        </div>
+            {/* Streak header */}
+            <div className={styles.morePopupStreak}>
+              🔥 STREAK: {isAnonymous ? '--' : `DAY ${dayCount}`}
+            </div>
+            <button
+              className={styles.morePopupItem}
+              onClick={() => { setShowMore(false); setShowRewards(true) }}
+            >🎁 REWARDS</button>
+            <button
+              className={`${styles.morePopupItem} ${styles.morePopupItemLast}`}
+              onClick={() => { setShowMore(false); setShowShop(true) }}
+            >🛒 SHOP</button>
+          </div>
+        )}
+
+        {/* LEFT: MORE button */}
+        <button
+          className={`${styles.actionBtn} ${showMore ? styles.moreActive : ''}`}
+          onClick={e => { e.stopPropagation(); setShowMore(v => !v) }}
+        >
+          ☰ MORE
+        </button>
+
+        <div style={{ flex: 1 }} />
+
+        {/* RIGHT: feed + plaza */}
+        <button
+          className={styles.actionBtn}
+          onClick={() => handleFeed('small')}
+          disabled={smallFood <= 0 || todayEats >= DAILY_EAT_LIMIT || isSleeping}
+        >
+          🍎 FEED SNACK
+        </button>
+        <button
+          className={styles.actionBtn}
+          onClick={() => handleFeed('big')}
+          disabled={bigFood <= 0 || todayEats >= DAILY_EAT_LIMIT || isSleeping}
+        >
+          🍱 FEED MEAL
+        </button>
+        <button
+          className={`${styles.actionBtn} ${styles.plazaBtn}`}
+          onClick={handleGoToPlaza}
+          disabled={!plazaReady}
+        >
+          {!petSaved ? 'SAVING...' : isTransitioning ? 'GOING...' : 'GO TO PLAZA →'}
+        </button>
       </div>
+
+      {/* Rewards placeholder modal */}
+      {showRewards && (
+        <div
+          onClick={() => setShowRewards(false)}
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+        >
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{ background: '#FDF6E3', border: '3px solid #2C2C2C', boxShadow: '6px 6px 0 #2C2C2C', padding: '40px 32px', textAlign: 'center', position: 'relative', minWidth: '260px' }}
+          >
+            <button
+              onClick={() => setShowRewards(false)}
+              style={{ position: 'absolute', top: '10px', right: '10px', fontFamily: 'var(--font-pixel)', fontSize: '10px', background: '#fff', border: '2px solid #2C2C2C', boxShadow: '2px 2px 0 #2C2C2C', width: '26px', height: '26px', cursor: 'pointer' }}
+            >✕</button>
+            <div style={{ fontFamily: 'var(--font-pixel)', fontSize: '11px', color: '#2C2C2C', marginBottom: '12px' }}>🎁 REWARDS</div>
+            <div style={{ fontFamily: 'var(--font-pixel)', fontSize: '9px', color: '#888', lineHeight: 2 }}>🚧 COMING SOON</div>
+          </div>
+        </div>
+      )}
+
+      {/* Shop placeholder modal */}
+      {showShop && (
+        <div
+          onClick={() => setShowShop(false)}
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+        >
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{ background: '#FDF6E3', border: '3px solid #2C2C2C', boxShadow: '6px 6px 0 #2C2C2C', padding: '40px 32px', textAlign: 'center', position: 'relative', minWidth: '260px' }}
+          >
+            <button
+              onClick={() => setShowShop(false)}
+              style={{ position: 'absolute', top: '10px', right: '10px', fontFamily: 'var(--font-pixel)', fontSize: '10px', background: '#fff', border: '2px solid #2C2C2C', boxShadow: '2px 2px 0 #2C2C2C', width: '26px', height: '26px', cursor: 'pointer' }}
+            >✕</button>
+            <div style={{ fontFamily: 'var(--font-pixel)', fontSize: '11px', color: '#2C2C2C', marginBottom: '12px' }}>🛒 SHOP</div>
+            <div style={{ fontFamily: 'var(--font-pixel)', fontSize: '9px', color: '#888', lineHeight: 2 }}>🚧 COMING SOON</div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
