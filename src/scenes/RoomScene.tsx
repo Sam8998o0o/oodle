@@ -49,6 +49,14 @@ const DEFAULT_COORDS: PetCoords = {
 // ── Shop / Rewards data ───────────────────────────────────
 interface ShopItem { id: string; label: string; emoji: string; price: number; rare?: boolean }
 
+interface DailyTasks {
+  feed:           number   // 0-3 feeds today
+  likes:          number   // plaza likes given today
+  plaza:          boolean  // visited plaza today
+  allDoneClaimed: boolean  // bonus already claimed today
+  date:           string   // new Date().toDateString()
+}
+
 const REWARD_DAYS: Array<{ emoji: string; label: string; snacks: number; meals: number; rare: boolean; claimMsg: string }> = [
   { emoji: '🍪',      label: '1 Snack',      snacks: 1, meals: 0, rare: false, claimMsg: '+1 SNACK ADDED!'    },
   { emoji: '🍪🍪',    label: '2 Snacks',      snacks: 2, meals: 0, rare: false, claimMsg: '+2 SNACKS ADDED!'   },
@@ -82,6 +90,17 @@ const SHOP_ROOM: ShopItem[]    = [
   { id: 'room_plant',    label: 'Plant',    emoji: '🪴', price: 15 },
   { id: 'room_painting', label: 'Painting', emoji: '🖼️', price: 25 },
 ]
+
+// ── Confetti data ─────────────────────────────────────────
+const CONFETTI_COLORS = ['#FFE600', '#FF4444', '#44FF88', '#4488FF', '#FF88FF', '#FF8844', '#FF4488', '#88FF44']
+const CONFETTI = Array.from({ length: 60 }, (_, i) => ({
+  id:       i,
+  left:     Math.round((i * 1.6667) % 100),
+  color:    CONFETTI_COLORS[i % CONFETTI_COLORS.length],
+  duration: 1.5 + (i % 6) * 0.25,
+  delay:    (i % 15) * 0.08,
+  size:     6 + (i % 5) * 2,
+}))
 
 export default function RoomScene({ petData, onGoToPlaza, onSizeChange }: RoomSceneProps) {
   const { isAnonymous } = useAuthStore()
@@ -180,6 +199,21 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange }: RoomSc
   const [showMore,    setShowMore]    = useState(false)
   const [showRewards, setShowRewards] = useState(false)
   const [showShop,    setShowShop]    = useState(false)
+  const [showTasks,   setShowTasks]   = useState(false)
+  const [showAllDone, setShowAllDone] = useState(false)
+  const [tasks, setTasks] = useState<DailyTasks>(() => {
+    try {
+      const today = new Date().toDateString()
+      const raw   = localStorage.getItem('oodle_tasks')
+      if (raw) {
+        const t = JSON.parse(raw) as DailyTasks
+        if (t.date === today) return t
+      }
+      return { feed: 0, likes: 0, plaza: false, allDoneClaimed: false, date: today }
+    } catch {
+      return { feed: 0, likes: 0, plaza: false, allDoneClaimed: false, date: new Date().toDateString() }
+    }
+  })
 
   // ── Rewards state ─────────────────────────────────────────
   const [streak, setStreak] = useState<number>(() => {
@@ -236,6 +270,43 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange }: RoomSc
       }
     } catch { /**/ }
   }, [showRewards])
+
+  // Reset tasks on new day when modal opens; sync plaza-like count
+  useEffect(() => {
+    if (!showTasks) return
+    const today = new Date().toDateString()
+    try {
+      const raw    = localStorage.getItem('oodle_tasks')
+      const stored = raw ? JSON.parse(raw) as DailyTasks : null
+      if (!stored || stored.date !== today) {
+        const fresh: DailyTasks = { feed: 0, likes: 0, plaza: false, allDoneClaimed: false, date: today }
+        setTasks(fresh)
+        localStorage.setItem('oodle_tasks', JSON.stringify(fresh))
+      } else {
+        // Sync plaza likes given today from PlazaScene's storage key
+        const likeRaw = localStorage.getItem('oodle_daily_plaza_likes')
+        if (likeRaw !== null) {
+          const count = parseInt(likeRaw, 10)
+          if (!isNaN(count)) {
+            setTasks(t => {
+              if (t.likes === count) return t
+              const next = { ...t, likes: count }
+              localStorage.setItem('oodle_tasks', JSON.stringify(next))
+              return next
+            })
+          }
+        }
+      }
+    } catch { /**/ }
+  }, [showTasks])
+
+  // Show all-done celebration when all tasks complete (and not yet claimed)
+  useEffect(() => {
+    if (tasks.allDoneClaimed) return
+    if (tasks.feed >= 3 && tasks.likes >= 5 && tasks.plaza) {
+      setShowAllDone(true)
+    }
+  }, [tasks])
 
   // ── Growth system (day-based) ─────────────────────────────
   const [growthPoints, setGrowthPoints] = useState(() => {
@@ -623,6 +694,12 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange }: RoomSc
       setStats((s: PetStats) => ({ ...s, hunger: Math.min(100, s.hunger + BIG_HUNGER) }))
     }
     setTodayEats((n: number) => n + 1)
+    setTasks((t: DailyTasks) => {
+      if (t.feed >= 3) return t
+      const next = { ...t, feed: t.feed + 1 }
+      localStorage.setItem('oodle_tasks', JSON.stringify(next))
+      return next
+    })
     showFloat('🍖')
     showBubble(pick(FEED_LINES))
     animatorRef.current?.setState('eat')
@@ -826,6 +903,12 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange }: RoomSc
 
   const handleGoToPlaza = useCallback(() => {
     if (doorPhase !== 'idle') return
+    setTasks((t: DailyTasks) => {
+      if (t.plaza) return t
+      const next = { ...t, plaza: true }
+      localStorage.setItem('oodle_tasks', JSON.stringify(next))
+      return next
+    })
     setDoorPhase('appearing')
   }, [doorPhase])
 
@@ -944,9 +1027,13 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange }: RoomSc
               onClick={() => { setShowMore(false); setShowRewards(true) }}
             >🎁 REWARDS</button>
             <button
-              className={`${styles.morePopupItem} ${styles.morePopupItemLast}`}
+              className={styles.morePopupItem}
               onClick={() => { setShowMore(false); setShowShop(true) }}
             >🛒 SHOP</button>
+            <button
+              className={`${styles.morePopupItem} ${styles.morePopupItemLast}`}
+              onClick={() => { setShowMore(false); setShowTasks(true) }}
+            >✅ TASKS</button>
           </div>
         )}
 
@@ -1198,6 +1285,124 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange }: RoomSc
           </div>
         )
       })()}
+
+      {/* ── TASKS MODAL ─────────────────────────────────── */}
+      {showTasks && (() => {
+        const allDone = tasks.feed >= 3 && tasks.likes >= 5 && tasks.plaza
+
+        const taskRows: Array<{ label: string; emoji: string; current: number; goal: number; done: boolean }> = [
+          { label: 'FEED YOUR PET',   emoji: '🍖', current: tasks.feed,               goal: 3, done: tasks.feed  >= 3 },
+          { label: 'LIKE 5 PETS',     emoji: '❤️', current: Math.min(5, tasks.likes),  goal: 5, done: tasks.likes >= 5 },
+          { label: 'VISIT THE PLAZA', emoji: '🏙️', current: tasks.plaza ? 1 : 0,      goal: 1, done: tasks.plaza      },
+        ]
+
+        const handleClaimAll = () => {
+          setSmallFood((n: number) => n + 2)
+          setBigFood((n: number)   => n + 1)
+          const next = { ...tasks, allDoneClaimed: true }
+          setTasks(next)
+          localStorage.setItem('oodle_tasks', JSON.stringify(next))
+          setShowAllDone(false)
+          setShowTasks(false)
+          showBubble('All tasks done! +2🍪 +1🍖')
+        }
+
+        return (
+          <div onClick={() => setShowTasks(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
+            <div onClick={e => e.stopPropagation()} style={{ background: '#FDF6E3', border: '3px solid #2C2C2C', boxShadow: '6px 6px 0 #2C2C2C', maxWidth: '380px', width: '100%', maxHeight: '90vh', overflowY: 'auto', position: 'relative' }}>
+              <div style={{ background: '#2C2C2C', color: '#FFE600', fontFamily: 'var(--font-pixel)', fontSize: '11px', textAlign: 'center', padding: '14px', letterSpacing: '2px' }}>
+                ✅ DAILY TASKS
+              </div>
+              <button onClick={() => setShowTasks(false)} style={{ position: 'absolute', top: '8px', right: '8px', fontFamily: 'var(--font-pixel)', fontSize: '12px', background: 'transparent', border: '2px solid #FFE600', color: '#FFE600', width: '28px', height: '28px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>✕</button>
+
+              <div style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                {taskRows.map(task => (
+                  <div key={task.label} style={{ border: `2px solid ${task.done ? '#4CAF50' : '#2C2C2C'}`, boxShadow: '2px 2px 0 #2C2C2C', padding: '12px 14px', background: task.done ? '#f0fff0' : '#fff' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+                      <span style={{ fontFamily: 'var(--font-pixel)', fontSize: '7px', color: task.done ? '#4CAF50' : '#2C2C2C', letterSpacing: '1px' }}>
+                        {task.emoji} {task.label}
+                      </span>
+                      <span style={{ fontFamily: 'var(--font-pixel)', fontSize: '7px', color: task.done ? '#4CAF50' : '#888' }}>
+                        {task.done ? '✓ DONE' : `${task.current}/${task.goal}`}
+                      </span>
+                    </div>
+                    <div style={{ width: '100%', height: '8px', background: '#eee', border: '1px solid #2C2C2C' }}>
+                      <div style={{ height: '100%', width: `${Math.min(100, (task.current / task.goal) * 100)}%`, background: task.done ? '#4CAF50' : '#FFE600' }} />
+                    </div>
+                  </div>
+                ))}
+
+                {/* Bonus row */}
+                <div style={{ border: `3px solid ${allDone ? '#FFE600' : '#ddd'}`, boxShadow: allDone ? '3px 3px 0 #2C2C2C' : 'none', padding: '16px', background: allDone ? '#fffde7' : '#f9f9f9', textAlign: 'center' }}>
+                  <div style={{ fontFamily: 'var(--font-pixel)', fontSize: '8px', color: allDone ? '#cc2200' : '#aaa', marginBottom: '8px', letterSpacing: '1px' }}>
+                    🎁 ALL DONE BONUS
+                  </div>
+                  <div style={{ fontFamily: 'var(--font-retro)', fontSize: '18px', color: '#2C2C2C', marginBottom: '10px', lineHeight: 1.6 }}>
+                    +2 🍪 Snacks · +1 🍖 Meal
+                  </div>
+                  {tasks.allDoneClaimed ? (
+                    <div style={{ fontFamily: 'var(--font-pixel)', fontSize: '7px', color: '#4CAF50', padding: '8px', border: '1px solid #4CAF50' }}>✓ CLAIMED TODAY</div>
+                  ) : allDone ? (
+                    <button onClick={handleClaimAll} style={{ fontFamily: 'var(--font-pixel)', fontSize: '9px', padding: '12px 20px', background: '#FFE600', color: '#2C2C2C', border: '2px solid #2C2C2C', boxShadow: '4px 4px 0 #2C2C2C', cursor: 'pointer', letterSpacing: '2px', width: '100%' }}>
+                      🎁 CLAIM REWARD
+                    </button>
+                  ) : (
+                    <div style={{ fontFamily: 'var(--font-pixel)', fontSize: '6px', color: '#aaa' }}>COMPLETE ALL TASKS TO UNLOCK</div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        )
+      })()}
+
+      {/* ── ALL DONE CELEBRATION ──────────────────────── */}
+      {showAllDone && !tasks.allDoneClaimed && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.75)' }}>
+          {CONFETTI.map(c => (
+            <div
+              key={c.id}
+              className={styles.confettiPiece}
+              style={{
+                left:              `${c.left}%`,
+                width:             `${c.size}px`,
+                height:            `${c.size}px`,
+                background:        c.color,
+                animationDuration: `${c.duration}s`,
+                animationDelay:    `${c.delay}s`,
+              }}
+            />
+          ))}
+          <div style={{ position: 'relative', zIndex: 101, background: '#FDF6E3', border: '4px solid #FFE600', boxShadow: '8px 8px 0 #2C2C2C', maxWidth: '320px', width: '90%', padding: '32px 24px', textAlign: 'center', display: 'flex', flexDirection: 'column', gap: '16px', alignItems: 'center' }}>
+            <div style={{ fontFamily: 'var(--font-pixel)', fontSize: '13px', color: '#cc2200', letterSpacing: '2px', lineHeight: 2 }}>
+              🎉 ALL TASKS DONE!
+            </div>
+            <div style={{ fontFamily: 'var(--font-retro)', fontSize: '20px', color: '#2C2C2C', lineHeight: 1.8 }}>
+              +2 🍪 Snacks<br />+1 🍖 Meal
+            </div>
+            <button
+              onClick={() => {
+                setSmallFood((n: number) => n + 2)
+                setBigFood((n: number)   => n + 1)
+                const next = { ...tasks, allDoneClaimed: true }
+                setTasks(next)
+                localStorage.setItem('oodle_tasks', JSON.stringify(next))
+                setShowAllDone(false)
+                showBubble('All tasks done! +2🍪 +1🍖')
+              }}
+              style={{ fontFamily: 'var(--font-pixel)', fontSize: '10px', padding: '14px 28px', background: '#FFE600', color: '#2C2C2C', border: '3px solid #2C2C2C', boxShadow: '4px 4px 0 #2C2C2C', cursor: 'pointer', letterSpacing: '2px' }}
+            >
+              AWESOME!
+            </button>
+            <button
+              onClick={() => setShowAllDone(false)}
+              style={{ fontFamily: 'var(--font-pixel)', fontSize: '7px', color: '#888', background: 'transparent', border: 'none', cursor: 'pointer' }}
+            >
+              REMIND ME LATER
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
