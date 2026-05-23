@@ -4,7 +4,7 @@ import type { PetCoords } from '../api/aiRecognize'
 import {
   fetchAllPets, getAllLikeCounts, likePet, getTodayLikedPetIds,
   postShout, getActiveShouts, countTodayShouts, likeShout,
-  fetchAds, setOnline,
+  fetchAds,
 } from '../lib/petService'
 import type { AdRecord } from '../lib/petService'
 import { subscribeToNewPets } from '../lib/realtimeService'
@@ -467,14 +467,6 @@ export default function PlazaScene({ petData, onGoToRoom, isPremium, petSize }: 
 
     loadFromSupabase()
   }, [petData])
-
-  // ── Online status: mark online on enter, offline on leave ──
-  useEffect(() => {
-    setOnline(true).catch(() => {})
-    return () => {
-      setOnline(false).catch(() => {})
-    }
-  }, [])
 
   // ── Realtime ──────────────────────────────────────────────
   useEffect(() => {
