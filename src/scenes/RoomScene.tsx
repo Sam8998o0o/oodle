@@ -34,7 +34,7 @@ const PET_SIZE_MIN    = 60
 const PET_SIZE_MAX    = 160
 const SMALL_HUNGER    = 10
 const BIG_HUNGER      = 20
-const DAILY_EAT_LIMIT = 5
+// DAILY_EAT_LIMIT removed — feeding is unlimited
 
 type DoorPhase = 'idle' | 'appearing' | 'opening' | 'walking' | 'done'
 
@@ -291,23 +291,9 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange }: RoomSc
     return () => document.removeEventListener('click', handler)
   }, [showPlay])
 
-  // Check streak reset when rewards modal opens
+  // Clear reward message when modal closes
   useEffect(() => {
-    if (!showRewards) { setRewardMsg(''); return }
-    try {
-      const today    = new Date().toDateString()
-      const lastDate = localStorage.getItem('oodle_streak_last_date')
-      setStreakClaimedToday(localStorage.getItem('oodle_streak_claimed_today') === today)
-      if (lastDate && lastDate !== today) {
-        const diff = Math.floor((Date.now() - new Date(lastDate).getTime()) / 86400000)
-        if (diff > 1) {
-          setStreak(1)
-          localStorage.setItem('oodle_streak', '1')
-          setStreakClaimedToday(false)
-          localStorage.removeItem('oodle_streak_claimed_today')
-        }
-      }
-    } catch { /**/ }
+    if (!showRewards) setRewardMsg('')
   }, [showRewards])
 
   // Reset tasks on new day when modal opens; sync plaza-like count
@@ -426,7 +412,14 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange }: RoomSc
   useEffect(() => {
     try {
       const d = localStorage.getItem('oodle_day_count')
-      if (d) setDayCount(parseInt(d, 10))
+      const petCreated = localStorage.getItem('oodle_pet_created_at')
+      if (petCreated) {
+        const daysSinceCreation = Math.floor((Date.now() - parseInt(petCreated, 10)) / 86400000) + 1
+        setDayCount(daysSinceCreation)
+        localStorage.setItem('oodle_day_count', String(daysSinceCreation))
+      } else if (d) {
+        setDayCount(parseInt(d, 10))
+      }
 
       const fs = localStorage.getItem('oodle_food_state')
       if (fs) {
@@ -892,7 +885,6 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange }: RoomSc
 
   // ── Feed ──────────────────────────────────────────────────
   const handleFeed = useCallback((size: 'small' | 'big') => {
-    if (todayEats >= DAILY_EAT_LIMIT) { showBubble('Too full! Come back tomorrow'); return }
     if (size === 'small') {
       if (smallFood <= 0) { showBubble('Redeem likes for snacks! ❤️'); return }
       setSmallFood((f: number) => f - 1)
@@ -1258,7 +1250,7 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange }: RoomSc
           >
             {/* Streak header */}
             <div className={styles.morePopupStreak}>
-              🔥 STREAK: {isAnonymous ? '--' : `DAY ${dayCount}`}
+              🔥 STREAK: {isAnonymous ? '--' : `DAY ${streak}`}
             </div>
             <button
               className={styles.morePopupItem}
@@ -1362,14 +1354,14 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange }: RoomSc
           <button
             className={styles.actionBtn}
             onClick={() => handleFeed('small')}
-            disabled={smallFood <= 0 || todayEats >= DAILY_EAT_LIMIT || isSleeping}
+            disabled={smallFood <= 0 || isSleeping}
           >
             🍎 FEED SNACK
           </button>
           <button
             className={styles.actionBtn}
             onClick={() => handleFeed('big')}
-            disabled={bigFood <= 0 || todayEats >= DAILY_EAT_LIMIT || isSleeping}
+            disabled={bigFood <= 0 || isSleeping}
           >
             🍱 FEED MEAL
           </button>
