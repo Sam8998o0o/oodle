@@ -85,6 +85,7 @@ export class PetAnimator {
     this.state = s
     if (s === 'play')  { this.isJumping = true; this.jumpCount = 0; this.jumpF = 0 }
     if (s === 'eat')   { this.nodF = 0 }
+    if (s === 'sleep') { this.isBlinking = false; this.blinkFrame = 0 }
     if (prev === 'sleep' && s !== 'sleep') { /* nothing extra needed */ }
     if (s === 'sad')   { this.sadF = 0 }
     if (s === 'walk')  { this.walkF = 0 }

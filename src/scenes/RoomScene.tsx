@@ -566,7 +566,7 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange }: RoomSc
   useEffect(() => {
     if (!isWeekend) return
     const id = setInterval(() => {
-      if (Math.random() < 0.5) animatorRef.current?.setState('play')
+      if (Math.random() < 0.5 && !isSleepingRef.current && !isFaintedRef.current) animatorRef.current?.setState('play')
     }, 30000)
     return () => clearInterval(id)
   }, [isWeekend])
