@@ -247,7 +247,7 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange }: RoomSc
   })
 
   // ── Rewards state ─────────────────────────────────────────
-  const [streak, setStreak] = useState<number>(() => {
+  const [streak] = useState<number>(() => {
     try {
       const raw = localStorage.getItem('oodle_streak')
       if (!raw) return 1
