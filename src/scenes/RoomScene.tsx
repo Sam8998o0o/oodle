@@ -211,6 +211,7 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange }: RoomSc
 
   // ── Teach Trick ────────────────────────────────────────────
   const [showTeachMenu,    setShowTeachMenu]    = useState(false)
+  const [showTeachIntro,   setShowTeachIntro]   = useState(false)
   const [showDrawModal,    setShowDrawModal]    = useState(false)
   const [showTalentPreview, setShowTalentPreview] = useState(false)
   const miniCanvasRef = useRef<HTMLCanvasElement>(null)
@@ -1322,7 +1323,15 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange }: RoomSc
                   <button
                     className={styles.playPopupItem}
                     style={{ justifyContent: 'space-between' }}
-                    onClick={() => setShowTeachMenu(v => !v)}
+                    onClick={() => {
+                      if (!localStorage.getItem('oodle_teach_trick_seen')) {
+                        setShowTeachIntro(true)
+                        setShowTeachMenu(false)
+                        setShowPlay(false)
+                      } else {
+                        setShowTeachMenu(v => !v)
+                      }
+                    }}
                   >
                     <span>🎓 TEACH TRICK</span>
                     <span style={{ fontSize: '6px' }}>▶</span>
@@ -1778,6 +1787,86 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange }: RoomSc
           </div>
         )
       })()}
+
+      {/* ── TEACH TRICK INTRO MODAL ─────────────────────── */}
+      {showTeachIntro && (
+        <div
+          onClick={() => setShowTeachIntro(false)}
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.65)', zIndex: 60, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}
+        >
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{ background: '#FDF6E3', border: '3px solid #2C2C2C', boxShadow: '6px 6px 0 #2C2C2C', maxWidth: '420px', width: '100%', maxHeight: '90vh', overflowY: 'auto', position: 'relative' }}
+          >
+            {/* Header */}
+            <div style={{ background: '#2C2C2C', color: '#FFE600', fontFamily: 'var(--font-pixel)', fontSize: '10px', textAlign: 'center', padding: '14px', letterSpacing: '2px' }}>
+              🎓 TEACH YOUR PET A TRICK!
+            </div>
+            <button
+              onClick={() => setShowTeachIntro(false)}
+              style={{ position: 'absolute', top: '8px', right: '8px', fontFamily: 'var(--font-pixel)', fontSize: '12px', background: 'transparent', border: '2px solid #FFE600', color: '#FFE600', width: '28px', height: '28px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+            >✕</button>
+
+            <div style={{ padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              {/* Intro text */}
+              <p style={{ fontFamily: 'var(--font-retro)', fontSize: '19px', color: '#555', borderLeft: '3px solid #FFE600', paddingLeft: '10px', margin: 0, lineHeight: 1.5 }}>
+                Teach your pet a talent and show it off in the Plaza! Other players will see your pet perform automatically.
+              </p>
+
+              {/* 2×2 trick grid */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                {[
+                  { emoji: '🎵', name: 'SING',     desc: 'Pet sings La la la~ in plaza',     special: false },
+                  { emoji: '🕺', name: 'DANCE',    desc: 'Pet shows off dance moves',         special: false },
+                  { emoji: '🪄', name: 'MAGIC',    desc: 'Pet disappears & reappears',        special: false },
+                  { emoji: '🎨', name: 'DRAWING ✨', desc: 'Draw something for pet to show', special: true  },
+                ].map(t => (
+                  <div
+                    key={t.name}
+                    style={{ border: `2px solid ${t.special ? '#FFE600' : '#2C2C2C'}`, background: t.special ? '#fffde7' : '#fff', padding: '10px 12px' }}
+                  >
+                    <div style={{ fontFamily: 'var(--font-pixel)', fontSize: '8px', color: '#2C2C2C', marginBottom: '4px' }}>{t.emoji} {t.name}</div>
+                    <div style={{ fontFamily: 'var(--font-retro)', fontSize: '15px', color: '#666', lineHeight: 1.4 }}>{t.desc}</div>
+                  </div>
+                ))}
+              </div>
+
+              {/* How-to steps */}
+              <div style={{ border: '2px solid #2C2C2C', background: '#fff', padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                <div style={{ fontFamily: 'var(--font-pixel)', fontSize: '7px', color: '#2C2C2C', letterSpacing: '1px', marginBottom: '2px' }}>HOW TO TEACH:</div>
+                {[
+                  { n: '1', text: 'Click a trick to start (20 sec)' },
+                  { n: '2', text: 'Click again to continue (20 sec)' },
+                  { n: '3', text: 'Click one more time to learn!' },
+                ].map(s => (
+                  <div key={s.n} style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <span style={{ fontFamily: 'var(--font-pixel)', fontSize: '8px', background: '#FFE600', color: '#2C2C2C', padding: '3px 7px', flexShrink: 0 }}>{s.n}</span>
+                    <span style={{ fontFamily: 'var(--font-retro)', fontSize: '16px', color: '#444' }}>{s.text}</span>
+                  </div>
+                ))}
+              </div>
+
+              {/* CTA */}
+              <button
+                onClick={() => {
+                  localStorage.setItem('oodle_teach_trick_seen', '1')
+                  setShowTeachIntro(false)
+                  setShowTeachMenu(true)
+                  setShowPlay(true)
+                }}
+                style={{ width: '100%', fontFamily: 'var(--font-pixel)', fontSize: '9px', padding: '14px', background: '#FFE600', color: '#2C2C2C', border: '3px solid #2C2C2C', boxShadow: '4px 4px 0 #2C2C2C', cursor: 'pointer', letterSpacing: '2px' }}
+              >
+                ✦ LET&apos;S GO! ✦
+              </button>
+
+              {/* Fine print */}
+              <p style={{ fontFamily: 'var(--font-pixel)', fontSize: '6px', color: '#aaa', textAlign: 'center', margin: 0, lineHeight: 2 }}>
+                * One new trick per day · Resets at midnight
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ── ALL DONE CELEBRATION ──────────────────────── */}
       {showAllDone && !tasks.allDoneClaimed && (
