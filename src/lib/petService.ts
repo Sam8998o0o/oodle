@@ -142,17 +142,18 @@ export async function getAllLikeCounts(): Promise<Record<string, number>> {
 }
 
 // ── likePet ───────────────────────────────────────────────
-// Inserts a like row. Silently ignores duplicates (UNIQUE constraint).
+// Calls the like_pet RPC which records the like and credits
+// the pet owner's like_balance atomically.
 export async function likePet(petId: string): Promise<void> {
   const userId = useAuthStore.getState().userId
   if (!userId) return
 
-  const { error } = await supabase
-    .from('likes')
-    .insert({ pet_id: petId, user_id: userId })
+  const { error } = await supabase.rpc('like_pet', {
+    p_pet_id:   petId,
+    p_liker_id: userId,
+  })
 
-  // error code 23505 = unique_violation → user already liked this pet → fine
-  if (error && error.code !== '23505') {
+  if (error) {
     console.error('[petService] likePet failed:', error.message)
   }
 }
