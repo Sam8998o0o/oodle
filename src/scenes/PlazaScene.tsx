@@ -500,7 +500,7 @@ export default function PlazaScene({ petData, onGoToRoom, isPremium, petSize }: 
   // ── Auto-performance of other pets' tricks (every 45 s) ──
   useEffect(() => {
     const interval = setInterval(() => {
-      const performers = pets.filter(p => !p.isOwn && (p.talent || p.talent_drawing))
+      const performers = pets.filter(p => p.talent || p.talent_drawing)
       if (performers.length === 0) return
       const pet = performers[Math.floor(Math.random() * performers.length)]
 
