@@ -102,10 +102,10 @@ export async function updateLastSeen(): Promise<void> {
 }
 
 // ── fetchAllPets ──────────────────────────────────────────
-// Returns pets seen in the last 10 minutes, ordered newest first.
+// Returns pets seen in the last 5 minutes, ordered newest first.
 // Returns [] on failure (caller should fall back to localStorage).
 export async function fetchAllPets(): Promise<PetRecord[]> {
-  const tenMinsAgo = new Date(Date.now() - 10 * 60 * 1000).toISOString()
+  const tenMinsAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString()
   const { data, error } = await supabase
     .from('pets')
     .select('*')

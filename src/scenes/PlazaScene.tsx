@@ -9,6 +9,7 @@ import {
 import type { AdRecord } from '../lib/petService'
 import { subscribeToNewPets } from '../lib/realtimeService'
 import { useAuthStore } from '../lib/auth'
+import { supabase } from '../lib/supabase'
 import styles from './PlazaScene.module.css'
 
 // ── Default ads (shown when no advertisers in Supabase) ───
@@ -485,8 +486,15 @@ export default function PlazaScene({ petData, onGoToRoom, isPremium, petSize }: 
   // ── Last-seen heartbeat — keep pet visible in Plaza ───────
   useEffect(() => {
     updateLastSeen().catch(() => {})
-    const interval = setInterval(() => updateLastSeen().catch(() => {}), 3 * 60 * 1000)
-    return () => clearInterval(interval)
+    const interval = setInterval(() => updateLastSeen().catch(() => {}), 60 * 1000)
+    return () => {
+      clearInterval(interval)
+      // Mark as offline immediately when leaving Plaza
+      const petId = localStorage.getItem('oodle_pet_supabase_id')
+      if (petId) {
+        supabase.from('pets').update({ last_seen: new Date(0).toISOString() }).eq('id', petId)
+      }
+    }
   }, [])
 
   // ── Auto-performance of other pets' tricks (every 45 s) ──
