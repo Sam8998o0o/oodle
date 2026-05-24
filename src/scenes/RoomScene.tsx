@@ -309,10 +309,12 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange }: RoomSc
     if (!showRewards) setRewardMsg('')
   }, [showRewards])
 
-  // Reset tasks on new day when modal opens; sync plaza-like count
+  // Reset tasks on new day when modal opens; sync plaza-like count every 3 s while open
   useEffect(() => {
     if (!showTasks) return
     const today = new Date().toDateString()
+
+    // Daily reset check (runs once on open)
     try {
       const raw    = localStorage.getItem('oodle_tasks')
       const stored = raw ? JSON.parse(raw) as DailyTasks : null
@@ -320,22 +322,29 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange }: RoomSc
         const fresh: DailyTasks = { feed: 0, likes: 0, plaza: false, allDoneClaimed: false, date: today }
         setTasks(fresh)
         localStorage.setItem('oodle_tasks', JSON.stringify(fresh))
-      } else {
-        // Sync plaza likes given today from PlazaScene's storage key
-        const likeRaw = localStorage.getItem('oodle_daily_plaza_likes')
-        if (likeRaw !== null) {
-          const count = parseInt(likeRaw, 10)
-          if (!isNaN(count)) {
-            setTasks(t => {
-              if (t.likes === count) return t
-              const next = { ...t, likes: count }
-              localStorage.setItem('oodle_tasks', JSON.stringify(next))
-              return next
-            })
-          }
-        }
       }
     } catch { /**/ }
+
+    // Live plaza-like sync
+    const syncLikes = () => {
+      const likeRaw = localStorage.getItem('oodle_daily_plaza_likes')
+      if (!likeRaw) return
+      try {
+        const likeData = JSON.parse(likeRaw) as { date: string; count: number }
+        if (likeData.date === new Date().toDateString()) {
+          setTasks((prev: DailyTasks) => {
+            if (prev.likes === likeData.count) return prev
+            const next = { ...prev, likes: likeData.count }
+            localStorage.setItem('oodle_tasks', JSON.stringify(next))
+            return next
+          })
+        }
+      } catch { /**/ }
+    }
+
+    syncLikes()
+    const interval = setInterval(syncLikes, 3000)
+    return () => clearInterval(interval)
   }, [showTasks])
 
   // Show all-done celebration when all tasks complete (and not yet claimed)
