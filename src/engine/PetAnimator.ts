@@ -202,7 +202,7 @@ export class PetAnimator {
     // ── Blink timing ───────────────────────────────────────────────
     let blink = false
     if (state === 'sleep') {
-      blink = true
+      blink = false
     } else if (state === 'sad') {
       blink = true
     } else if (state === 'faint') {
@@ -222,7 +222,7 @@ export class PetAnimator {
     }
 
     // ── Draw pixel eyes ────────────────────────────────────────────
-    const eyeStyleToUse = (state === 'dizzy' || state === 'faint') ? 'eye_x' : (data.eyeStyle ?? 'eye_round')
+    const eyeStyleToUse = (state === 'dizzy' || state === 'faint') ? 'eye_x' : state === 'sleep' ? 'eye_sleepy' : (data.eyeStyle ?? 'eye_round')
     if (coords.eyes.length > 0) {
       const eyeSize = Math.round(size * 0.09)
       const ex = coords.eyes.reduce((s, e) => s + e.x, 0) / coords.eyes.length * size
