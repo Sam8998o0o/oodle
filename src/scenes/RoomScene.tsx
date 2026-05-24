@@ -248,12 +248,24 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange }: RoomSc
 
   // ── Rewards state ─────────────────────────────────────────
   const [streak, setStreak] = useState<number>(() => {
-    try { return Math.max(1, parseInt(localStorage.getItem('oodle_streak') ?? '1', 10)) }
-    catch { return 1 }
+    try {
+      const raw = localStorage.getItem('oodle_streak')
+      if (!raw) return 1
+      const data = JSON.parse(raw) as { streak: number; lastClaimDate: string }
+      const today     = new Date().toDateString()
+      const yesterday = new Date(Date.now() - 86400000).toDateString()
+      if (data.lastClaimDate === today)      return data.streak          // claimed today
+      if (data.lastClaimDate === yesterday)  return data.streak + 1      // new day — advance
+      return 1                                                            // 2+ days missed — reset
+    } catch { return 1 }
   })
   const [streakClaimedToday, setStreakClaimedToday] = useState<boolean>(() => {
-    try { return localStorage.getItem('oodle_streak_claimed_today') === new Date().toDateString() }
-    catch { return false }
+    try {
+      const raw = localStorage.getItem('oodle_streak')
+      if (!raw) return false
+      const data = JSON.parse(raw) as { streak: number; lastClaimDate: string }
+      return data.lastClaimDate === new Date().toDateString()
+    } catch { return false }
   })
   const [rewardMsg, setRewardMsg] = useState('')
 
@@ -1384,12 +1396,8 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange }: RoomSc
           const reward = REWARD_DAYS[dayIndex]
           if (reward.snacks > 0) setSmallFood((n: number) => n + reward.snacks)
           if (reward.meals  > 0) setBigFood((n: number)   => n + reward.meals)
-          const nextStreak = streak + 1
-          const today      = new Date().toDateString()
-          setStreak(nextStreak)
-          localStorage.setItem('oodle_streak',              String(nextStreak))
-          localStorage.setItem('oodle_streak_last_date',    today)
-          localStorage.setItem('oodle_streak_claimed_today', today)
+          const today = new Date().toDateString()
+          localStorage.setItem('oodle_streak', JSON.stringify({ streak, lastClaimDate: today }))
           setStreakClaimedToday(true)
           setRewardMsg(reward.claimMsg)
         }
