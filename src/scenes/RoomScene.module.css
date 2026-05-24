@@ -424,6 +424,42 @@
   border-color: #FFE600 !important;
 }
 
+/* ── PLAY button ──────────────────────────────────────────── */
+.playBtn     { background: #4CAF50 !important; color: #fff !important; }
+.playBtnActive { background: #2C2C2C !important; color: #4CAF50 !important; }
+
+/* ── PLAY popup ───────────────────────────────────────────── */
+.playPopup {
+  position: absolute;
+  bottom: 52px;
+  left: 0;
+  background: #FDF6E3;
+  border: 2px solid #2C2C2C;
+  box-shadow: 4px 4px 0 #2C2C2C;
+  min-width: 180px;
+  z-index: 30;
+}
+
+.playPopupItem {
+  font-family: var(--font-pixel);
+  font-size: 8px;
+  color: #2C2C2C;
+  padding: 10px 14px;
+  cursor: pointer;
+  border: none;
+  border-bottom: 1px solid #ddd;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #fff;
+  width: 100%;
+  text-align: left;
+  letter-spacing: 1px;
+  white-space: nowrap;
+}
+
+.playPopupItem:hover { background: #FFE600; }
+
 /* ── MORE popup ──────────────────────────────────────── */
 .morePopup {
   position: absolute;

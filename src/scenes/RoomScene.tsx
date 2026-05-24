@@ -2,7 +2,7 @@ import { useRef, useState, useEffect, useCallback } from 'react'
 import StatBar from '../ui/StatBar'
 import { PetAnimator } from '../engine/PetAnimator'
 import type { PetCoords } from '../api/aiRecognize'
-import { savePet, getLikeBalance, redeemLikesForFood } from '../lib/petService'
+import { savePet, getLikeBalance, redeemLikesForFood, saveTalent, saveTalentDrawing } from '../lib/petService'
 import { supabase } from '../lib/supabase'
 import { useAuthStore } from '../lib/auth'
 import styles from './RoomScene.module.css'
@@ -125,6 +125,8 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange }: RoomSc
   const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const isLongPressRef   = useRef(false)
   const isPetClickRef    = useRef(false)
+  const clickCountRef      = useRef<number>(0)
+  const clickResetTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const [stats, setStats] = useState<PetStats>(() => {
     try {
@@ -201,6 +203,35 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange }: RoomSc
   const [showShop,    setShowShop]    = useState(false)
   const [showTasks,   setShowTasks]   = useState(false)
   const [showAllDone, setShowAllDone] = useState(false)
+  const [showPlay,     setShowPlay]     = useState(false)
+  const [bubbles,      setBubbles]      = useState<{ id: number; x: number; y: number; vx: number; vy: number }[]>([])
+  const [blowCooldown, setBlowCooldown] = useState(false)
+  const bubblesRef = useRef<{ id: number; x: number; y: number; vx: number; vy: number }[]>([])
+  useEffect(() => { bubblesRef.current = bubbles }, [bubbles])
+
+  // ── Teach Trick ────────────────────────────────────────────
+  const [showTeachMenu,    setShowTeachMenu]    = useState(false)
+  const [showDrawModal,    setShowDrawModal]    = useState(false)
+  const [showTalentPreview, setShowTalentPreview] = useState(false)
+  const miniCanvasRef = useRef<HTMLCanvasElement>(null)
+  const [miniColor,   setMiniColor]   = useState('#2C2C2C')
+  const [isDrawing,   setIsDrawing]   = useState(false)
+
+  // ── Daily talent (one trick per day) ─────────────────────
+  const getDailyTalent = () => {
+    try {
+      const raw = localStorage.getItem('oodle_daily_talent')
+      if (!raw) return null
+      const data = JSON.parse(raw) as { date: string; talent: string; drawing?: string }
+      if (data.date !== new Date().toDateString()) return null
+      return data
+    } catch { return null }
+  }
+  const [dailyTalent,   setDailyTalent]   = useState<{ date: string; talent: string; drawing?: string } | null>(() => getDailyTalent())
+  const [learningTrick, setLearningTrick] = useState<string | null>(null)
+  const [learningStep,  setLearningStep]  = useState(0)
+  const learningTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const isBusyRef        = useRef(false)
   const [tasks, setTasks] = useState<DailyTasks>(() => {
     try {
       const today = new Date().toDateString()
@@ -251,6 +282,14 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange }: RoomSc
     document.addEventListener('click', handler)
     return () => document.removeEventListener('click', handler)
   }, [showMore])
+
+  // Close PLAY popup on outside click; reset teach submenu on close
+  useEffect(() => {
+    if (!showPlay) { setShowTeachMenu(false); return }
+    const handler = () => setShowPlay(false)
+    document.addEventListener('click', handler)
+    return () => document.removeEventListener('click', handler)
+  }, [showPlay])
 
   // Check streak reset when rewards modal opens
   useEffect(() => {
@@ -548,9 +587,17 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange }: RoomSc
 
     const walk = () => {
       if (!mounted) return
-      if (statsRef.current.energy > 0 && !isFaintedRef.current && !isDizzyRef.current && !isSleepingRef.current) {
+      if (statsRef.current.energy > 0 && !isFaintedRef.current && !isDizzyRef.current && !isSleepingRef.current && !isBusyRef.current) {
         const maxX = room.offsetWidth - petSize
-        walkXRef.current += 0.3 * walkDirRef.current
+        const chasing = bubblesRef.current.length > 0
+        if (chasing) {
+          const nearest = bubblesRef.current.reduce((a, b) =>
+            Math.abs(b.x - walkXRef.current) < Math.abs(a.x - walkXRef.current) ? b : a
+          )
+          walkDirRef.current = nearest.x > walkXRef.current ? 1 : -1
+        }
+        const speed = chasing ? 3 : 0.3
+        walkXRef.current += speed * walkDirRef.current
         if (walkXRef.current >= maxX) walkDirRef.current = -1
         if (walkXRef.current <= 0)    walkDirRef.current =  1
         wrapper.style.left     = `${walkXRef.current}px`
@@ -623,6 +670,163 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange }: RoomSc
     setBubble({ text, id })
     setTimeout(() => setBubble((b: { text: string; id: number } | null) => (b?.id === id ? null : b)), 6000)
   }, [])
+
+  // ── Blow bubbles (PLAY activity) ─────────────────────────
+  const blowBubbles = useCallback(() => {
+    if (blowCooldown || isSleepingRef.current || isFaintedRef.current) return
+    setBlowCooldown(true)
+    const newBubbles = Array.from({ length: 3 }, (_, i) => ({
+      id:  Date.now() + i,
+      x:   200 + Math.random() * 400,
+      y:   300 + Math.random() * 100,
+      vx:  (Math.random() - 0.5) * 3,
+      vy:  -1.5 - Math.random(),
+    }))
+    setBubbles(newBubbles)
+    showBubble('Ooh bubbles! 🫧')
+    setTimeout(() => setBlowCooldown(false), 8000)
+  }, [blowCooldown, showBubble])
+
+  // ── Learn trick (daily talent system) ────────────────────
+  const handleLearnTrick = useCallback((trickId: string) => {
+    if (dailyTalent) {
+      showBubble('Already learned today! Come back tomorrow 📅')
+      return
+    }
+    if (learningTrick !== null) return
+
+    setLearningTrick(trickId)
+    setLearningStep(1)
+    isBusyRef.current = true
+    showBubble("I'm learning... 📚")
+    setShowTeachMenu(false)
+    setShowPlay(false)
+
+    let step = 1
+    const timer = setInterval(() => {
+      step += 1
+      if (step === 2) {
+        setLearningStep(2)
+        showBubble('Almost there... 💪')
+      } else if (step >= 3) {
+        setLearningStep(3)
+        showBubble('I got it! ⭐')
+        const today = new Date().toDateString()
+        const talentData = { date: today, talent: trickId }
+        localStorage.setItem('oodle_daily_talent', JSON.stringify(talentData))
+        saveTalent(trickId).catch(() => {})
+        setDailyTalent(talentData)
+        setLearningTrick(null)
+        setLearningStep(0)
+        isBusyRef.current = false
+        if (learningTimerRef.current) clearInterval(learningTimerRef.current)
+        learningTimerRef.current = null
+      }
+    }, 20000)
+    learningTimerRef.current = timer
+  }, [dailyTalent, learningTrick, showBubble])
+
+  // ── Bubble physics ────────────────────────────────────────
+  useEffect(() => {
+    if (bubbles.length === 0) return
+    const interval = setInterval(() => {
+      setBubbles(prev => {
+        const petEl = petWrapperRef.current
+        const petX  = petEl ? parseInt(petEl.style.left || '0') : 0
+        const petY  = window.innerHeight * 0.78
+        return prev
+          .map(b => ({ ...b, x: b.x + b.vx, y: b.y + b.vy, vy: b.vy + 0.08 }))
+          .filter(b => {
+            const dist = Math.sqrt((b.x - petX) ** 2 + (b.y - petY) ** 2)
+            if (dist < 60) {
+              setStats((s: PetStats) => ({ ...s, happy: Math.min(100, s.happy + 3) }))
+              showFloat('💥')
+              showBubble('So fun! 😄')
+              // Jump animation when very close
+              if (dist < 30) {
+                const w = petWrapperRef.current
+                if (w) {
+                  w.style.bottom = 'calc(22% + 20px)'
+                  setTimeout(() => { if (w) w.style.bottom = '22%' }, 200)
+                }
+              }
+              return false
+            }
+            return b.y < 700 && b.x > -50 && b.x < 1600
+          })
+      })
+    }, 80)
+    return () => clearInterval(interval)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [bubbles.length > 0])
+
+  // ── Random singing when pet is happy ─────────────────────
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const s = statsRef.current
+      if (
+        s.happy  >= 70 &&
+        s.hunger >= 50 &&
+        s.energy >= 30 &&
+        !isSleepingRef.current &&
+        !isFaintedRef.current &&
+        Math.random() < 0.3
+      ) {
+        showBubble('La la la 🎵')
+      }
+    }, 60000)
+    return () => clearInterval(interval)
+  }, [showBubble])
+
+  // ── Mini drawing canvas: fill white on open ──────────────
+  useEffect(() => {
+    if (!showDrawModal) return
+    const canvas = miniCanvasRef.current
+    if (!canvas) return
+    const ctx = canvas.getContext('2d')!
+    ctx.fillStyle = '#ffffff'
+    ctx.fillRect(0, 0, 192, 192)
+  }, [showDrawModal])
+
+  // ── Auto-performance of daily talent (every 45 s) ─────────
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (!dailyTalent) return
+      if (isSleepingRef.current || isFaintedRef.current || isBusyRef.current) return
+      if (statsRef.current.happy < 50) return
+
+      const trick = dailyTalent.talent
+
+      if (trick === 'sing') {
+        showBubble('🎵 La la la~')
+        for (let i = 0; i < 3; i++) setTimeout(() => showFloat('🎵'), i * 400)
+      } else if (trick === 'dance') {
+        showBubble('💃 Watch me!')
+        const wrapper = petWrapperRef.current
+        if (wrapper) {
+          const origX = walkXRef.current
+          let step = 0
+          const dance = setInterval(() => {
+            step++
+            if (wrapper) wrapper.style.left = `${origX + (step % 2 === 0 ? 0 : 30)}px`
+            if (step >= 6) { clearInterval(dance); if (wrapper) wrapper.style.left = `${origX}px` }
+          }, 150)
+        }
+      } else if (trick === 'magic') {
+        showBubble('✨ Ta-da!')
+        const wrapper = petWrapperRef.current
+        if (wrapper) {
+          wrapper.style.visibility = 'hidden'
+          setTimeout(() => { if (wrapper) wrapper.style.visibility = 'visible' }, 1000)
+        }
+      } else if (trick === 'drawing') {
+        showBubble('🎨 I made this!')
+        setShowTalentPreview(true)
+        setTimeout(() => setShowTalentPreview(false), 3000)
+      }
+    }, 45000)
+    return () => clearInterval(interval)
+  }, [dailyTalent, showBubble, showFloat])
 
   // ── Warning bubbles when stats are low ───────────────────
   useEffect(() => {
@@ -818,6 +1022,22 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange }: RoomSc
   }, [])
 
   const handlePetMouseDown = useCallback((e: React.MouseEvent) => {
+    clickCountRef.current += 1
+
+    // Reset counter after 2 seconds of no clicks
+    if (clickResetTimerRef.current) clearTimeout(clickResetTimerRef.current)
+    clickResetTimerRef.current = setTimeout(() => { clickCountRef.current = 0 }, 2000)
+
+    if (clickCountRef.current >= 5) {
+      showBubble('Hehe! 🤭')
+      setStats((prev: PetStats) => ({ ...prev, happy: Math.min(100, prev.happy + 2) }))
+      clickCountRef.current = 0
+      return
+    } else if (clickCountRef.current >= 3) {
+      showBubble('Stop it! 😤')
+      return
+    }
+
     if (isDizzyRef.current || isFaintedRef.current) return
 
     // Wake up if sleeping and energy >= 30
@@ -1009,11 +1229,24 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange }: RoomSc
             height={petSize}
             style={{ display: 'block', background: 'transparent', border: 'none' }}
           />
+          {showTalentPreview && (() => {
+            const drawingData = localStorage.getItem('oodle_talent_drawing')
+            return drawingData ? (
+              <div style={{ position: 'absolute', bottom: '115%', left: '50%', transform: 'translateX(-50%)', background: '#fff', border: '2px solid #2C2C2C', boxShadow: '2px 2px 0 #2C2C2C', padding: '4px', zIndex: 12, pointerEvents: 'none' }}>
+                <img src={drawingData} style={{ width: 48, height: 48, imageRendering: 'pixelated', display: 'block' }} alt="my drawing" />
+              </div>
+            ) : null
+          })()}
           {bubble && <div className={styles.bubble} key={bubble.id}>{bubble.text}</div>}
           {floatEmojis.map(e => (
             <span key={e.id} className={styles.floatEmoji}>{e.char}</span>
           ))}
         </div>
+
+        {/* Floating bubbles */}
+        {bubbles.map(b => (
+          <div key={b.id} style={{ position: 'absolute', left: b.x, top: b.y, fontSize: '28px', pointerEvents: 'none', zIndex: 8, transform: 'translateX(-50%)' }}>🫧</div>
+        ))}
       </div>
 
       <div className={styles.actionBar} style={{ position: 'relative', justifyContent: 'center' }}>
@@ -1051,8 +1284,81 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange }: RoomSc
           ☰ MORE
         </button>
 
-        {/* CENTRE: feed + plaza */}
-        <div style={{ display: 'flex', gap: '8px' }}>
+        {/* CENTRE: play + feed + plaza */}
+        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+          {/* PLAY button + popup */}
+          <div style={{ position: 'relative' }}>
+            {showPlay && (
+              <div className={styles.playPopup} onClick={e => e.stopPropagation()}>
+                <button className={styles.playPopupItem} onClick={() => { setShowPlay(false); blowBubbles() }}>
+                  🫧 BLOW BUBBLES
+                </button>
+                {/* TEACH TRICK item with submenu */}
+                <div style={{ position: 'relative' }}>
+                  <button
+                    className={styles.playPopupItem}
+                    style={{ justifyContent: 'space-between' }}
+                    onClick={() => setShowTeachMenu(v => !v)}
+                  >
+                    <span>🎓 TEACH TRICK</span>
+                    <span style={{ fontSize: '6px' }}>▶</span>
+                  </button>
+                  {showTeachMenu && (
+                    <div style={{ position: 'absolute', bottom: '100%', left: '100%', top: 'auto', background: '#FDF6E3', border: '2px solid #2C2C2C', boxShadow: '4px 4px 0 #2C2C2C', minWidth: '180px', zIndex: 31 }}>
+                      <div style={{ background: '#2C2C2C', color: '#FFE600', fontFamily: 'var(--font-pixel)', fontSize: '7px', padding: '8px 12px', letterSpacing: '1px', whiteSpace: 'nowrap' }}>
+                        🎓 CHOOSE A TRICK
+                      </div>
+                      {[
+                        { id: 'sing',  label: '🎵 SING'       },
+                        { id: 'dance', label: '🕺 DANCE'       },
+                        { id: 'magic', label: '🪄 MAGIC TRICK' },
+                      ].map(trick => (
+                        <button
+                          key={trick.id}
+                          disabled={!!dailyTalent || learningTrick !== null}
+                          style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', fontFamily: 'var(--font-pixel)', fontSize: '8px', color: '#2C2C2C', background: '#fff', border: 'none', borderBottom: '1px solid #eee', padding: '10px 12px', cursor: (dailyTalent || learningTrick !== null) ? 'not-allowed' : 'pointer', whiteSpace: 'nowrap', opacity: (dailyTalent || (learningTrick !== null && learningTrick !== trick.id)) ? 0.5 : 1 }}
+                          onClick={() => handleLearnTrick(trick.id)}
+                        >
+                          {trick.label}
+                          {dailyTalent && (
+                            <span style={{ fontFamily: 'var(--font-pixel)', fontSize: '5px', background: '#4CAF50', color: '#fff', padding: '2px 5px' }}>DONE TODAY ✓</span>
+                          )}
+                          {!dailyTalent && learningTrick === trick.id && (
+                            <span style={{ fontFamily: 'var(--font-pixel)', fontSize: '5px', background: '#FF8C00', color: '#fff', padding: '2px 5px' }}>STEP {learningStep}/3</span>
+                          )}
+                        </button>
+                      ))}
+                      <button
+                        disabled={!!dailyTalent || learningTrick !== null}
+                        style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', fontFamily: 'var(--font-pixel)', fontSize: '8px', color: '#2C2C2C', background: '#fff', border: 'none', padding: '10px 12px', cursor: (dailyTalent || learningTrick !== null) ? 'not-allowed' : 'pointer', whiteSpace: 'nowrap', opacity: (dailyTalent || learningTrick !== null) ? 0.5 : 1 }}
+                        onClick={() => {
+                          if (dailyTalent) { showBubble('Already learned today! Come back tomorrow 📅'); return }
+                          if (learningTrick !== null) return
+                          setShowDrawModal(true)
+                          setShowTeachMenu(false)
+                          setShowPlay(false)
+                        }}
+                      >
+                        🎨 TEACH DRAWING
+                        {dailyTalent ? (
+                          <span style={{ fontFamily: 'var(--font-pixel)', fontSize: '5px', background: '#4CAF50', color: '#fff', padding: '2px 5px' }}>DONE TODAY ✓</span>
+                        ) : (
+                          <span style={{ fontFamily: 'var(--font-pixel)', fontSize: '5px', background: '#FF8C00', color: '#fff', padding: '2px 5px' }}>SPECIAL</span>
+                        )}
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+            <button
+              className={`${styles.actionBtn} ${showPlay ? styles.playBtnActive : styles.playBtn}`}
+              onClick={e => { e.stopPropagation(); setShowPlay(v => !v) }}
+              disabled={isSleeping}
+            >
+              🎮 PLAY
+            </button>
+          </div>
           <button
             className={styles.actionBtn}
             onClick={() => handleFeed('small')}
@@ -1286,6 +1592,83 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange }: RoomSc
                   {equippedEye && `👁 ${SHOP_EYES.find(e => e.id === equippedEye)?.label ?? ''} eyes`}
                 </div>
               )}
+            </div>
+          </div>
+        )
+      })()}
+
+      {/* ── DRAW MODAL ──────────────────────────────────── */}
+      {showDrawModal && (() => {
+        const CELL = 12
+        const GRID = 16
+        const COLORS = ['#2C2C2C', '#e74c3c', '#3498db', '#2ecc71', '#FFE600', '#ffffff']
+
+        const drawCell = (e: React.MouseEvent<HTMLCanvasElement>) => {
+          const canvas = miniCanvasRef.current
+          if (!canvas) return
+          const rect = canvas.getBoundingClientRect()
+          const x = Math.floor((e.clientX - rect.left) / CELL)
+          const y = Math.floor((e.clientY - rect.top)  / CELL)
+          if (x < 0 || x >= GRID || y < 0 || y >= GRID) return
+          const ctx = canvas.getContext('2d')!
+          ctx.fillStyle = miniColor
+          ctx.fillRect(x * CELL, y * CELL, CELL, CELL)
+        }
+
+        const handleTeachDrawing = () => {
+          const canvas = miniCanvasRef.current
+          if (!canvas) return
+          const dataURL = canvas.toDataURL()
+          const today = new Date().toDateString()
+          const talentData = { date: today, talent: 'drawing', drawing: dataURL }
+          localStorage.setItem('oodle_talent_drawing', dataURL)
+          localStorage.setItem('oodle_daily_talent', JSON.stringify(talentData))
+          saveTalentDrawing(dataURL).catch(() => {})
+          saveTalent('drawing').catch(() => {})
+          setDailyTalent(talentData)
+          showBubble('I can draw now! 🎨')
+          setShowDrawModal(false)
+        }
+
+        return (
+          <div onClick={() => setShowDrawModal(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
+            <div onClick={e => e.stopPropagation()} style={{ background: '#FDF6E3', border: '3px solid #2C2C2C', boxShadow: '6px 6px 0 #2C2C2C', maxWidth: '320px', width: '100%', position: 'relative' }}>
+              <div style={{ background: '#2C2C2C', color: '#FFE600', fontFamily: 'var(--font-pixel)', fontSize: '10px', textAlign: 'center', padding: '14px', letterSpacing: '2px' }}>
+                🎨 TEACH MY PET TO DRAW
+              </div>
+              <button onClick={() => setShowDrawModal(false)} style={{ position: 'absolute', top: '8px', right: '8px', fontFamily: 'var(--font-pixel)', fontSize: '12px', background: 'transparent', border: '2px solid #FFE600', color: '#FFE600', width: '28px', height: '28px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>✕</button>
+
+              <div style={{ padding: '16px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px' }}>
+                {/* Color palette */}
+                <div style={{ display: 'flex', gap: '6px' }}>
+                  {COLORS.map(c => (
+                    <button
+                      key={c}
+                      onClick={() => setMiniColor(c)}
+                      style={{ width: 24, height: 24, background: c, border: miniColor === c ? '3px solid #2C2C2C' : '2px solid #999', boxShadow: miniColor === c ? '2px 2px 0 #000' : 'none', cursor: 'pointer' }}
+                    />
+                  ))}
+                </div>
+
+                {/* Drawing canvas */}
+                <canvas
+                  ref={miniCanvasRef}
+                  width={192}
+                  height={192}
+                  style={{ border: '2px solid #2C2C2C', imageRendering: 'pixelated', cursor: 'crosshair', touchAction: 'none' }}
+                  onMouseDown={e => { setIsDrawing(true); drawCell(e) }}
+                  onMouseMove={e => { if (isDrawing) drawCell(e) }}
+                  onMouseUp={() => setIsDrawing(false)}
+                  onMouseLeave={() => setIsDrawing(false)}
+                />
+
+                <button
+                  onClick={handleTeachDrawing}
+                  style={{ fontFamily: 'var(--font-pixel)', fontSize: '9px', padding: '12px 24px', background: '#FFE600', color: '#2C2C2C', border: '2px solid #2C2C2C', boxShadow: '4px 4px 0 #2C2C2C', cursor: 'pointer', letterSpacing: '2px', width: '100%' }}
+                >
+                  🎓 TEACH MY PET
+                </button>
+              </div>
             </div>
           </div>
         )

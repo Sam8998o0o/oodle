@@ -10,8 +10,10 @@ export interface PetRecord {
   pixel_data:    string
   coords:        PetCoords | null
   created_at:    string
-  is_online:     boolean
-  growth_points: number
+  is_online:      boolean
+  growth_points:  number
+  talent?:        string
+  talent_drawing?: string
 }
 
 // localStorage key used to avoid re-inserting the same pet
@@ -75,6 +77,20 @@ export async function updateGrowth(): Promise<void> {
   if (!petId) return
   const growth = parseInt(localStorage.getItem('oodle_growth') ?? '0', 10)
   await supabase.from('pets').update({ growth_points: growth }).eq('id', petId)
+}
+
+// ── saveTalent ────────────────────────────────────────────
+export async function saveTalent(talent: string): Promise<void> {
+  const petId = localStorage.getItem('oodle_pet_supabase_id')
+  if (!petId) return
+  await supabase.from('pets').update({ talent }).eq('id', petId)
+}
+
+// ── saveTalentDrawing ─────────────────────────────────────
+export async function saveTalentDrawing(drawingData: string): Promise<void> {
+  const petId = localStorage.getItem('oodle_pet_supabase_id')
+  if (!petId) return
+  await supabase.from('pets').update({ talent_drawing: drawingData }).eq('id', petId)
 }
 
 // ── updateLastSeen ────────────────────────────────────────

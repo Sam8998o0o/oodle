@@ -90,13 +90,15 @@ interface PlazaSceneProps {
 }
 
 interface PlazaPet {
-  id:            string
-  pixelData:     string
-  coords:        PetCoords
-  name:          string
-  createdAt:     string
-  isOwn:         boolean
-  growth_points: number
+  id:             string
+  pixelData:      string
+  coords:         PetCoords
+  name:           string
+  createdAt:      string
+  isOwn:          boolean
+  growth_points:  number
+  talent?:        string
+  talent_drawing?: string
 }
 
 // Maps growth_points (0-100) to canvas size (60-160 px)
@@ -148,6 +150,7 @@ export default function PlazaScene({ petData, onGoToRoom, isPremium, petSize }: 
   const [likeLeft, setLikeLeft]       = useState(LIKE_DAILY_LIMIT)
   const [todayLikedPets, setTodayLikedPets] = useState<Set<string>>(new Set())
   const [ownGlowing, setOwnGlowing]   = useState(true)
+  const [plazaShows, setPlazaShows]   = useState<Record<string, { text: string; drawing?: string }>>({})
   const [doorPhase, setDoorPhase]     = useState<DoorPhase>('idle')
   const [showAdModal, setShowAdModal] = useState(false)
   const [adForm, setAdForm]           = useState({ company: '', email: '', bannerText: '', website: '', logoUrl: '', plan: '7days' })
@@ -461,13 +464,15 @@ export default function PlazaScene({ petData, onGoToRoom, isPremium, petSize }: 
           r.pixel_data !== petData.pixelData
         )
         .map(r => ({
-          id:            r.id,
-          pixelData:     r.pixel_data,
-          coords:        r.coords ?? DEFAULT_COORDS,
-          name:          r.name,
-          createdAt:     r.created_at,
-          isOwn:         false,
-          growth_points: r.growth_points ?? 0,
+          id:             r.id,
+          pixelData:      r.pixel_data,
+          coords:         r.coords ?? DEFAULT_COORDS,
+          name:           r.name,
+          createdAt:      r.created_at,
+          isOwn:          false,
+          growth_points:  r.growth_points  ?? 0,
+          talent:         r.talent,
+          talent_drawing: r.talent_drawing,
         }))
       setPets(prev => mergePets(prev, [ownPet, ...others]))
       setLikes(likeCounts)
@@ -484,6 +489,37 @@ export default function PlazaScene({ petData, onGoToRoom, isPremium, petSize }: 
     return () => clearInterval(interval)
   }, [])
 
+  // ── Auto-performance of other pets' tricks (every 45 s) ──
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const performers = pets.filter(p => !p.isOwn && (p.talent || p.talent_drawing))
+      if (performers.length === 0) return
+      const pet = performers[Math.floor(Math.random() * performers.length)]
+
+      let text = ''
+      let drawing: string | undefined
+      if (pet.talent === 'sing')  text = '🎵 La la la~'
+      else if (pet.talent === 'dance') text = '💃 Watch me!'
+      else if (pet.talent === 'magic') text = '✨ Ta-da!'
+      else if (pet.talent === 'drawing' && pet.talent_drawing) {
+        text    = '🎨 I made this!'
+        drawing = pet.talent_drawing
+      } else if (pet.talent_drawing) {
+        text    = '🎨 I made this!'
+        drawing = pet.talent_drawing
+      }
+      if (!text) return
+
+      setPlazaShows(prev => ({ ...prev, [pet.id]: { text, drawing } }))
+      setTimeout(() => setPlazaShows(prev => {
+        const next = { ...prev }
+        delete next[pet.id]
+        return next
+      }), 4000)
+    }, 45000)
+    return () => clearInterval(interval)
+  }, [pets])
+
   // ── Poll for new pets every 15 s ──────────────────────────
   useEffect(() => {
     const poll = setInterval(async () => {
@@ -494,13 +530,15 @@ export default function PlazaScene({ petData, onGoToRoom, isPremium, petSize }: 
         const newOthers = records
           .filter(r => r.id !== ownSupabaseId && r.user_id !== ownUserId)
           .map(r => ({
-            id:            r.id,
-            pixelData:     r.pixel_data,
-            coords:        r.coords ?? DEFAULT_COORDS,
-            name:          r.name,
-            createdAt:     r.created_at,
-            isOwn:         false,
-            growth_points: r.growth_points ?? 0,
+            id:             r.id,
+            pixelData:      r.pixel_data,
+            coords:         r.coords ?? DEFAULT_COORDS,
+            name:           r.name,
+            createdAt:      r.created_at,
+            isOwn:          false,
+            growth_points:  r.growth_points  ?? 0,
+            talent:         r.talent,
+            talent_drawing: r.talent_drawing,
           }))
         const ownPet = prev.find(p => p.isOwn)
         return ownPet ? [ownPet, ...newOthers] : newOthers
@@ -520,13 +558,15 @@ export default function PlazaScene({ petData, onGoToRoom, isPremium, petSize }: 
       setPets(prev => {
         if (prev.some(p => p.id === newPet.id)) return prev
         return [...prev, {
-          id:            newPet.id,
-          pixelData:     newPet.pixel_data,
-          coords:        newPet.coords ?? DEFAULT_COORDS,
-          name:          newPet.name,
-          createdAt:     newPet.created_at,
-          isOwn:         false,
-          growth_points: newPet.growth_points ?? 0,
+          id:             newPet.id,
+          pixelData:      newPet.pixel_data,
+          coords:         newPet.coords ?? DEFAULT_COORDS,
+          name:           newPet.name,
+          createdAt:      newPet.created_at,
+          isOwn:          false,
+          growth_points:  newPet.growth_points  ?? 0,
+          talent:         newPet.talent,
+          talent_drawing: newPet.talent_drawing,
         }]
       })
     })
@@ -746,6 +786,23 @@ export default function PlazaScene({ petData, onGoToRoom, isPremium, petSize }: 
                 </div>
               )}
 
+              {/* Performance bubble (talent show) */}
+              {(() => {
+                const show = plazaShows[pet.id]
+                if (!show) return null
+                return (
+                  <div className={styles.speechBubble} style={{ zIndex: 9 }}>
+                    {show.text}
+                    {show.drawing && (
+                      <img
+                        src={show.drawing}
+                        style={{ width: 48, height: 48, imageRendering: 'pixelated', display: 'block', margin: '4px auto 0' }}
+                        alt="drawing"
+                      />
+                    )}
+                  </div>
+                )
+              })()}
 
               <canvas
                 ref={el => {
