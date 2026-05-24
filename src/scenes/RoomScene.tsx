@@ -692,44 +692,64 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange }: RoomSc
     setTimeout(() => setBlowCooldown(false), 8000)
   }, [blowCooldown, showBubble])
 
-  // ── Learn trick (daily talent system) ────────────────────
+  // ── Learn trick (daily talent system — 3-click flow) ─────
+  // learningStep: 0=idle 1=phase1 2=await-click2 3=phase2 4=await-click3 5=phase3 6=done
   const handleLearnTrick = useCallback((trickId: string) => {
     if (dailyTalent) {
       showBubble('Already learned today! Come back tomorrow 📅')
       return
     }
-    if (learningTrick !== null) return
 
-    setLearningTrick(trickId)
-    setLearningStep(1)
-    isBusyRef.current = true
-    showBubble("I'm learning... 📚")
-    setShowTeachMenu(false)
-    setShowPlay(false)
-
-    let step = 1
-    const timer = setInterval(() => {
-      step += 1
-      if (step === 2) {
+    // ── First click: begin phase 1 ───────────────────────
+    if (learningStep === 0) {
+      setLearningTrick(trickId)
+      setLearningStep(1)
+      isBusyRef.current = true
+      showBubble("I'm learning... 📚")
+      setShowTeachMenu(false)
+      setShowPlay(false)
+      learningTimerRef.current = setTimeout(() => {
         setLearningStep(2)
-        showBubble('Almost there... 💪')
-      } else if (step >= 3) {
-        setLearningStep(3)
-        showBubble('I got it! ⭐')
+        isBusyRef.current = false
+        learningTimerRef.current = null
+      }, 20000)
+      return
+    }
+
+    // Must continue with the same trick
+    if (learningTrick !== trickId) return
+
+    // ── Second click: begin phase 2 ──────────────────────
+    if (learningStep === 2) {
+      setLearningStep(3)
+      isBusyRef.current = true
+      showBubble('Almost there... 💪')
+      learningTimerRef.current = setTimeout(() => {
+        setLearningStep(4)
+        isBusyRef.current = false
+        learningTimerRef.current = null
+      }, 20000)
+      return
+    }
+
+    // ── Third click: begin phase 3 → complete ────────────
+    if (learningStep === 4) {
+      setLearningStep(5)
+      isBusyRef.current = true
+      showBubble('I got it! ⭐')
+      learningTimerRef.current = setTimeout(() => {
         const today = new Date().toDateString()
         const talentData = { date: today, talent: trickId }
         localStorage.setItem('oodle_daily_talent', JSON.stringify(talentData))
         saveTalent(trickId).catch(() => {})
         setDailyTalent(talentData)
         setLearningTrick(null)
-        setLearningStep(0)
+        setLearningStep(6)
         isBusyRef.current = false
-        if (learningTimerRef.current) clearInterval(learningTimerRef.current)
         learningTimerRef.current = null
-      }
-    }, 20000)
-    learningTimerRef.current = timer
-  }, [dailyTalent, learningTrick, showBubble])
+      }, 20000)
+    }
+  }, [dailyTalent, learningTrick, learningStep, showBubble])
 
   // ── Bubble physics ────────────────────────────────────────
   useEffect(() => {
@@ -1316,22 +1336,37 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange }: RoomSc
                         { id: 'sing',  label: '🎵 SING'       },
                         { id: 'dance', label: '🕺 DANCE'       },
                         { id: 'magic', label: '🪄 MAGIC TRICK' },
-                      ].map(trick => (
-                        <button
-                          key={trick.id}
-                          disabled={!!dailyTalent || learningTrick !== null}
-                          style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', fontFamily: 'var(--font-pixel)', fontSize: '8px', color: '#2C2C2C', background: '#fff', border: 'none', borderBottom: '1px solid #eee', padding: '10px 12px', cursor: (dailyTalent || learningTrick !== null) ? 'not-allowed' : 'pointer', whiteSpace: 'nowrap', opacity: (dailyTalent || (learningTrick !== null && learningTrick !== trick.id)) ? 0.5 : 1 }}
-                          onClick={() => handleLearnTrick(trick.id)}
-                        >
-                          {trick.label}
-                          {dailyTalent && (
-                            <span style={{ fontFamily: 'var(--font-pixel)', fontSize: '5px', background: '#4CAF50', color: '#fff', padding: '2px 5px' }}>DONE TODAY ✓</span>
-                          )}
-                          {!dailyTalent && learningTrick === trick.id && (
-                            <span style={{ fontFamily: 'var(--font-pixel)', fontSize: '5px', background: '#FF8C00', color: '#fff', padding: '2px 5px' }}>STEP {learningStep}/3</span>
-                          )}
-                        </button>
-                      ))}
+                      ].map(trick => {
+                        const isThisTrick   = learningTrick === trick.id
+                        const isBusy        = isThisTrick && (learningStep === 1 || learningStep === 3 || learningStep === 5)
+                        const needsClick2   = isThisTrick && learningStep === 2
+                        const needsClick3   = isThisTrick && learningStep === 4
+                        const otherLearning = learningTrick !== null && !isThisTrick
+                        const isDisabled    = !!dailyTalent || isBusy || otherLearning
+                        const btnBg         = (needsClick2 || needsClick3) ? '#FFE600' : '#fff'
+                        return (
+                          <button
+                            key={trick.id}
+                            disabled={isDisabled}
+                            style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', fontFamily: 'var(--font-pixel)', fontSize: '8px', color: '#2C2C2C', background: btnBg, border: 'none', borderBottom: '1px solid #eee', padding: '10px 12px', cursor: isDisabled ? 'not-allowed' : 'pointer', whiteSpace: 'nowrap', opacity: (dailyTalent || otherLearning) ? 0.5 : 1 }}
+                            onClick={() => handleLearnTrick(trick.id)}
+                          >
+                            {trick.label}
+                            {dailyTalent && (
+                              <span style={{ fontFamily: 'var(--font-pixel)', fontSize: '5px', background: '#4CAF50', color: '#fff', padding: '2px 5px' }}>DONE TODAY ✓</span>
+                            )}
+                            {!dailyTalent && isBusy && (
+                              <span style={{ fontFamily: 'var(--font-pixel)', fontSize: '5px', background: '#FF8C00', color: '#fff', padding: '2px 5px' }}>LEARNING... ⏳</span>
+                            )}
+                            {!dailyTalent && needsClick2 && (
+                              <span style={{ fontFamily: 'var(--font-pixel)', fontSize: '5px', background: '#2C2C2C', color: '#FFE600', padding: '2px 5px' }}>CLICK! (2/3)</span>
+                            )}
+                            {!dailyTalent && needsClick3 && (
+                              <span style={{ fontFamily: 'var(--font-pixel)', fontSize: '5px', background: '#2C2C2C', color: '#FFE600', padding: '2px 5px' }}>CLICK! (3/3)</span>
+                            )}
+                          </button>
+                        )
+                      })}
                       <button
                         disabled={!!dailyTalent || learningTrick !== null}
                         style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', fontFamily: 'var(--font-pixel)', fontSize: '8px', color: '#2C2C2C', background: '#fff', border: 'none', padding: '10px 12px', cursor: (dailyTalent || learningTrick !== null) ? 'not-allowed' : 'pointer', whiteSpace: 'nowrap', opacity: (dailyTalent || learningTrick !== null) ? 0.5 : 1 }}
