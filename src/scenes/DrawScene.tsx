@@ -219,6 +219,35 @@ export default function DrawScene({ onPetCreated, isPremium, onSubscribeClick }:
             newGrid[r][c] = best
           }
         }
+
+        // Remove background: flood fill from all 4 corners
+        const bgColors = new Set([
+          newGrid[0][0],
+          newGrid[0][GRID_SIZE - 1],
+          newGrid[GRID_SIZE - 1][0],
+          newGrid[GRID_SIZE - 1][GRID_SIZE - 1],
+        ])
+        bgColors.delete('')  // don't flood-fill already empty cells
+
+        for (const bgColor of bgColors) {
+          if (!bgColor) continue
+          const stack: [number, number][] = [
+            [0, 0], [0, GRID_SIZE - 1],
+            [GRID_SIZE - 1, 0], [GRID_SIZE - 1, GRID_SIZE - 1]
+          ]
+          const visited = new Set<string>()
+          while (stack.length) {
+            const [r, c] = stack.pop()!
+            const key = `${r},${c}`
+            if (r < 0 || r >= GRID_SIZE || c < 0 || c >= GRID_SIZE) continue
+            if (visited.has(key)) continue
+            if (newGrid[r][c] !== bgColor) continue
+            visited.add(key)
+            newGrid[r][c] = ''
+            stack.push([r-1,c],[r+1,c],[r,c-1],[r,c+1])
+          }
+        }
+
         updateGrid(newGrid)
         setTab('draw')
       }
