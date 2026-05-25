@@ -443,15 +443,13 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange }: RoomSc
         setDayCount(parseInt(d, 10))
       }
 
-      if (!petCreated) {
-        getPetAge().then(age => {
-          if (age !== null) {
-            const estimatedCreatedAt = Date.now() - age * 86400000
-            localStorage.setItem('oodle_pet_created_at', String(estimatedCreatedAt))
-            setDayCount(age + 1)
-          }
-        }).catch(() => {})
-      }
+      getPetAge().then(age => {
+        if (age !== null) {
+          const estimatedCreatedAt = Date.now() - age * 86400000
+          localStorage.setItem('oodle_pet_created_at', String(estimatedCreatedAt))
+          setDayCount(age + 1)
+        }
+      }).catch(() => {})
 
       const fs = localStorage.getItem('oodle_food_state')
       if (fs) {
