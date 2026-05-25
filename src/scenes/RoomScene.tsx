@@ -2,7 +2,7 @@ import { useRef, useState, useEffect, useCallback } from 'react'
 import StatBar from '../ui/StatBar'
 import { PetAnimator } from '../engine/PetAnimator'
 import type { PetCoords } from '../api/aiRecognize'
-import { savePet, getLikeBalance, redeemLikesForFood, saveTalent, saveTalentDrawing, getPetAge } from '../lib/petService'
+import { savePet, getLikeBalance, redeemLikesForFood, saveTalent, saveTalentDrawing, getPetAge, killPet, checkPetDead } from '../lib/petService'
 import { supabase } from '../lib/supabase'
 import { useAuthStore } from '../lib/auth'
 import styles from './RoomScene.module.css'
@@ -197,6 +197,7 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange }: RoomSc
   const [petSaved,  setPetSaved]  = useState(false)
   const [isDizzy,    setIsDizzy]    = useState(false)
   const [isFainted,  setIsFainted]  = useState(false)
+  const [isPetDead,  setIsPetDead]  = useState(false)
   const [isSleeping, setIsSleeping] = useState(false)
   const [showMore,    setShowMore]    = useState(false)
   const [showRewards, setShowRewards] = useState(false)
@@ -377,6 +378,8 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange }: RoomSc
     })
       .then(() => setPetSaved(true))
       .catch(() => setPetSaved(true))
+
+    checkPetDead().then(dead => { if (dead) setIsPetDead(true) }).catch(() => {})
   }, [petData])
 
   // ── Load like balance + poll every 10s + notify on new like ─
@@ -508,6 +511,19 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange }: RoomSc
           happy:  Math.max(0, s.happy  - 0.06),
           energy: Math.max(0, s.energy - 0.11),
         }))
+      }
+
+      // Death by starvation: track how long hunger has been 0
+      if (statsRef.current.hunger <= 0) {
+        const zeroSince = localStorage.getItem('oodle_hunger_zero_since')
+        if (!zeroSince) {
+          localStorage.setItem('oodle_hunger_zero_since', String(Date.now()))
+        } else if (Date.now() - parseInt(zeroSince, 10) >= 3 * 86400000) {
+          killPet().catch(() => {})
+          setIsPetDead(true)
+        }
+      } else {
+        localStorage.removeItem('oodle_hunger_zero_since')
       }
     }, interval)
     return () => clearInterval(decay)
@@ -1945,6 +1961,28 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange }: RoomSc
               style={{ fontFamily: 'var(--font-pixel)', fontSize: '7px', color: '#888', background: 'transparent', border: 'none', cursor: 'pointer' }}
             >
               REMIND ME LATER
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ── PET DEATH OVERLAY ─────────────────────────── */}
+      {isPetDead && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 999, background: 'rgba(0,0,0,0.85)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '20px', textAlign: 'center', padding: '32px' }}>
+            <div style={{ fontSize: '80px', lineHeight: 1 }}>🪦</div>
+            <div style={{ fontFamily: 'var(--font-pixel)', fontSize: '22px', color: '#e94560', letterSpacing: '4px' }}>R.I.P.</div>
+            <div style={{ fontFamily: 'var(--font-pixel)', fontSize: '13px', color: '#eaeaea' }}>{petData.name}</div>
+            <div style={{ fontFamily: 'var(--font-retro)', fontSize: '20px', color: '#888' }}>Your pet has passed away...</div>
+            <button
+              onClick={() => {
+                killPet().catch(() => {})
+                localStorage.clear()
+                location.reload()
+              }}
+              style={{ fontFamily: 'var(--font-pixel)', fontSize: '11px', padding: '14px 28px', background: '#4ecca3', color: '#000', border: '3px solid #eaeaea', boxShadow: '4px 4px 0 #000', cursor: 'pointer', letterSpacing: '2px', marginTop: '8px' }}
+            >
+              🌱 Start Over
             </button>
           </div>
         </div>

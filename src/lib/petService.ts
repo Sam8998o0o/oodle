@@ -32,6 +32,27 @@ export async function savePet(pet: {
   const userId = useAuthStore.getState().userId
   if (!userId) return null
 
+  // Check Supabase for an existing pet for this user before trusting localStorage
+  const { data: existingPet } = await supabase
+    .from('pets')
+    .select('id, is_dead')
+    .eq('user_id', userId)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+
+  if (existingPet) {
+    const ep = existingPet as { id: string; is_dead: boolean }
+    if (!ep.is_dead) {
+      // Lock user to their existing alive pet
+      localStorage.setItem(LOCAL_PET_ID_KEY, ep.id)
+      return ep.id
+    } else {
+      // Dead pet — clear cached id so a new one can be created
+      localStorage.removeItem(LOCAL_PET_ID_KEY)
+    }
+  }
+
   // Idempotency: don't insert a second time for the same browser session
   const cached = localStorage.getItem(LOCAL_PET_ID_KEY)
   if (cached) return cached
@@ -103,6 +124,29 @@ export async function updateLastSeen(): Promise<void> {
   const petId = localStorage.getItem('oodle_pet_supabase_id')
   if (!petId) return
   await supabase.from('pets').update({ last_seen: new Date().toISOString() }).eq('id', petId)
+}
+
+// ── killPet ───────────────────────────────────────────────
+// Marks the current pet as dead in Supabase.
+export async function killPet(): Promise<void> {
+  const petId = localStorage.getItem('oodle_pet_supabase_id')
+  if (!petId) return
+  await supabase.from('pets').update({ is_dead: true, died_at: new Date().toISOString() }).eq('id', petId)
+}
+
+// ── checkPetDead ──────────────────────────────────────────
+// Returns true if the user's most recent pet is marked dead.
+export async function checkPetDead(): Promise<boolean> {
+  const userId = useAuthStore.getState().userId
+  if (!userId) return false
+  const { data } = await supabase
+    .from('pets')
+    .select('is_dead')
+    .eq('user_id', userId)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+  return (data as { is_dead: boolean } | null)?.is_dead ?? false
 }
 
 // ── fetchAllPets ──────────────────────────────────────────
