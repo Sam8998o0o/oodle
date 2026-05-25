@@ -11,6 +11,7 @@ interface PaywallSceneProps {
   userId: string | null
   onSubscribed: () => void
   onLoginAndSubscribe: () => void
+  onClose?: () => void
 }
 
 const DEFAULT_COORDS: PetCoords = {
@@ -27,6 +28,7 @@ export default function PaywallScene({
   userId,
   onSubscribed,
   onLoginAndSubscribe,
+  onClose,
 }: PaywallSceneProps) {
   const canvasRef   = useRef<HTMLCanvasElement>(null)
   const animatorRef = useRef<PetAnimator | null>(null)
@@ -41,7 +43,7 @@ export default function PaywallScene({
       eyeStyle,
     })
     animatorRef.current = animator
-    animator.setState('sad')
+    animator.setState('idle')
     animator.start()
     return () => animator.stop()
   }, [petData])
@@ -63,7 +65,19 @@ export default function PaywallScene({
   return (
     <div className={styles.page}>
       <div className={styles.card}>
-        <h1 className={styles.title}>YOUR PET MISSES YOU</h1>
+        {onClose && (
+          <button
+            onClick={onClose}
+            style={{
+              position: 'absolute', top: '12px', right: '12px',
+              fontFamily: 'var(--font-pixel)', fontSize: '10px',
+              background: 'none', border: 'none', boxShadow: 'none',
+              cursor: 'pointer', color: '#888', padding: '4px',
+            }}
+          >✕</button>
+        )}
+
+        <h1 className={styles.title}>UPGRADE TO PRO</h1>
 
         {petData && (
           <div className={styles.petPreview}>
@@ -76,17 +90,17 @@ export default function PaywallScene({
           </div>
         )}
 
-        <p className={styles.subtitle}>14-day free trial ended</p>
+        <p className={styles.subtitle}>Unlock Pro features</p>
 
         <ul className={styles.benefits}>
-          <li>✓ Keep your pet alive forever</li>
-          <li>✓ AI Generate your pet (Gemini)</li>
+          <li>✓ AI Generate your pet</li>
+          <li>✓ Import any image as pet</li>
           <li>✓ All eye styles unlocked</li>
           <li>✓ 30 shouts/day (vs 10 free)</li>
-          <li>✓ More features coming soon</li>
+          <li>✓ Plaza forever</li>
         </ul>
 
-        <div className={styles.price}>$4.99 / MONTH</div>
+        <div className={styles.price}>$2.99 / MONTH</div>
 
         <button className={styles.subscribeBtn} onClick={handleSubscribe}>
           SUBSCRIBE NOW

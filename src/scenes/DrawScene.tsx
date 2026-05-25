@@ -551,23 +551,35 @@ export default function DrawScene({ onPetCreated, isPremium, onSubscribeClick }:
 
             {tab === 'import' ? (
               <div className={styles.aiPanel} style={{ width: '100%', boxSizing: 'border-box' }}>
-                <p className={styles.aiDesc}>Upload any image — meme, photo, or pixel art. We'll pixelate it for you!</p>
-                <label style={{
-                  display: 'block', width: '100%', padding: '14px',
-                  background: '#FFE600', color: '#2C2C2C',
-                  border: '2px solid #2C2C2C', boxShadow: '4px 4px 0 #2C2C2C',
-                  fontFamily: 'var(--font-pixel)', fontSize: '10px',
-                  textAlign: 'center', cursor: 'pointer', letterSpacing: '2px',
-                  boxSizing: 'border-box',
-                }}>
-                  📁 CHOOSE IMAGE
-                  <input type="file" accept="image/*" style={{ display: 'none' }}
-                    onChange={(e) => { const f = e.target.files?.[0]; if (f) importImage(f) }}
-                  />
-                </label>
-                <p style={{ fontFamily: 'var(--font-pixel)', fontSize: '7px', color: '#888', textAlign: 'center', margin: 0 }}>
-                  Works best with simple images or existing pixel art
-                </p>
+                {!isPremium ? (
+                  <>
+                    <div className={styles.premiumBadge}>🔒 PRO FEATURE</div>
+                    <p className={styles.aiDesc}>Import any image and turn it into your pixel pet!</p>
+                    <button className={styles.subscribeUnlockBtn} onClick={onSubscribeClick}>
+                      UNLOCK $2.99/mo
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <p className={styles.aiDesc}>Upload any image — meme, photo, or pixel art. We'll pixelate it for you!</p>
+                    <label style={{
+                      display: 'block', width: '100%', padding: '14px',
+                      background: '#FFE600', color: '#2C2C2C',
+                      border: '2px solid #2C2C2C', boxShadow: '4px 4px 0 #2C2C2C',
+                      fontFamily: 'var(--font-pixel)', fontSize: '10px',
+                      textAlign: 'center', cursor: 'pointer', letterSpacing: '2px',
+                      boxSizing: 'border-box',
+                    }}>
+                      📁 CHOOSE IMAGE
+                      <input type="file" accept="image/*" style={{ display: 'none' }}
+                        onChange={(e) => { const f = e.target.files?.[0]; if (f) importImage(f) }}
+                      />
+                    </label>
+                    <p style={{ fontFamily: 'var(--font-pixel)', fontSize: '7px', color: '#888', textAlign: 'center', margin: 0 }}>
+                      Works best with simple images or existing pixel art
+                    </p>
+                  </>
+                )}
               </div>
             ) : tab === 'ai' ? (
               <div className={styles.aiPanel} style={{ width: '100%', boxSizing: 'border-box' }}>

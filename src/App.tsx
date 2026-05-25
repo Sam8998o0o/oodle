@@ -94,6 +94,7 @@ function App() {
               if (url) window.location.href = url
             }
           }}
+          onClose={() => setScene('room')}
         />
       </>
     )
