@@ -1564,18 +1564,18 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange }: RoomSc
           return (
             <div style={{ border: `2px solid ${item.rare ? '#9B59B6' : '#2C2C2C'}`, boxShadow: '2px 2px 0 #2C2C2C', padding: '10px 6px', textAlign: 'center', background: equipped ? '#FFE600' : owned ? '#f0fff0' : '#fff', position: 'relative' }}>
               <div style={{ fontSize: '22px', marginBottom: '4px' }}>{item.emoji}</div>
-              <div style={{ fontFamily: 'var(--font-pixel)', fontSize: '5px', color: item.rare ? '#9B59B6' : '#2C2C2C', marginBottom: '6px', lineHeight: 1.4 }}>{item.label}</div>
-              {equipped && <div style={{ fontFamily: 'var(--font-pixel)', fontSize: '5px', color: '#4CAF50', marginBottom: '4px' }}>ON</div>}
+              <div style={{ fontFamily: 'var(--font-pixel)', fontSize: '13px', color: item.rare ? '#9B59B6' : '#2C2C2C', marginBottom: '6px', lineHeight: 1.4 }}>{item.label}</div>
+              {equipped && <div style={{ fontFamily: 'var(--font-pixel)', fontSize: '11px', color: '#4CAF50', marginBottom: '4px' }}>ON</div>}
               {owned && !equipped && onEquip && (
-                <button onClick={() => onEquip(item.id)} style={{ fontFamily: 'var(--font-pixel)', fontSize: '5px', padding: '4px 6px', background: '#2C2C2C', color: '#FFE600', border: 'none', cursor: 'pointer', width: '100%' }}>EQUIP</button>
+                <button onClick={() => onEquip(item.id)} style={{ fontFamily: 'var(--font-pixel)', fontSize: '11px', padding: '4px 6px', background: '#2C2C2C', color: '#FFE600', border: 'none', cursor: 'pointer', width: '100%' }}>EQUIP</button>
               )}
-              {owned && !onEquip && !equipped && <div style={{ fontFamily: 'var(--font-pixel)', fontSize: '5px', color: '#4CAF50' }}>OWNED</div>}
-              {!owned && item.price === 0 && <div style={{ fontFamily: 'var(--font-pixel)', fontSize: '5px', color: '#4CAF50' }}>FREE</div>}
+              {owned && !onEquip && !equipped && <div style={{ fontFamily: 'var(--font-pixel)', fontSize: '11px', color: '#4CAF50' }}>OWNED</div>}
+              {!owned && item.price === 0 && <div style={{ fontFamily: 'var(--font-pixel)', fontSize: '11px', color: '#4CAF50' }}>FREE</div>}
               {!owned && item.price > 0 && (
                 <button
                   onClick={() => handleBuyItem(item)}
                   disabled={!canAfford}
-                  style={{ fontFamily: 'var(--font-pixel)', fontSize: '5px', padding: '4px 6px', background: canAfford ? '#FFE600' : '#eee', color: '#2C2C2C', border: `1px solid ${item.rare ? '#9B59B6' : '#2C2C2C'}`, cursor: canAfford ? 'pointer' : 'not-allowed', width: '100%' }}
+                  style={{ fontFamily: 'var(--font-pixel)', fontSize: '12px', padding: '4px 6px', background: canAfford ? '#FFE600' : '#eee', color: '#2C2C2C', border: `1px solid ${item.rare ? '#9B59B6' : '#2C2C2C'}`, cursor: canAfford ? 'pointer' : 'not-allowed', width: '100%' }}
                 >
                   ❤️ {item.price}
                 </button>
@@ -1594,14 +1594,14 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange }: RoomSc
               <button onClick={() => setShowShop(false)} style={{ position: 'absolute', top: '8px', right: '8px', fontFamily: 'var(--font-pixel)', fontSize: '12px', background: 'transparent', border: '2px solid #FFE600', color: '#FFE600', width: '28px', height: '28px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>✕</button>
 
               {/* Like balance */}
-              <div style={{ fontFamily: 'var(--font-pixel)', fontSize: '9px', color: '#cc2200', textAlign: 'center', padding: '10px', background: '#fff8e1', borderBottom: '2px solid #2C2C2C' }}>
+              <div style={{ fontFamily: 'var(--font-pixel)', fontSize: '13px', color: '#cc2200', textAlign: 'center', padding: '10px', background: '#fff8e1', borderBottom: '2px solid #2C2C2C' }}>
                 ❤️ BALANCE: {likeBalance} LIKES
               </div>
 
               {/* Tab bar */}
               <div style={{ display: 'flex', borderBottom: '2px solid #2C2C2C' }}>
                 {shopTabs.map(t => (
-                  <button key={t.id} onClick={() => setShopTab(t.id)} style={{ flex: 1, fontFamily: 'var(--font-pixel)', fontSize: '5px', padding: '8px 2px', background: shopTab === t.id ? '#FFE600' : '#fff', border: 'none', borderRight: '1px solid #2C2C2C', cursor: 'pointer', color: '#2C2C2C' }}>
+                  <button key={t.id} onClick={() => setShopTab(t.id)} style={{ flex: 1, fontFamily: 'var(--font-pixel)', fontSize: '11px', padding: '8px 2px', background: shopTab === t.id ? '#FFE600' : '#fff', border: 'none', borderRight: '1px solid #2C2C2C', cursor: 'pointer', color: '#2C2C2C' }}>
                     {t.label}
                   </button>
                 ))}
@@ -1616,8 +1616,8 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange }: RoomSc
                       { label: '🍖 MEAL',      price: 10, onBuy: () => { if (likeBalance >= 10) { setLikeBalance((p: number) => p - 10); setBigFood((p: number)   => p + 1) } } },
                     ].map(f => (
                       <div key={f.label} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', border: '2px solid #2C2C2C', boxShadow: '2px 2px 0 #2C2C2C', padding: '12px 14px', background: '#fff' }}>
-                        <span style={{ fontFamily: 'var(--font-pixel)', fontSize: '9px', color: '#2C2C2C' }}>{f.label}</span>
-                        <button onClick={f.onBuy} disabled={likeBalance < f.price} style={{ fontFamily: 'var(--font-pixel)', fontSize: '8px', padding: '6px 12px', background: likeBalance >= f.price ? '#FFE600' : '#eee', color: '#2C2C2C', border: '2px solid #2C2C2C', boxShadow: likeBalance >= f.price ? '2px 2px 0 #2C2C2C' : 'none', cursor: likeBalance >= f.price ? 'pointer' : 'not-allowed' }}>
+                        <span style={{ fontFamily: 'var(--font-pixel)', fontSize: '13px', color: '#2C2C2C' }}>{f.label}</span>
+                        <button onClick={f.onBuy} disabled={likeBalance < f.price} style={{ fontFamily: 'var(--font-pixel)', fontSize: '12px', padding: '6px 12px', background: likeBalance >= f.price ? '#FFE600' : '#eee', color: '#2C2C2C', border: '2px solid #2C2C2C', boxShadow: likeBalance >= f.price ? '2px 2px 0 #2C2C2C' : 'none', cursor: likeBalance >= f.price ? 'pointer' : 'not-allowed' }}>
                           ❤️ {f.price}
                         </button>
                       </div>
@@ -1652,7 +1652,7 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange }: RoomSc
 
               {/* Footer */}
               {(equippedHat || equippedEye) && (
-                <div style={{ fontFamily: 'var(--font-pixel)', fontSize: '6px', color: '#555', textAlign: 'center', padding: '10px', borderTop: '2px solid #ddd', lineHeight: 2 }}>
+                <div style={{ fontFamily: 'var(--font-pixel)', fontSize: '11px', color: '#555', textAlign: 'center', padding: '10px', borderTop: '2px solid #ddd', lineHeight: 2 }}>
                   {equippedHat && `🎩 ${SHOP_HATS.find(h => h.id === equippedHat)?.label ?? ''} equipped`}
                   {equippedHat && equippedEye && '  ·  '}
                   {equippedEye && `👁 ${SHOP_EYES.find(e => e.id === equippedEye)?.label ?? ''} eyes`}
