@@ -731,6 +731,10 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange }: RoomSc
       showBubble("I'm learning... 📚")
       setShowTeachMenu(false)
       setShowPlay(false)
+      const emojis1: Record<string, string> = { sing: '🎵', dance: '💃', magic: '✨', drawing: '🎨' }
+      const floatEmoji1 = emojis1[trickId] ?? '⭐'
+      const floatInterval1 = setInterval(() => showFloat(floatEmoji1), 1500)
+      setTimeout(() => clearInterval(floatInterval1), 20000)
       learningTimerRef.current = setTimeout(() => {
         setLearningStep(2)
         isBusyRef.current = false
@@ -747,6 +751,10 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange }: RoomSc
       setLearningStep(3)
       isBusyRef.current = true
       showBubble('Almost there... 💪')
+      const emojis3: Record<string, string> = { sing: '🎵', dance: '💃', magic: '✨', drawing: '🎨' }
+      const floatEmoji3 = emojis3[trickId] ?? '⭐'
+      const floatInterval3 = setInterval(() => showFloat(floatEmoji3), 1500)
+      setTimeout(() => clearInterval(floatInterval3), 20000)
       learningTimerRef.current = setTimeout(() => {
         setLearningStep(4)
         isBusyRef.current = false
@@ -760,6 +768,10 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange }: RoomSc
       setLearningStep(5)
       isBusyRef.current = true
       showBubble('I got it! ⭐')
+      const emojis5: Record<string, string> = { sing: '🎵', dance: '💃', magic: '✨', drawing: '🎨' }
+      const floatEmoji5 = emojis5[trickId] ?? '⭐'
+      const floatInterval5 = setInterval(() => showFloat(floatEmoji5), 1500)
+      setTimeout(() => clearInterval(floatInterval5), 20000)
       learningTimerRef.current = setTimeout(() => {
         const today = new Date().toDateString()
         const talentData = { date: today, talent: trickId }
@@ -772,7 +784,7 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange }: RoomSc
         learningTimerRef.current = null
       }, 20000)
     }
-  }, [dailyTalent, learningTrick, learningStep, showBubble])
+  }, [dailyTalent, learningTrick, learningStep, showBubble, showFloat])
 
   // ── Bubble physics ────────────────────────────────────────
   useEffect(() => {

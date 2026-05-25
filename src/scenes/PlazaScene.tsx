@@ -440,6 +440,19 @@ export default function PlazaScene({ petData, onGoToRoom, isPremium, petSize }: 
 
   // ── Load pets ─────────────────────────────────────────────
   useEffect(() => {
+    const talentRaw = localStorage.getItem('oodle_daily_talent')
+    let ownTalent: string | undefined
+    let ownTalentDrawing: string | undefined
+    try {
+      if (talentRaw) {
+        const t = JSON.parse(talentRaw) as { date: string; talent: string; drawing?: string }
+        if (t.date === new Date().toDateString()) {
+          ownTalent = t.talent
+          ownTalentDrawing = t.drawing
+        }
+      }
+    } catch { /* ignore */ }
+
     const ownPet: PlazaPet = {
       id:            'own',
       pixelData:     petData.pixelData,
@@ -448,6 +461,8 @@ export default function PlazaScene({ petData, onGoToRoom, isPremium, petSize }: 
       createdAt:     new Date().toISOString(),
       isOwn:         true,
       growth_points: parseInt(localStorage.getItem('oodle_growth') ?? '0', 10),
+      talent:        ownTalent,
+      talent_drawing: ownTalentDrawing,
     }
     setPets([ownPet])
 
