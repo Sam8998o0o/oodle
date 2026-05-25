@@ -173,6 +173,7 @@ export default function DrawScene({ onPetCreated, isPremium, onSubscribeClick }:
   const [particles, setParticles] = useState<Particle[]>([])
   const [storedPets, setStoredPets] = useState<StoredPet[]>([])
   const [showGrid, setShowGrid]   = useState(true)
+  const [importLocked, setImportLocked] = useState(false)
 
   const blinkRef = useRef({ countdown: 210, frame: 0, blinking: false, cycle: 210 })
 
@@ -256,6 +257,7 @@ export default function DrawScene({ onPetCreated, isPremium, onSubscribeClick }:
 
         updateGrid(newGrid)
         setTab('draw')
+        setImportLocked(true)
         setOnnxScore(null)
       }
       img.src = e.target!.result as string
@@ -589,6 +591,29 @@ export default function DrawScene({ onPetCreated, isPremium, onSubscribeClick }:
               </div>
             ) : (
               <>
+                {/* Import-lock banner */}
+                {importLocked && (
+                  <div style={{
+                    width: '100%', background: '#e94560', color: '#fff',
+                    fontFamily: 'var(--font-pixel)', fontSize: '8px',
+                    padding: '8px 12px', display: 'flex',
+                    justifyContent: 'space-between', alignItems: 'center',
+                    border: '2px solid #2C2C2C', boxSizing: 'border-box',
+                    letterSpacing: '1px'
+                  }}>
+                    <span>✏️ SIMPLIFY TO LOOK LIKE A PET</span>
+                    <button
+                      onClick={() => { setImportLocked(false); setOnnxScore(null) }}
+                      style={{
+                        fontFamily: 'var(--font-pixel)', fontSize: '7px',
+                        background: '#FFE600', color: '#2C2C2C',
+                        border: '2px solid #2C2C2C', padding: '4px 10px',
+                        cursor: 'pointer', letterSpacing: '1px'
+                      }}
+                    >✓ DONE EDITING</button>
+                  </div>
+                )}
+
                 {/* Validation label */}
                 {onnxScore !== null && (
                   <p
@@ -667,7 +692,7 @@ export default function DrawScene({ onPetCreated, isPremium, onSubscribeClick }:
                     ref={btnRef}
                     className={styles.ctaBtn}
                     onClick={handleMakeItLife}
-                    disabled={!onnxScore || onnxScore < 0.65}
+                    disabled={importLocked || !onnxScore || onnxScore < 0.65}
                   >
                     ✦ MAKE IT LIFE ✦
                   </button>
