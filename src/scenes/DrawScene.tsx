@@ -584,7 +584,7 @@ export default function DrawScene({ onPetCreated, isPremium, onSubscribeClick }:
               {/* Canvas + guide row */}
               <div className={styles.canvasRow}>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                  <div className={styles.drawGuide}>
+                  <div className={styles.drawGuide} style={{ width: '100%' }}>
                     <div className={styles.drawGuideTitle}>HOW TO DRAW</div>
                     <div className={styles.drawGuideTips}>
                       <div>1. DRAW AN OUTLINE</div>
@@ -595,7 +595,7 @@ export default function DrawScene({ onPetCreated, isPremium, onSubscribeClick }:
                     </div>
                   </div>
 
-                  <div className={styles.drawGuide}>
+                  <div className={styles.drawGuide} style={{ width: '100%' }}>
                     <div className={styles.drawGuideTitle}>HOW TO IMPORT</div>
                     <div className={styles.drawGuideTips}>
                       <div>1. CLICK IMPORT TAB</div>
@@ -685,17 +685,17 @@ export default function DrawScene({ onPetCreated, isPremium, onSubscribeClick }:
                     </div>
 
                   </div>{/* end controls */}
+
+                  <button
+                    ref={btnRef}
+                    className={styles.ctaBtn}
+                    onClick={handleMakeItLife}
+                    disabled={!onnxScore || onnxScore < 0.65}
+                  >
+                    ✦ MAKE IT LIFE ✦
+                  </button>
                 </div>{/* end canvasColumn */}
               </div>{/* end canvasRow */}
-
-              <button
-                ref={btnRef}
-                className={styles.ctaBtn}
-                onClick={handleMakeItLife}
-                disabled={!onnxScore || onnxScore < 0.65}
-              >
-                ✦ MAKE IT LIFE ✦
-              </button>
             </>
           )}
         </>
