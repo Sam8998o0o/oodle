@@ -49,7 +49,7 @@
 }
 
 /* ── Title ──────────────────────────────────────────────── */
-.titleBlock { text-align: center; margin-bottom: 4px; }
+.titleBlock { text-align: center; margin-bottom: 4px; width: 100%; max-width: 512px; margin-left: auto; margin-right: auto; }
 
 .title {
   font-family: var(--font-pixel);
@@ -73,6 +73,8 @@
   gap: 0;
   border: 2px solid #2C2C2C;
   box-shadow: 3px 3px 0 #2C2C2C;
+  width: 100%;
+  max-width: 512px;
 }
 
 .tab {

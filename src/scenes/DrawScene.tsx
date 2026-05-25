@@ -640,60 +640,51 @@ export default function DrawScene({ onPetCreated, isPremium, onSubscribeClick }:
                       </div>
                     </div>
 
-                    {/* Row 2: Tools + Brush size + Undo/Clear + Grid */}
+                    {/* Row 2a: Draw + Erase + Fill + 1px + 2px + 4px */}
                     <div className={styles.controlRow} style={{ width: '100%', justifyContent: 'space-between' }}>
-                      {/* Tools */}
-                      <div className={styles.btnGroup}>
+                      <button
+                        className={`${styles.toolBtn} ${tool === 'draw'  ? styles.toolActive : ''}`}
+                        onClick={() => setTool('draw')}
+                      >✏️ Draw</button>
+                      <button
+                        className={`${styles.toolBtn} ${tool === 'erase' ? styles.toolActive : ''}`}
+                        onClick={() => setTool('erase')}
+                      >⬜ Erase</button>
+                      <button
+                        className={`${styles.toolBtn} ${tool === 'fill'  ? styles.toolActive : ''}`}
+                        onClick={() => setTool('fill')}
+                      >🪣 Fill</button>
+                      {([1, 2, 4] as const).map(bs => (
                         <button
-                          className={`${styles.toolBtn} ${tool === 'draw'  ? styles.toolActive : ''}`}
-                          onClick={() => setTool('draw')}
-                        >✏️ Draw</button>
-                        <button
-                          className={`${styles.toolBtn} ${tool === 'erase' ? styles.toolActive : ''}`}
-                          onClick={() => setTool('erase')}
-                        >⬜ Erase</button>
-                        <button
-                          className={`${styles.toolBtn} ${tool === 'fill'  ? styles.toolActive : ''}`}
-                          onClick={() => setTool('fill')}
-                        >🪣 Fill</button>
-                      </div>
+                          key={bs}
+                          className={`${styles.toolBtn} ${brushSize === bs ? styles.toolActive : ''}`}
+                          onClick={() => setBrushSize(bs)}
+                        >{bs}px</button>
+                      ))}
+                    </div>
 
-                      <div className={styles.groupSep} />
-
-                      {/* Brush size */}
-                      <div className={styles.btnGroup}>
-                        {([1, 2, 4] as const).map(bs => (
-                          <button
-                            key={bs}
-                            className={`${styles.toolBtn} ${brushSize === bs ? styles.toolActive : ''}`}
-                            onClick={() => setBrushSize(bs)}
-                          >{bs}px</button>
-                        ))}
-                      </div>
-
-                      <div className={styles.groupSep} />
-
-                      {/* Undo / Clear / Grid */}
-                      <div className={styles.btnGroup}>
-                        <button className={styles.toolBtn} onClick={handleUndo}>↩ Undo</button>
-                        <button className={styles.toolBtn} onClick={handleClear}>🗑 Clear</button>
-                        <button
-                          className={`${styles.toolBtn} ${showGrid ? styles.toolActive : ''}`}
-                          onClick={() => setShowGrid(v => !v)}
-                        >⊞ Grid</button>
-                      </div>
+                    {/* Row 2b: Undo + Clear + Grid */}
+                    <div className={styles.controlRow} style={{ width: '100%', justifyContent: 'space-between' }}>
+                      <button className={styles.toolBtn} onClick={handleUndo}>↩ Undo</button>
+                      <button className={styles.toolBtn} onClick={handleClear}>🗑 Clear</button>
+                      <button
+                        className={`${styles.toolBtn} ${showGrid ? styles.toolActive : ''}`}
+                        onClick={() => setShowGrid(v => !v)}
+                      >⊞ Grid</button>
                     </div>
 
                   </div>{/* end controls */}
 
-                  <button
-                    ref={btnRef}
-                    className={styles.ctaBtn}
-                    onClick={handleMakeItLife}
-                    disabled={!onnxScore || onnxScore < 0.65}
-                  >
-                    ✦ MAKE IT LIFE ✦
-                  </button>
+                  <div style={{ display: 'flex', justifyContent: 'center', width: '100%' }}>
+                    <button
+                      ref={btnRef}
+                      className={styles.ctaBtn}
+                      onClick={handleMakeItLife}
+                      disabled={!onnxScore || onnxScore < 0.65}
+                    >
+                      ✦ MAKE IT LIFE ✦
+                    </button>
+                  </div>
                 </div>{/* end canvasColumn */}
               </div>{/* end canvasRow */}
             </>
