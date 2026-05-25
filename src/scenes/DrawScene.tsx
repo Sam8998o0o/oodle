@@ -583,25 +583,27 @@ export default function DrawScene({ onPetCreated, isPremium, onSubscribeClick }:
 
               {/* Canvas + guide row */}
               <div className={styles.canvasRow}>
-                <div className={styles.drawGuide}>
-                  <div className={styles.drawGuideTitle}>HOW TO DRAW</div>
-                  <div className={styles.drawGuideTips}>
-                    <div>1. DRAW AN OUTLINE</div>
-                    <div>2. FILL WITH COLOURS</div>
-                    <div>3. USE 3+ COLORS</div>
-                    <div>4. ADD EYES / FACE</div>
-                    <div>5. NEED 65% TO PASS</div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  <div className={styles.drawGuide}>
+                    <div className={styles.drawGuideTitle}>HOW TO DRAW</div>
+                    <div className={styles.drawGuideTips}>
+                      <div>1. DRAW AN OUTLINE</div>
+                      <div>2. FILL WITH COLOURS</div>
+                      <div>3. USE 3+ COLORS</div>
+                      <div>4. ADD EYES / FACE</div>
+                      <div>5. NEED 65% TO PASS</div>
+                    </div>
                   </div>
-                </div>
 
-                <div className={styles.drawGuide}>
-                  <div className={styles.drawGuideTitle}>HOW TO IMPORT</div>
-                  <div className={styles.drawGuideTips}>
-                    <div>1. CLICK IMPORT TAB</div>
-                    <div>2. UPLOAD ANY IMAGE</div>
-                    <div>3. BACKGROUND AUTO-REMOVED</div>
-                    <div>4. EDIT IF NEEDED</div>
-                    <div>5. NEED 65% TO PASS</div>
+                  <div className={styles.drawGuide}>
+                    <div className={styles.drawGuideTitle}>HOW TO IMPORT</div>
+                    <div className={styles.drawGuideTips}>
+                      <div>1. CLICK IMPORT TAB</div>
+                      <div>2. UPLOAD ANY IMAGE</div>
+                      <div>3. BACKGROUND AUTO-REMOVED</div>
+                      <div>4. EDIT IF NEEDED</div>
+                      <div>5. NEED 65% TO PASS</div>
+                    </div>
                   </div>
                 </div>
 
