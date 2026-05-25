@@ -7,6 +7,7 @@ import { initAuth, linkGoogle, useAuthStore } from './lib/auth'
 import { createCheckoutSession } from './lib/stripe'
 import type { PetCoords } from './api/aiRecognize'
 import PaywallScene from './scenes/PaywallScene'
+import ArrestedScene from './scenes/ArrestedScene'
 import { checkSubscription, getPetAge } from './lib/petService'
 
 export interface PetData {
@@ -15,7 +16,7 @@ export interface PetData {
   name: string
 }
 
-type Scene = 'draw' | 'room' | 'plaza' | 'paywall'
+type Scene = 'draw' | 'room' | 'plaza' | 'paywall' | 'arrested'
 
 const PET_STORAGE_KEY = 'oodle_pet_data'
 const FREE_TRIAL_DAYS = 14
@@ -192,13 +193,28 @@ function App() {
     )
   }
 
+  if (scene === 'arrested') {
+    return (
+      <>
+        <AuthButton />
+        <ArrestedScene
+          petData={petData}
+          onSubscribeClick={() => setScene('paywall')}
+          onLoginClick={handleLoginClick}
+          isLoggedIn={!!userId && !isAnonymous}
+        />
+      </>
+    )
+  }
+
   return (
     <>
       <AuthButton />
       <RoomScene
         petData={petData}
-        onGoToPlaza={() => setScene('plaza')}
+        onGoToPlaza={() => { if (!isPremium) { setScene('arrested') } else { setScene('plaza') } }}
         onSizeChange={(size) => setPetSize(size)}
+        isPremium={isPremium}
       />
     </>
   )

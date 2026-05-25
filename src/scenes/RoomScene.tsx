@@ -17,6 +17,7 @@ interface RoomSceneProps {
   petData:      { pixelData: string; coords: PetCoords; name: string }
   onGoToPlaza:  () => void
   onSizeChange: (size: number) => void
+  isPremium?:   boolean
 }
 
 interface FloatEmoji {
@@ -102,7 +103,7 @@ const CONFETTI = Array.from({ length: 60 }, (_, i) => ({
   size:     6 + (i % 5) * 2,
 }))
 
-export default function RoomScene({ petData, onGoToPlaza, onSizeChange }: RoomSceneProps) {
+export default function RoomScene({ petData, onGoToPlaza, onSizeChange, isPremium = false }: RoomSceneProps) {
   const { isAnonymous } = useAuthStore()
   const roomRef       = useRef<HTMLDivElement>(null)
   const petWrapperRef = useRef<HTMLDivElement>(null)
@@ -195,9 +196,10 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange }: RoomSc
   // ── Door transition ───────────────────────────────────────
   const [doorPhase, setDoorPhase] = useState<DoorPhase>('idle')
   const [petSaved,  setPetSaved]  = useState(false)
-  const [isDizzy,    setIsDizzy]    = useState(false)
-  const [isFainted,  setIsFainted]  = useState(false)
-  const [isPetDead,  setIsPetDead]  = useState(false)
+  const [isDizzy,       setIsDizzy]       = useState(false)
+  const [isFainted,     setIsFainted]     = useState(false)
+  const [isPetDead,     setIsPetDead]     = useState(false)
+  const [trialDaysLeft, setTrialDaysLeft] = useState<number | null>(null)
   const [isSleeping, setIsSleeping] = useState(false)
   const [showMore,    setShowMore]    = useState(false)
   const [showRewards, setShowRewards] = useState(false)
@@ -468,6 +470,15 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange }: RoomSc
           setGrowthPoints((g: number) => Math.min(100, Math.max(0, g + (fedYesterday ? 10 : -5))))
         }
         setTodayEats(fp.eatDate === today ? (fp.todayEats ?? 0) : 0)
+      }
+
+      if (!isPremium) {
+        const created = localStorage.getItem('oodle_pet_created_at')
+        if (created) {
+          const age = Math.floor((Date.now() - parseInt(created, 10)) / 86400000)
+          const left = 14 - age
+          if (left > 0 && left <= 14) setTrialDaysLeft(left)
+        }
       }
     } catch { /* ignore */ }
   }, [])
@@ -1224,6 +1235,12 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange }: RoomSc
 
         <div className={styles.dayCounter}>DAY {dayCount}</div>
         <div className={styles.petNameDisplay}>{petData.name}</div>
+
+        {trialDaysLeft !== null && (
+          <div style={{ position: 'absolute', top: '46px', left: '50%', transform: 'translateX(-50%)', background: '#2C2C2C', color: '#FFE600', fontFamily: 'var(--font-pixel)', fontSize: '7px', padding: '6px 14px', whiteSpace: 'nowrap', zIndex: 8, pointerEvents: 'none' }}>
+            ⏳ FREE TRIAL: {trialDaysLeft} DAY{trialDaysLeft === 1 ? '' : 'S'} LEFT · Plaza requires upgrade
+          </div>
+        )}
 
         {/* Door transition overlay */}
         {isTransitioning && (
