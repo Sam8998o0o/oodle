@@ -87,6 +87,8 @@
   box-shadow: none;
   cursor: pointer;
   letter-spacing: 1px;
+  flex: 1;
+  text-align: center;
 }
 .tab:active:not(:disabled) { transform: none; box-shadow: none; }
 .tabActive { background: #FFE600; color: #2C2C2C; }

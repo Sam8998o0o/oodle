@@ -531,7 +531,7 @@ export default function DrawScene({ onPetCreated, isPremium, onSubscribeClick }:
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '512px', flexShrink: 0 }}>
 
             {/* Tab row */}
-            <div className={styles.tabRow} style={{ width: '100%' }}>
+            <div className={styles.tabRow} style={{ width: '512px', display: 'flex', justifyContent: 'space-between' }}>
               <button
                 className={`${styles.tab} ${tab === 'draw' ? styles.tabActive : ''}`}
                 onClick={() => setTab('draw')}
