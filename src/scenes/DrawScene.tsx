@@ -501,185 +501,182 @@ export default function DrawScene({ onPetCreated, isPremium, onSubscribeClick }:
       </div>
 
       {step === 'draw' && (
-        <>
-          {/* Tab switcher */}
-          <div className={styles.tabRow}>
-            <button
-              className={`${styles.tab} ${tab === 'draw' ? styles.tabActive : ''}`}
-              onClick={() => setTab('draw')}
-            >DRAW</button>
-            <button
-              className={`${styles.tab} ${tab === 'ai' ? styles.tabActive : ''}`}
-              onClick={() => setTab('ai')}
-            >AI GENERATE</button>
-            <button
-              className={`${styles.tab} ${tab === 'import' ? styles.tabActive : ''}`}
-              onClick={() => setTab('import')}
-            >IMPORT</button>
+        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'flex-start', gap: '16px', width: '100%' }}>
+
+          {/* LEFT: Guide boxes */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', width: '180px', flexShrink: 0 }}>
+            <div className={styles.drawGuide}>
+              <div className={styles.drawGuideTitle}>HOW TO DRAW</div>
+              <div className={styles.drawGuideTips}>
+                <div>1. DRAW AN OUTLINE</div>
+                <div>2. FILL WITH COLOURS</div>
+                <div>3. USE 3+ COLORS</div>
+                <div>4. ADD EYES / FACE</div>
+                <div>5. NEED 65% TO PASS</div>
+              </div>
+            </div>
+            <div className={styles.drawGuide}>
+              <div className={styles.drawGuideTitle}>HOW TO IMPORT</div>
+              <div className={styles.drawGuideTips}>
+                <div>1. CLICK IMPORT TAB</div>
+                <div>2. UPLOAD ANY IMAGE</div>
+                <div>3. BACKGROUND AUTO-REMOVED</div>
+                <div>4. EDIT IF NEEDED</div>
+                <div>5. NEED 65% TO PASS</div>
+              </div>
+            </div>
           </div>
 
-          {tab === 'import' ? (
-            <div className={styles.aiPanel}>
-              <p className={styles.aiDesc}>Upload any image — meme, photo, or pixel art. We'll pixelate it for you!</p>
-              <label style={{
-                display: 'block', width: '100%', padding: '14px',
-                background: '#FFE600', color: '#2C2C2C',
-                border: '2px solid #2C2C2C', boxShadow: '4px 4px 0 #2C2C2C',
-                fontFamily: 'var(--font-pixel)', fontSize: '10px',
-                textAlign: 'center', cursor: 'pointer', letterSpacing: '2px',
-                boxSizing: 'border-box',
-              }}>
-                📁 CHOOSE IMAGE
-                <input type="file" accept="image/*" style={{ display: 'none' }}
-                  onChange={(e) => { const f = e.target.files?.[0]; if (f) importImage(f) }}
-                />
-              </label>
-              <p style={{ fontFamily: 'var(--font-pixel)', fontSize: '7px', color: '#888', textAlign: 'center', margin: 0 }}>
-                Works best with simple images or existing pixel art
-              </p>
+          {/* RIGHT: Everything canvas-related in one 512px column */}
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '512px', flexShrink: 0 }}>
+
+            {/* Tab row */}
+            <div className={styles.tabRow} style={{ width: '100%' }}>
+              <button
+                className={`${styles.tab} ${tab === 'draw' ? styles.tabActive : ''}`}
+                onClick={() => setTab('draw')}
+              >DRAW</button>
+              <button
+                className={`${styles.tab} ${tab === 'ai' ? styles.tabActive : ''}`}
+                onClick={() => setTab('ai')}
+              >AI GENERATE</button>
+              <button
+                className={`${styles.tab} ${tab === 'import' ? styles.tabActive : ''}`}
+                onClick={() => setTab('import')}
+              >IMPORT</button>
             </div>
-          ) : tab === 'ai' ? (
-            <div className={styles.aiPanel}>
-              {!isPremium ? (
-                <>
-                  <div className={styles.premiumBadge}>🔒 PREMIUM</div>
-                  <p className={styles.aiDesc}>Let AI draw your pixel pet for you!</p>
-                  <input className={styles.aiInput} placeholder="a chubby space cat..." disabled />
-                  <button className={styles.generateBtn} disabled>GENERATE</button>
-                  <button className={styles.subscribeUnlockBtn} onClick={onSubscribeClick}>
-                    SUBSCRIBE TO UNLOCK
-                  </button>
-                </>
-              ) : (
-                <>
-                  <p className={styles.aiDesc}>Let AI draw your pixel pet for you!</p>
-                  <input className={styles.aiInput} placeholder="a chubby space cat..." />
-                  <button className={styles.generateBtn}>GENERATE</button>
-                </>
-              )}
-            </div>
-          ) : (
-            <>
-              {/* Validation label */}
-              {onnxScore !== null && (
-                <p
-                  className={styles.validLabel}
-                  style={{
-                    color: onnxScore >= 0.65
-                      ? '#4CAF50'
-                      : onnxScore >= 0.3
-                      ? '#F5A623'
-                      : '#e94560',
-                  }}
-                >
-                  {onnxScore >= 0.65
-                    ? 'looks like a creature!'
-                    : onnxScore >= 0.3
-                    ? 'keep drawing...'
-                    : 'not sure yet...'
-                  } {Math.round(onnxScore * 100)}%
+
+            {tab === 'import' ? (
+              <div className={styles.aiPanel} style={{ width: '100%', boxSizing: 'border-box' }}>
+                <p className={styles.aiDesc}>Upload any image — meme, photo, or pixel art. We'll pixelate it for you!</p>
+                <label style={{
+                  display: 'block', width: '100%', padding: '14px',
+                  background: '#FFE600', color: '#2C2C2C',
+                  border: '2px solid #2C2C2C', boxShadow: '4px 4px 0 #2C2C2C',
+                  fontFamily: 'var(--font-pixel)', fontSize: '10px',
+                  textAlign: 'center', cursor: 'pointer', letterSpacing: '2px',
+                  boxSizing: 'border-box',
+                }}>
+                  📁 CHOOSE IMAGE
+                  <input type="file" accept="image/*" style={{ display: 'none' }}
+                    onChange={(e) => { const f = e.target.files?.[0]; if (f) importImage(f) }}
+                  />
+                </label>
+                <p style={{ fontFamily: 'var(--font-pixel)', fontSize: '7px', color: '#888', textAlign: 'center', margin: 0 }}>
+                  Works best with simple images or existing pixel art
                 </p>
-              )}
+              </div>
+            ) : tab === 'ai' ? (
+              <div className={styles.aiPanel} style={{ width: '100%', boxSizing: 'border-box' }}>
+                {!isPremium ? (
+                  <>
+                    <div className={styles.premiumBadge}>🔒 PREMIUM</div>
+                    <p className={styles.aiDesc}>Let AI draw your pixel pet for you!</p>
+                    <input className={styles.aiInput} placeholder="a chubby space cat..." disabled />
+                    <button className={styles.generateBtn} disabled>GENERATE</button>
+                    <button className={styles.subscribeUnlockBtn} onClick={onSubscribeClick}>
+                      SUBSCRIBE TO UNLOCK
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <p className={styles.aiDesc}>Let AI draw your pixel pet for you!</p>
+                    <input className={styles.aiInput} placeholder="a chubby space cat..." />
+                    <button className={styles.generateBtn}>GENERATE</button>
+                  </>
+                )}
+              </div>
+            ) : (
+              <>
+                {/* Validation label */}
+                {onnxScore !== null && (
+                  <p
+                    className={styles.validLabel}
+                    style={{
+                      textAlign: 'center',
+                      color: onnxScore >= 0.65
+                        ? '#4CAF50'
+                        : onnxScore >= 0.3
+                        ? '#F5A623'
+                        : '#e94560',
+                    }}
+                  >
+                    {onnxScore >= 0.65
+                      ? 'looks like a creature!'
+                      : onnxScore >= 0.3
+                      ? 'keep drawing...'
+                      : 'not sure yet...'
+                    } {Math.round(onnxScore * 100)}%
+                  </p>
+                )}
 
-              {/* Canvas + guide row */}
-              <div style={{ display: 'flex', justifyContent: 'center' }}>
-              <div className={styles.canvasRow}>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', width: '180px', flexShrink: 0 }}>
-                  <div className={styles.drawGuide} style={{ width: '100%' }}>
-                    <div className={styles.drawGuideTitle}>HOW TO DRAW</div>
-                    <div className={styles.drawGuideTips}>
-                      <div>1. DRAW AN OUTLINE</div>
-                      <div>2. FILL WITH COLOURS</div>
-                      <div>3. USE 3+ COLORS</div>
-                      <div>4. ADD EYES / FACE</div>
-                      <div>5. NEED 65% TO PASS</div>
-                    </div>
-                  </div>
+                {/* Canvas */}
+                <div className={styles.canvasWrap} style={{ width: '100%' }}>
+                  <canvas
+                    ref={canvasRef}
+                    width={CANVAS_PX}
+                    height={CANVAS_PX}
+                    className={styles.drawCanvas}
+                    style={{ cursor: tool === 'erase' ? 'cell' : tool === 'fill' ? 'url("data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'16\' height=\'16\'%3E%3Ctext y=\'14\' font-size=\'14\'%3E🪣%3C/text%3E%3C/svg%3E") 0 16, crosshair' : 'crosshair' }}
+                    onMouseDown={handleMouseDown}
+                    onMouseMove={handleMouseMove}
+                    onMouseUp={handleMouseUp}
+                    onMouseLeave={handleMouseUp}
+                  />
+                </div>
 
-                  <div className={styles.drawGuide} style={{ width: '100%' }}>
-                    <div className={styles.drawGuideTitle}>HOW TO IMPORT</div>
-                    <div className={styles.drawGuideTips}>
-                      <div>1. CLICK IMPORT TAB</div>
-                      <div>2. UPLOAD ANY IMAGE</div>
-                      <div>3. BACKGROUND AUTO-REMOVED</div>
-                      <div>4. EDIT IF NEEDED</div>
-                      <div>5. NEED 65% TO PASS</div>
-                    </div>
+                {/* Palette row */}
+                <div className={styles.controlRow} style={{ width: '100%' }}>
+                  <div className={styles.palette}>
+                    {PALETTE.map(c => (
+                      <button
+                        key={c}
+                        className={`${styles.swatch} ${color === c && tool === 'draw' ? styles.swatchActive : ''}`}
+                        style={{ background: c }}
+                        onClick={() => { setColor(c); setTool('draw') }}
+                      />
+                    ))}
                   </div>
                 </div>
 
-                <div className={styles.canvasColumn}>
-                  {/* Draw canvas */}
-                  <div className={styles.canvasWrap}>
-                    <canvas
-                      ref={canvasRef}
-                      width={CANVAS_PX}
-                      height={CANVAS_PX}
-                      className={styles.drawCanvas}
-                      style={{ cursor: tool === 'erase' ? 'cell' : tool === 'fill' ? 'url("data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'16\' height=\'16\'%3E%3Ctext y=\'14\' font-size=\'14\'%3E🪣%3C/text%3E%3C/svg%3E") 0 16, crosshair' : 'crosshair' }}
-                      onMouseDown={handleMouseDown}
-                      onMouseMove={handleMouseMove}
-                      onMouseUp={handleMouseUp}
-                      onMouseLeave={handleMouseUp}
-                    />
+                {/* Tools row */}
+                <div className={styles.controlRow} style={{ width: '100%' }}>
+                  <div className={styles.btnGroup}>
+                    <button className={`${styles.toolBtn} ${tool === 'draw' ? styles.toolActive : ''}`} onClick={() => setTool('draw')}>✏️ Draw</button>
+                    <button className={`${styles.toolBtn} ${tool === 'erase' ? styles.toolActive : ''}`} onClick={() => setTool('erase')}>⬜ Erase</button>
+                    <button className={`${styles.toolBtn} ${tool === 'fill' ? styles.toolActive : ''}`} onClick={() => setTool('fill')}>🪣 Fill</button>
                   </div>
-
-                  {/* ── Controls below canvas ── */}
-                  <div className={styles.controls}>
-
-                    {/* Row 1: Colour palette */}
-                    <div className={styles.controlRow}>
-                      <div className={styles.palette}>
-                        {PALETTE.map(c => (
-                          <button
-                            key={c}
-                            className={`${styles.swatch} ${color === c && tool === 'draw' ? styles.swatchActive : ''}`}
-                            style={{ background: c }}
-                            onClick={() => { setColor(c); setTool('draw') }}
-                          />
-                        ))}
-                      </div>
-                    </div>
-
-                    {/* Row 2: tools + brush + actions */}
-                    <div className={styles.controlRow}>
-                      <div className={styles.btnGroup}>
-                        <button className={`${styles.toolBtn} ${tool === 'draw' ? styles.toolActive : ''}`} onClick={() => setTool('draw')}>✏️ Draw</button>
-                        <button className={`${styles.toolBtn} ${tool === 'erase' ? styles.toolActive : ''}`} onClick={() => setTool('erase')}>⬜ Erase</button>
-                        <button className={`${styles.toolBtn} ${tool === 'fill' ? styles.toolActive : ''}`} onClick={() => setTool('fill')}>🪣 Fill</button>
-                      </div>
-                      <div className={styles.groupSep} />
-                      <div className={styles.btnGroup}>
-                        {([1, 2, 4] as const).map(bs => (
-                          <button key={bs} className={`${styles.toolBtn} ${brushSize === bs ? styles.toolActive : ''}`} onClick={() => setBrushSize(bs)}>{bs}px</button>
-                        ))}
-                      </div>
-                      <div className={styles.groupSep} />
-                      <div className={styles.btnGroup}>
-                        <button className={styles.toolBtn} onClick={handleUndo}>↩ Undo</button>
-                        <button className={styles.toolBtn} onClick={handleClear}>🗑 Clear</button>
-                        <button className={`${styles.toolBtn} ${showGrid ? styles.toolActive : ''}`} onClick={() => setShowGrid(g => !g)}>▦ Grid</button>
-                      </div>
-                    </div>
-
-                  </div>{/* end controls */}
-
-                  <div className={styles.makeItLifeWrap}>
-                    <button
-                      ref={btnRef}
-                      className={styles.ctaBtn}
-                      onClick={handleMakeItLife}
-                      disabled={!onnxScore || onnxScore < 0.65}
-                    >
-                      ✦ MAKE IT LIFE ✦
-                    </button>
+                  <div className={styles.groupSep} />
+                  <div className={styles.btnGroup}>
+                    {([1, 2, 4] as const).map(bs => (
+                      <button key={bs} className={`${styles.toolBtn} ${brushSize === bs ? styles.toolActive : ''}`} onClick={() => setBrushSize(bs)}>{bs}px</button>
+                    ))}
                   </div>
-                </div>{/* end canvasColumn */}
-              </div>{/* end canvasRow */}
-              </div>{/* end centering wrapper */}
-            </>
-          )}
-        </>
+                  <div className={styles.groupSep} />
+                  <div className={styles.btnGroup}>
+                    <button className={styles.toolBtn} onClick={handleUndo}>↩ Undo</button>
+                    <button className={styles.toolBtn} onClick={handleClear}>🗑 Clear</button>
+                    <button className={`${styles.toolBtn} ${showGrid ? styles.toolActive : ''}`} onClick={() => setShowGrid(g => !g)}>▦ Grid</button>
+                  </div>
+                </div>
+
+                {/* MAKE IT LIFE button */}
+                <div style={{ width: '100%', display: 'flex', justifyContent: 'center' }}>
+                  <button
+                    ref={btnRef}
+                    className={styles.ctaBtn}
+                    onClick={handleMakeItLife}
+                    disabled={!onnxScore || onnxScore < 0.65}
+                  >
+                    ✦ MAKE IT LIFE ✦
+                  </button>
+                </div>
+              </>
+            )}
+
+          </div>
+
+        </div>
       )}
 
       {step === 'decorate' && (
