@@ -1266,7 +1266,7 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange, isPremiu
           >
             🍎 SNACK
             <span className={styles.costTag}>5 ❤️</span>
-            <span className={styles.foodCount}>{smallFood}</span>
+            <span className={styles.foodCount} style={{ color: smallFood > 0 ? '#FFE600' : '#555' }}>{smallFood}</span>
           </button>
           <button
             className={styles.convertBtn}
@@ -1275,7 +1275,7 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange, isPremiu
           >
             🍱 MEAL
             <span className={styles.costTag}>10 ❤️</span>
-            <span className={styles.foodCount}>{bigFood}</span>
+            <span className={styles.foodCount} style={{ color: bigFood > 0 ? '#FFE600' : '#555' }}>{bigFood}</span>
           </button>
         </div>
 
