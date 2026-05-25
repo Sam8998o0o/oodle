@@ -325,7 +325,7 @@ export async function getLikeBalance(): Promise<number> {
 // Calls the redeem_likes RPC to atomically deduct p_cost from
 // the user's balance. Returns true on success, false if balance
 // is insufficient or the RPC fails.
-export async function redeemLikesForFood(cost: 5 | 20): Promise<boolean> {
+export async function redeemLikesForFood(cost: 5 | 10): Promise<boolean> {
   const userId = useAuthStore.getState().userId
   if (!userId) return false
 

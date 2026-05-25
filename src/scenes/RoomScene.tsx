@@ -928,11 +928,11 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange }: RoomSc
   }, [likeBalance, showFloat, showBubble])
 
   const handleRedeemBig = useCallback(async () => {
-    if (likeBalance < 20) return
-    const ok = await redeemLikesForFood(20)
+    if (likeBalance < 10) return
+    const ok = await redeemLikesForFood(10)
     if (ok) {
       setBigFood((f: number) => f + 1)
-      setLikeBalance(b => b - 20)
+      setLikeBalance(b => b - 10)
       showFloat('🍱')
       showBubble('Got a meal!')
     }
@@ -1235,10 +1235,10 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange }: RoomSc
           <button
             className={styles.convertBtn}
             onClick={handleRedeemBig}
-            disabled={likeBalance < 20}
+            disabled={likeBalance < 10}
           >
             🍱 MEAL
-            <span className={styles.costTag}>20 ❤️</span>
+            <span className={styles.costTag}>10 ❤️</span>
             <span className={styles.foodCount}>{bigFood}</span>
           </button>
         </div>
@@ -1612,8 +1612,8 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange }: RoomSc
                 {shopTab === 'food' && (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                     {[
-                      { label: '🍪 SNACK',     price: 3,  onBuy: () => { if (likeBalance >= 3) { setLikeBalance((p: number) => p - 3); setSmallFood((p: number) => p + 1) } } },
-                      { label: '🍖 MEAL',      price: 5,  onBuy: () => { if (likeBalance >= 5) { setLikeBalance((p: number) => p - 5); setBigFood((p: number)   => p + 1) } } },
+                      { label: '🍪 SNACK',     price: 5,  onBuy: () => { if (likeBalance >= 5) { setLikeBalance((p: number) => p - 5); setSmallFood((p: number) => p + 1) } } },
+                      { label: '🍖 MEAL',      price: 10, onBuy: () => { if (likeBalance >= 10) { setLikeBalance((p: number) => p - 10); setBigFood((p: number)   => p + 1) } } },
                     ].map(f => (
                       <div key={f.label} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', border: '2px solid #2C2C2C', boxShadow: '2px 2px 0 #2C2C2C', padding: '12px 14px', background: '#fff' }}>
                         <span style={{ fontFamily: 'var(--font-pixel)', fontSize: '9px', color: '#2C2C2C' }}>{f.label}</span>
