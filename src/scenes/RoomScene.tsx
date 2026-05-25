@@ -1259,24 +1259,30 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange, isPremiu
             <span className={styles.energyLabel}>❤️ LIKES</span>
             <span className={styles.energyValue}>{likeBalance}</span>
           </div>
-          <button
-            className={styles.convertBtn}
-            onClick={handleRedeemSmall}
-            disabled={likeBalance < 5}
-          >
-            <span style={{ color: '#fff' }}>🍎 SNACK</span>
-            <span className={styles.costTag}>5 ❤️</span>
-            <span className={styles.foodCount} style={{ color: smallFood > 0 ? '#FFE600' : '#555' }}>{smallFood}</span>
-          </button>
-          <button
-            className={styles.convertBtn}
-            onClick={handleRedeemBig}
-            disabled={likeBalance < 10}
-          >
-            <span style={{ color: '#fff' }}>🍱 MEAL</span>
-            <span className={styles.costTag}>10 ❤️</span>
-            <span className={styles.foodCount} style={{ color: bigFood > 0 ? '#FFE600' : '#555' }}>{bigFood}</span>
-          </button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <button
+              className={styles.convertBtn}
+              style={{ flex: 1 }}
+              onClick={handleRedeemSmall}
+              disabled={likeBalance < 5}
+            >
+              <span style={{ color: '#fff' }}>🍎 SNACK</span>
+              <span className={styles.costTag}>5 ❤️</span>
+            </button>
+            <span style={{ fontFamily: 'var(--font-pixel)', fontSize: '11px', color: smallFood > 0 ? '#FFE600' : '#555', minWidth: '16px', textAlign: 'center' }}>{smallFood}</span>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <button
+              className={styles.convertBtn}
+              style={{ flex: 1 }}
+              onClick={handleRedeemBig}
+              disabled={likeBalance < 10}
+            >
+              <span style={{ color: '#fff' }}>🍱 MEAL</span>
+              <span className={styles.costTag}>10 ❤️</span>
+            </button>
+            <span style={{ fontFamily: 'var(--font-pixel)', fontSize: '11px', color: bigFood > 0 ? '#FFE600' : '#555', minWidth: '16px', textAlign: 'center' }}>{bigFood}</span>
+          </div>
         </div>
 
         {/* Pet */}
