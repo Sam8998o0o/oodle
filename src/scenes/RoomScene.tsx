@@ -444,16 +444,16 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange }: RoomSc
       }
 
       getPetAge().then(age => {
-        if (age !== null) {
-          const existing = localStorage.getItem('oodle_pet_created_at')
-          const existingAge = existing
-            ? Math.floor((Date.now() - parseInt(existing, 10)) / 86400000)
-            : 0
-          const finalAge = Math.max(age, existingAge)
-          const estimatedCreatedAt = Date.now() - finalAge * 86400000
-          localStorage.setItem('oodle_pet_created_at', String(estimatedCreatedAt))
-          setDayCount(finalAge + 1)
-        }
+        const streakRaw = localStorage.getItem('oodle_streak')
+        let streakDays = 1
+        try {
+          if (streakRaw) streakDays = (JSON.parse(streakRaw) as { streak: number }).streak ?? 1
+        } catch { /* ignore */ }
+
+        const finalAge = Math.max(age ?? 0, streakDays - 1)
+        const estimatedCreatedAt = Date.now() - finalAge * 86400000
+        localStorage.setItem('oodle_pet_created_at', String(estimatedCreatedAt))
+        setDayCount(finalAge + 1)
       }).catch(() => {})
 
       const fs = localStorage.getItem('oodle_food_state')
