@@ -582,8 +582,9 @@ export default function DrawScene({ onPetCreated, isPremium, onSubscribeClick }:
               )}
 
               {/* Canvas + guide row */}
+              <div style={{ display: 'flex', justifyContent: 'center' }}>
               <div className={styles.canvasRow}>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', width: '180px', flexShrink: 0 }}>
                   <div className={styles.drawGuide} style={{ width: '100%' }}>
                     <div className={styles.drawGuideTitle}>HOW TO DRAW</div>
                     <div className={styles.drawGuideTips}>
@@ -663,7 +664,7 @@ export default function DrawScene({ onPetCreated, isPremium, onSubscribeClick }:
 
                   </div>{/* end controls */}
 
-                  <div style={{ display: 'flex', justifyContent: 'center', width: '100%' }}>
+                  <div className={styles.makeItLifeWrap}>
                     <button
                       ref={btnRef}
                       className={styles.ctaBtn}
@@ -675,6 +676,7 @@ export default function DrawScene({ onPetCreated, isPremium, onSubscribeClick }:
                   </div>
                 </div>{/* end canvasColumn */}
               </div>{/* end canvasRow */}
+              </div>{/* end centering wrapper */}
             </>
           )}
         </>
