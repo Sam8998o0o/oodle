@@ -8,12 +8,15 @@ interface ArrestedSceneProps {
   onSubscribeClick: () => void
   onLoginClick: () => void
   isLoggedIn: boolean
+  jailedUntil?: Date | null
+  onGoBack?: () => void
 }
 
-export default function ArrestedScene({ petData, onSubscribeClick, onLoginClick, isLoggedIn }: ArrestedSceneProps) {
+export default function ArrestedScene({ petData, onSubscribeClick, onLoginClick, isLoggedIn, jailedUntil, onGoBack }: ArrestedSceneProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const animRef   = useRef<PetAnimator | null>(null)
   const [shake, setShake] = useState(false)
+  const [countdown, setCountdown] = useState('')
 
   useEffect(() => {
     const canvas = canvasRef.current
@@ -29,6 +32,26 @@ export default function ArrestedScene({ petData, onSubscribeClick, onLoginClick,
     animRef.current = animator
     return () => animator.stop()
   }, [petData])
+
+  // Countdown timer when jailed
+  useEffect(() => {
+    if (!jailedUntil) return
+    const tick = () => {
+      const ms = jailedUntil.getTime() - Date.now()
+      if (ms <= 0) {
+        setCountdown('00:00:00')
+        onGoBack?.()
+        return
+      }
+      const h  = Math.floor(ms / 3600000)
+      const m  = Math.floor((ms % 3600000) / 60000)
+      const s  = Math.floor((ms % 60000) / 1000)
+      setCountdown(`${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`)
+    }
+    tick()
+    const id = setInterval(tick, 1000)
+    return () => clearInterval(id)
+  }, [jailedUntil, onGoBack])
 
   // Shake cage every few seconds
   useEffect(() => {
@@ -67,34 +90,49 @@ export default function ArrestedScene({ petData, onSubscribeClick, onLoginClick,
         </div>
 
         <p className={styles.petName}>{petData.name}</p>
-        <p className={styles.sub}>Subscribe to set your pet free!</p>
 
-        {/* Benefits */}
-        <div className={styles.benefits}>
-          <div className={styles.benefit}>✓ Keep your pet forever</div>
-          <div className={styles.benefit}>✓ AI Generate your pet</div>
-          <div className={styles.benefit}>✓ All eye styles unlocked</div>
-          <div className={styles.benefit}>✓ 30 shouts/day</div>
-        </div>
-
-        <p className={styles.price}>$0.99 ONE-TIME</p>
-
-        {isLoggedIn ? (
-          <button className={styles.ctaBtn} onClick={onSubscribeClick}>
-            🔓 FREE MY PET!
-          </button>
+        {jailedUntil ? (
+          <>
+            <p className={styles.sub}>Your pet has been reported by the community.</p>
+            <p style={{ fontFamily: 'var(--font-pixel)', fontSize: '10px', color: '#888', margin: '8px 0 4px', letterSpacing: '1px' }}>
+              RELEASED IN:
+            </p>
+            <p style={{ fontFamily: 'var(--font-pixel)', fontSize: '22px', color: '#e94560', margin: '0 0 16px', letterSpacing: '4px' }}>
+              {countdown}
+            </p>
+          </>
         ) : (
           <>
-            <button className={styles.ctaBtn} onClick={onLoginClick}>
-              🔑 LOGIN TO SUBSCRIBE
-            </button>
-            <p className={styles.hint}>Login with Google first, then subscribe</p>
+            <p className={styles.sub}>Subscribe to set your pet free!</p>
+
+            {/* Benefits */}
+            <div className={styles.benefits}>
+              <div className={styles.benefit}>✓ Keep your pet forever</div>
+              <div className={styles.benefit}>✓ AI Generate your pet</div>
+              <div className={styles.benefit}>✓ All eye styles unlocked</div>
+              <div className={styles.benefit}>✓ 30 shouts/day</div>
+            </div>
+
+            <p className={styles.price}>$0.99 ONE-TIME</p>
+
+            {isLoggedIn ? (
+              <button className={styles.ctaBtn} onClick={onSubscribeClick}>
+                🔓 FREE MY PET!
+              </button>
+            ) : (
+              <>
+                <button className={styles.ctaBtn} onClick={onLoginClick}>
+                  🔑 LOGIN TO SUBSCRIBE
+                </button>
+                <p className={styles.hint}>Login with Google first, then subscribe</p>
+              </>
+            )}
+
+            <p className={styles.restore} onClick={onSubscribeClick}>
+              Already subscribed? Restore
+            </p>
           </>
         )}
-
-        <p className={styles.restore} onClick={onSubscribeClick}>
-          Already subscribed? Restore
-        </p>
       </div>
     </div>
   )

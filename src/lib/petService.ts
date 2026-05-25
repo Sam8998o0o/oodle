@@ -420,6 +420,36 @@ export async function fetchAds(): Promise<AdRecord[]> {
   return (data ?? []) as AdRecord[]
 }
 
+// ── unlikeShout ───────────────────────────────────────────
+export async function unlikeShout(shoutId: string): Promise<void> {
+  const userId = useAuthStore.getState().userId
+  if (!userId) return
+  const { error } = await supabase
+    .from('shout_unlikes')
+    .insert({ shout_id: shoutId, user_id: userId })
+  if (error) console.error('[petService] unlikeShout failed:', error.message)
+}
+
+// ── checkJailStatus ───────────────────────────────────────
+export async function checkJailStatus(): Promise<Date | null> {
+  const petId = localStorage.getItem('oodle_pet_supabase_id')
+  if (!petId) return null
+  const { data } = await supabase
+    .from('pets')
+    .select('jailed_until')
+    .eq('id', petId)
+    .maybeSingle()
+  if (!(data as { jailed_until?: string } | null)?.jailed_until) return null
+  const until = new Date((data as { jailed_until: string }).jailed_until)
+  return until > new Date() ? until : null
+}
+
+// ── jailPet ───────────────────────────────────────────────
+export async function jailPet(petId: string, hours: number): Promise<void> {
+  const until = new Date(Date.now() + hours * 3600000).toISOString()
+  await supabase.from('pets').update({ jailed_until: until }).eq('id', petId)
+}
+
 export async function getPetAge(): Promise<number | null> {
   const petId = localStorage.getItem('oodle_pet_supabase_id')
   if (!petId) return null

@@ -199,7 +199,6 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange, isPremiu
   const [isDizzy,       setIsDizzy]       = useState(false)
   const [isFainted,     setIsFainted]     = useState(false)
   const [isPetDead,     setIsPetDead]     = useState(false)
-  const [trialDaysLeft, setTrialDaysLeft] = useState<number | null>(null)
   const [isSleeping, setIsSleeping] = useState(false)
   const [showMore,    setShowMore]    = useState(false)
   const [showRewards, setShowRewards] = useState(false)
@@ -472,14 +471,6 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange, isPremiu
         setTodayEats(fp.eatDate === today ? (fp.todayEats ?? 0) : 0)
       }
 
-      if (!isPremium) {
-        const created = localStorage.getItem('oodle_pet_created_at')
-        if (created) {
-          const age = Math.floor((Date.now() - parseInt(created, 10)) / 86400000)
-          const left = 14 - age
-          if (left > 0 && left <= 14) setTrialDaysLeft(left)
-        }
-      }
     } catch { /* ignore */ }
   }, [])
 
@@ -1235,12 +1226,6 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange, isPremiu
 
         <div className={styles.dayCounter}>DAY {dayCount}</div>
         <div className={styles.petNameDisplay}>{petData.name}</div>
-
-        {trialDaysLeft !== null && (
-          <div style={{ position: 'absolute', top: '46px', left: '50%', transform: 'translateX(-50%)', background: '#2C2C2C', color: '#FFE600', fontFamily: 'var(--font-pixel)', fontSize: '7px', padding: '6px 14px', whiteSpace: 'nowrap', zIndex: 8, pointerEvents: 'none' }}>
-            ⏳ FREE TRIAL: {trialDaysLeft} DAY{trialDaysLeft === 1 ? '' : 'S'} LEFT · Plaza requires upgrade
-          </div>
-        )}
 
         {/* Door transition overlay */}
         {isTransitioning && (

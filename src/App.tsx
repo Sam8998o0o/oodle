@@ -8,7 +8,7 @@ import { createCheckoutSession } from './lib/stripe'
 import type { PetCoords } from './api/aiRecognize'
 import PaywallScene from './scenes/PaywallScene'
 import ArrestedScene from './scenes/ArrestedScene'
-import { checkSubscription, getPetAge } from './lib/petService'
+import { checkSubscription, checkJailStatus } from './lib/petService'
 
 export interface PetData {
   pixelData: string
@@ -19,7 +19,6 @@ export interface PetData {
 type Scene = 'draw' | 'room' | 'plaza' | 'paywall' | 'arrested'
 
 const PET_STORAGE_KEY = 'oodle_pet_data'
-const FREE_TRIAL_DAYS = 14
 
 function loadSavedPet(): PetData | null {
   try {
@@ -29,19 +28,12 @@ function loadSavedPet(): PetData | null {
   } catch { return null }
 }
 
-function getPetAgeDays(): number {
-  try {
-    const created = localStorage.getItem('oodle_pet_created_at')
-    if (!created) return 0
-    return Math.floor((Date.now() - parseInt(created, 10)) / 86400000)
-  } catch { return 0 }
-}
-
 function App() {
   const [petData, setPetData] = useState<PetData | null>(() => loadSavedPet())
   const [scene, setScene]     = useState<Scene>(() => loadSavedPet() ? 'room' : 'draw')
-  const [isPremium, setIsPremium] = useState(false)
-  const [petSize, setPetSize]     = useState(60)
+  const [isPremium, setIsPremium]   = useState(false)
+  const [petSize, setPetSize]       = useState(60)
+  const [jailedUntil, setJailedUntil] = useState<Date | null>(null)
 
   const { userId, isAnonymous } = useAuthStore()
 
@@ -51,12 +43,12 @@ function App() {
 
   useEffect(() => { initAuth() }, [])
 
-  // Check trial expiry on mount
+  // Check jail status on mount
   useEffect(() => {
-    if (!petData || isPremium) return
-    const age = getPetAgeDays()
-    if (age >= FREE_TRIAL_DAYS) setScene('paywall')
-  }, [petData, isPremium])
+    checkJailStatus().then(until => {
+      if (until) { setJailedUntil(until); setScene('arrested') }
+    }).catch(() => {})
+  }, [])
 
   // Handle Stripe success callback
   useEffect(() => {
@@ -71,10 +63,7 @@ function App() {
 
   useEffect(() => {
     if (!petData) return
-    Promise.all([checkSubscription(), getPetAge()]).then(([premium, age]) => {
-      setIsPremium(premium)
-      if (!premium && age !== null && age >= 14) setScene('paywall')
-    })
+    checkSubscription().then(premium => setIsPremium(premium))
   }, [petData])
 
   const handlePetCreated = (pixelData: string, coords: PetCoords, name: string) => {
@@ -202,6 +191,8 @@ function App() {
           onSubscribeClick={() => setScene('paywall')}
           onLoginClick={handleLoginClick}
           isLoggedIn={!!userId && !isAnonymous}
+          jailedUntil={jailedUntil}
+          onGoBack={() => { setJailedUntil(null); setScene('room') }}
         />
       </>
     )
@@ -212,11 +203,7 @@ function App() {
       <AuthButton />
       <RoomScene
         petData={petData}
-        onGoToPlaza={() => {
-          const created = localStorage.getItem('oodle_pet_created_at')
-          const age = created ? Math.floor((Date.now() - parseInt(created, 10)) / 86400000) : 0
-          if (!isPremium && age >= 14) { setScene('arrested') } else { setScene('plaza') }
-        }}
+        onGoToPlaza={() => setScene('plaza')}
         onSizeChange={(size) => setPetSize(size)}
         isPremium={isPremium}
       />
