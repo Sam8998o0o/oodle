@@ -1212,21 +1212,6 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange, isPremiu
     <div className={styles.page}>
       <div className={styles.room} ref={roomRef}>
 
-        {/* Window sky overlay — changes at night */}
-        <div style={{
-          position: 'absolute',
-          left: '15%',
-          top: '10%',
-          width: '27.5%',
-          height: '33%',
-          background: isNight
-            ? 'linear-gradient(180deg, #0a1428 0%, #0d1b4b 100%)'
-            : 'transparent',
-          pointerEvents: 'none',
-          zIndex: 1,
-          transition: 'background 1s ease',
-        }} />
-
         {/* Night overlay */}
         {isNight && <div className={styles.nightOverlay} />}
 
