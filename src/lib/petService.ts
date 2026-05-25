@@ -420,14 +420,16 @@ export async function fetchAds(): Promise<AdRecord[]> {
   return (data ?? []) as AdRecord[]
 }
 
-// ── unlikeShout ───────────────────────────────────────────
-export async function unlikeShout(shoutId: string): Promise<void> {
+// ── unlikePet ─────────────────────────────────────────────
+export async function unlikePet(petId: string): Promise<void> {
   const userId = useAuthStore.getState().userId
   if (!userId) return
   const { error } = await supabase
-    .from('shout_unlikes')
-    .insert({ shout_id: shoutId, user_id: userId })
-  if (error) console.error('[petService] unlikeShout failed:', error.message)
+    .from('pet_unlikes')
+    .insert({ pet_id: petId, user_id: userId })
+  if (error) console.error('[petService] unlikePet failed:', error.message)
+  // Check if jail threshold reached
+  await supabase.rpc('check_pet_unlikes', { p_pet_id: petId })
 }
 
 // ── checkJailStatus ───────────────────────────────────────

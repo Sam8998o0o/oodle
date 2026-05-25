@@ -3,7 +3,7 @@ import { PetAnimator } from '../engine/PetAnimator'
 import type { PetCoords } from '../api/aiRecognize'
 import {
   fetchAllPets, getAllLikeCounts, likePet, getTodayLikedPetIds,
-  postShout, getActiveShouts, countTodayShouts, likeShout, unlikeShout,
+  postShout, getActiveShouts, countTodayShouts, likeShout, unlikePet,
   fetchAds, updateGrowth, updateLastSeen,
 } from '../lib/petService'
 import type { AdRecord } from '../lib/petService'
@@ -166,8 +166,8 @@ export default function PlazaScene({ petData, onGoToRoom, isPremium, petSize }: 
   const [shoutInput,   setShoutInput]   = useState('')
   const [shoutLeft,    setShoutLeft]    = useState(dailyShoutLimit)
   const [activeShouts, setActiveShouts] = useState<Record<string, { message: string; shoutId: string }>>({})
-  const [likedShouts,   setLikedShouts]   = useState<Set<string>>(new Set())
-  const [unlikedShouts, setUnlikedShouts] = useState<Set<string>>(new Set())
+  const [likedShouts,  setLikedShouts]  = useState<Set<string>>(new Set())
+  const [unlikedPets,  setUnlikedPets]  = useState<Set<string>>(new Set())
 
   useEffect(() => {
     const t = setTimeout(() => setOwnGlowing(false), 8000)
@@ -685,14 +685,6 @@ export default function PlazaScene({ petData, onGoToRoom, isPremium, petSize }: 
     }
   }, [shoutInput, shoutLeft])
 
-  const handleUnlikeShout = useCallback((shoutId: string) => {
-    if (unlikedShouts.has(shoutId)) return
-    setUnlikedShouts(prev => new Set([...prev, shoutId]))
-    unlikeShout(shoutId)
-      .then(() => supabase.rpc('check_shout_unlikes', { p_shout_id: shoutId }))
-      .catch(() => {})
-  }, [unlikedShouts])
-
   const handleLikeShout = useCallback((shoutId: string) => {
     if (likedShouts.has(shoutId)) return
     setLikedShouts(prev => new Set([...prev, shoutId]))
@@ -814,23 +806,13 @@ export default function PlazaScene({ petData, onGoToRoom, isPremium, petSize }: 
                 <div className={styles.speechBubble}>
                   {shout.message}
                   {!pet.isOwn && (
-                    <div style={{ display: 'flex', gap: '4px', marginTop: '4px' }}>
-                      <button
-                        className={styles.bubbleLikeBtn}
-                        disabled={likedShouts.has(shout.shoutId)}
-                        onClick={e => { e.stopPropagation(); handleLikeShout(shout.shoutId) }}
-                      >
-                        {likedShouts.has(shout.shoutId) ? '❤️ LIKED' : '❤️ LIKE'}
-                      </button>
-                      <button
-                        className={styles.bubbleLikeBtn}
-                        disabled={unlikedShouts.has(shout.shoutId)}
-                        onClick={e => { e.stopPropagation(); handleUnlikeShout(shout.shoutId) }}
-                        style={{ background: unlikedShouts.has(shout.shoutId) ? '#ccc' : undefined }}
-                      >
-                        {unlikedShouts.has(shout.shoutId) ? '👎 REPORTED' : '👎'}
-                      </button>
-                    </div>
+                    <button
+                      className={styles.bubbleLikeBtn}
+                      disabled={likedShouts.has(shout.shoutId)}
+                      onClick={e => { e.stopPropagation(); handleLikeShout(shout.shoutId) }}
+                    >
+                      {likedShouts.has(shout.shoutId) ? '❤️ LIKED' : '❤️ LIKE'}
+                    </button>
                   )}
                 </div>
               )}
@@ -893,6 +875,18 @@ export default function PlazaScene({ petData, onGoToRoom, isPremium, petSize }: 
                       ? `${likeLeft}/${LIKE_DAILY_LIMIT} likes left today`
                       : 'Come back tomorrow!'}
                   </div>
+                  <button
+                    className={styles.likeBtn}
+                    style={{ background: unlikedPets.has(selectedPet.id) ? '#ccc' : '#e94560', color: '#fff', marginTop: '6px' }}
+                    onClick={async () => {
+                      if (unlikedPets.has(selectedPet.id)) return
+                      await unlikePet(selectedPet.id)
+                      setUnlikedPets(prev => new Set([...prev, selectedPet.id]))
+                    }}
+                    disabled={unlikedPets.has(selectedPet.id)}
+                  >
+                    {unlikedPets.has(selectedPet.id) ? '👎 REPORTED' : '👎 REPORT'}
+                  </button>
                 </>
               )}
             </div>
