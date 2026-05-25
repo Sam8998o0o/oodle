@@ -309,7 +309,7 @@ export async function getLikeBalance(): Promise<number> {
     .from('like_balance')
     .select('balance')
     .eq('user_id', userId)
-    .single()
+    .maybeSingle()
 
   if (error) {
     // PGRST116 = no rows → user has never received a like yet
