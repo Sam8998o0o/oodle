@@ -1508,14 +1508,14 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange, isPremiu
           <div onClick={() => setShowRewards(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
             <div onClick={e => e.stopPropagation()} style={{ background: '#FDF6E3', border: '3px solid #2C2C2C', boxShadow: '6px 6px 0 #2C2C2C', maxWidth: '420px', width: '100%', maxHeight: '90vh', overflowY: 'auto', position: 'relative' }}>
               {/* Header */}
-              <div style={{ background: '#2C2C2C', color: '#FFE600', fontFamily: 'var(--font-pixel)', fontSize: '11px', textAlign: 'center', padding: '14px', letterSpacing: '2px' }}>
+              <div style={{ background: '#2C2C2C', color: '#FFE600', fontFamily: 'var(--font-pixel)', fontSize: '13px', textAlign: 'center', padding: '14px', letterSpacing: '2px' }}>
                 🔥 DAILY LOGIN REWARD
               </div>
               <button onClick={() => setShowRewards(false)} style={{ position: 'absolute', top: '8px', right: '8px', fontFamily: 'var(--font-pixel)', fontSize: '12px', background: 'transparent', border: '2px solid #FFE600', color: '#FFE600', width: '28px', height: '28px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>✕</button>
 
               <div style={{ padding: '20px' }}>
                 {/* Streak counter */}
-                <div style={{ textAlign: 'center', fontFamily: 'var(--font-pixel)', fontSize: '13px', color: '#cc2200', marginBottom: '16px', letterSpacing: '1px' }}>
+                <div style={{ textAlign: 'center', fontFamily: 'var(--font-pixel)', fontSize: '16px', color: '#cc2200', marginBottom: '16px', letterSpacing: '1px' }}>
                   🔥 DAY {streak} STREAK!
                 </div>
 
@@ -1528,11 +1528,11 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange, isPremiu
                     const isFuture = n > dayInCycle
                     return (
                       <div key={n} style={{ border: `2px solid ${day.rare ? '#9B59B6' : '#2C2C2C'}`, background: isPast ? '#d4f5d4' : isToday ? '#FFE600' : '#fff', padding: '6px 2px', textAlign: 'center', opacity: isFuture ? 0.4 : 1, position: 'relative' }}>
-                        <div style={{ fontFamily: 'var(--font-pixel)', fontSize: '5px', color: '#888', marginBottom: '3px' }}>DAY {n}</div>
+                        <div style={{ fontFamily: 'var(--font-pixel)', fontSize: '9px', color: '#888', marginBottom: '3px' }}>DAY {n}</div>
                         <div style={{ fontSize: '14px', lineHeight: 1.2 }}>{day.emoji}</div>
-                        <div style={{ fontFamily: 'var(--font-pixel)', fontSize: '4px', color: day.rare ? '#9B59B6' : '#555', lineHeight: 1.4, marginTop: '2px' }}>{day.label}</div>
+                        <div style={{ fontFamily: 'var(--font-pixel)', fontSize: '12px', color: day.rare ? '#9B59B6' : '#555', lineHeight: 1.4, marginTop: '2px' }}>{day.label}</div>
                         {isPast  && <div style={{ position: 'absolute', top: 1, right: 2, fontSize: '9px', color: '#4CAF50' }}>✓</div>}
-                        {isToday && <div style={{ fontFamily: 'var(--font-pixel)', fontSize: '4px', color: '#cc2200', marginTop: '2px' }}>TODAY</div>}
+                        {isToday && <div style={{ fontFamily: 'var(--font-pixel)', fontSize: '10px', color: '#cc2200', marginTop: '2px' }}>TODAY</div>}
                       </div>
                     )
                   })}
@@ -1540,11 +1540,11 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange, isPremiu
 
                 {/* Claim area */}
                 {rewardMsg ? (
-                  <div style={{ textAlign: 'center', fontFamily: 'var(--font-pixel)', fontSize: '9px', color: '#4CAF50', padding: '14px', border: '2px solid #4CAF50', lineHeight: 2 }}>
+                  <div style={{ textAlign: 'center', fontFamily: 'var(--font-pixel)', fontSize: '10px', color: '#4CAF50', padding: '14px', border: '2px solid #4CAF50', lineHeight: 2 }}>
                     ✅ REWARD CLAIMED!<br />{rewardMsg}
                   </div>
                 ) : streakClaimedToday ? (
-                  <div style={{ textAlign: 'center', fontFamily: 'var(--font-pixel)', fontSize: '8px', color: '#888', padding: '14px', border: '2px solid #ddd', lineHeight: 2 }}>
+                  <div style={{ textAlign: 'center', fontFamily: 'var(--font-pixel)', fontSize: '12px', color: '#888', padding: '14px', border: '2px solid #ddd', lineHeight: 2 }}>
                     ✓ CLAIMED TODAY<br />COME BACK TOMORROW!
                   </div>
                 ) : (
@@ -1554,8 +1554,8 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange, isPremiu
                 )}
 
                 {/* Warning + login hint */}
-                <p style={{ fontFamily: 'var(--font-pixel)', fontSize: '6px', color: '#cc2200', textAlign: 'center', marginTop: '12px', lineHeight: 2 }}>⚠ Miss a day and streak resets!</p>
-                {isAnonymous && <p style={{ fontFamily: 'var(--font-pixel)', fontSize: '6px', color: '#888', textAlign: 'center', marginTop: '4px', lineHeight: 2 }}>* Login with Google to claim rewards</p>}
+                <p style={{ fontFamily: 'var(--font-pixel)', fontSize: '10px', color: '#cc2200', textAlign: 'center', marginTop: '12px', lineHeight: 2 }}>⚠ Miss a day and streak resets!</p>
+                {isAnonymous && <p style={{ fontFamily: 'var(--font-pixel)', fontSize: '10px', color: '#888', textAlign: 'center', marginTop: '4px', lineHeight: 2 }}>* Login with Google to claim rewards</p>}
               </div>
             </div>
           </div>
