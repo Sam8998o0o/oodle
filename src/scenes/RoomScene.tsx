@@ -103,7 +103,7 @@ const CONFETTI = Array.from({ length: 60 }, (_, i) => ({
   size:     6 + (i % 5) * 2,
 }))
 
-export default function RoomScene({ petData, onGoToPlaza, onSizeChange, isPremium = false }: RoomSceneProps) {
+export default function RoomScene({ petData, onGoToPlaza, onSizeChange, isPremium: _isPremium = false }: RoomSceneProps) {
   const { isAnonymous } = useAuthStore()
   const roomRef       = useRef<HTMLDivElement>(null)
   const petWrapperRef = useRef<HTMLDivElement>(null)
