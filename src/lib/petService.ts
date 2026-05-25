@@ -44,6 +44,7 @@ export async function savePet(pet: {
       pixel_data:    pet.pixelData,
       coords:        pet.coords,
       growth_points: parseInt(localStorage.getItem('oodle_growth') ?? '0', 10),
+      last_seen:     new Date().toISOString(),
     })
     .select('id')
     .single()
@@ -54,7 +55,10 @@ export async function savePet(pet: {
   }
 
   const id = data?.id ?? null
-  if (id) localStorage.setItem(LOCAL_PET_ID_KEY, id)
+  if (id) {
+    localStorage.setItem(LOCAL_PET_ID_KEY, id)
+    localStorage.setItem('oodle_pet_created_at', String(Date.now()))
+  }
   return id
 }
 

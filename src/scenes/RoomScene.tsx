@@ -2,7 +2,7 @@ import { useRef, useState, useEffect, useCallback } from 'react'
 import StatBar from '../ui/StatBar'
 import { PetAnimator } from '../engine/PetAnimator'
 import type { PetCoords } from '../api/aiRecognize'
-import { savePet, getLikeBalance, redeemLikesForFood, saveTalent, saveTalentDrawing } from '../lib/petService'
+import { savePet, getLikeBalance, redeemLikesForFood, saveTalent, saveTalentDrawing, getPetAge } from '../lib/petService'
 import { supabase } from '../lib/supabase'
 import { useAuthStore } from '../lib/auth'
 import styles from './RoomScene.module.css'
@@ -441,6 +441,16 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange }: RoomSc
         localStorage.setItem('oodle_day_count', String(daysSinceCreation))
       } else if (d) {
         setDayCount(parseInt(d, 10))
+      }
+
+      if (!petCreated) {
+        getPetAge().then(age => {
+          if (age !== null) {
+            const estimatedCreatedAt = Date.now() - age * 86400000
+            localStorage.setItem('oodle_pet_created_at', String(estimatedCreatedAt))
+            setDayCount(age + 1)
+          }
+        }).catch(() => {})
       }
 
       const fs = localStorage.getItem('oodle_food_state')
