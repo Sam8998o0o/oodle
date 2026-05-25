@@ -77,7 +77,7 @@ export default function ArrestedScene({ petData, onSubscribeClick, onLoginClick,
           <div className={styles.benefit}>✓ 30 shouts/day</div>
         </div>
 
-        <p className={styles.price}>$4.99 / MONTH</p>
+        <p className={styles.price}>$0.99 ONE-TIME</p>
 
         {isLoggedIn ? (
           <button className={styles.ctaBtn} onClick={onSubscribeClick}>

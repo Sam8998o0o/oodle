@@ -212,7 +212,11 @@ function App() {
       <AuthButton />
       <RoomScene
         petData={petData}
-        onGoToPlaza={() => { if (!isPremium) { setScene('arrested') } else { setScene('plaza') } }}
+        onGoToPlaza={() => {
+          const created = localStorage.getItem('oodle_pet_created_at')
+          const age = created ? Math.floor((Date.now() - parseInt(created, 10)) / 86400000) : 0
+          if (!isPremium && age >= 14) { setScene('arrested') } else { setScene('plaza') }
+        }}
         onSizeChange={(size) => setPetSize(size)}
         isPremium={isPremium}
       />
