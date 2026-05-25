@@ -525,7 +525,11 @@ export default function PlazaScene({ petData, onGoToRoom, isPremium, petSize }: 
       let text = ''
       let drawing: string | undefined
       if (pet.talent === 'sing')  text = '🎵 La la la~'
-      else if (pet.talent === 'dance') text = '💃 Watch me!'
+      else if (pet.talent === 'dance') {
+        text = '💃 Watch me!'
+        const anim = animMap.current.get(pet.id)
+        if (anim) anim.setState('dance')
+      }
       else if (pet.talent === 'magic') text = '✨ Ta-da!'
       else if (pet.talent === 'drawing' && pet.talent_drawing) {
         text    = '🎨 I made this!'

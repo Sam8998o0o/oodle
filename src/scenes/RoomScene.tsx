@@ -878,16 +878,7 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange }: RoomSc
         for (let i = 0; i < 3; i++) setTimeout(() => showFloat('🎵'), i * 400)
       } else if (trick === 'dance') {
         showBubble('💃 Watch me!')
-        const wrapper = petWrapperRef.current
-        if (wrapper) {
-          const origX = walkXRef.current
-          let step = 0
-          const dance = setInterval(() => {
-            step++
-            if (wrapper) wrapper.style.left = `${origX + (step % 2 === 0 ? 0 : 30)}px`
-            if (step >= 6) { clearInterval(dance); if (wrapper) wrapper.style.left = `${origX}px` }
-          }, 150)
-        }
+        animatorRef.current?.setState('dance')
       } else if (trick === 'magic') {
         showBubble('✨ Ta-da!')
         const wrapper = petWrapperRef.current

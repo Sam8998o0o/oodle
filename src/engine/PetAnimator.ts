@@ -8,7 +8,7 @@ export interface PetAnimData {
   eyeStyle?: string
 }
 
-export type PetState = 'idle' | 'walk' | 'eat' | 'play' | 'sleep' | 'sad' | 'squish' | 'dizzy' | 'faint'
+export type PetState = 'idle' | 'walk' | 'eat' | 'play' | 'sleep' | 'sad' | 'squish' | 'dizzy' | 'faint' | 'dance'
 
 export class PetAnimator {
   private canvas: HTMLCanvasElement
@@ -29,6 +29,7 @@ export class PetAnimator {
   private squishF = 0
   private dizzyF  = 0
   private faintF  = 0
+  private danceF  = 0
   private jumpF   = 0
   private jumpCount = 0
   private isJumping = false
@@ -92,6 +93,7 @@ export class PetAnimator {
     if (s === 'squish'){ this.squishF = 0 }
     if (s === 'dizzy') { this.dizzyF = 0 }
     if (s === 'faint') { this.faintF = 0 }
+    if (s === 'dance') { this.danceF = 0 }
   }
 
   private tick(): void {
@@ -171,6 +173,18 @@ export class PetAnimator {
         this.dizzyF++
         // Every 6 frames: alternate ±2px horizontal
         translateX = Math.floor(this.dizzyF / 6) % 2 === 0 ? 2 : -2
+        break
+      }
+      case 'dance': {
+        this.danceF++
+        // Left-right sway every 8 frames ±12px
+        translateX = Math.floor(this.danceF / 8) % 2 === 0 ? 12 : -12
+        // Squish on every other beat (every 16 frames)
+        const beat = Math.floor(this.danceF / 8) % 4
+        scaleY = beat === 1 || beat === 3 ? 0.85 : 1
+        translateY = scaleY < 1 ? Math.round(size * 0.05) : 0
+        // After 48 frames (6 beats), return to idle
+        if (this.danceF >= 48) { this.danceF = 0; this.setState('idle') }
         break
       }
       case 'faint': {
