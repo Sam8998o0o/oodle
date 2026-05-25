@@ -661,7 +661,7 @@ export default function DrawScene({ onPetCreated, isPremium, onSubscribeClick }:
                 </div>
 
                 {/* MAKE IT LIFE button */}
-                <div style={{ width: '100%', display: 'flex', justifyContent: 'center' }}>
+                <div style={{ width: '100%', display: 'flex', justifyContent: 'center', marginTop: '8px' }}>
                   <button
                     ref={btnRef}
                     className={styles.ctaBtn}

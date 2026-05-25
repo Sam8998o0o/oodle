@@ -166,7 +166,7 @@
 .controls {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 8px;
   width: 512px;
   margin: 0 auto;
 }
