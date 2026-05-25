@@ -1264,7 +1264,7 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange, isPremiu
             onClick={handleRedeemSmall}
             disabled={likeBalance < 5}
           >
-            🍎 SNACK
+            <span style={{ color: '#fff' }}>🍎 SNACK</span>
             <span className={styles.costTag}>5 ❤️</span>
             <span className={styles.foodCount} style={{ color: smallFood > 0 ? '#FFE600' : '#555' }}>{smallFood}</span>
           </button>
@@ -1273,7 +1273,7 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange, isPremiu
             onClick={handleRedeemBig}
             disabled={likeBalance < 10}
           >
-            🍱 MEAL
+            <span style={{ color: '#fff' }}>🍱 MEAL</span>
             <span className={styles.costTag}>10 ❤️</span>
             <span className={styles.foodCount} style={{ color: bigFood > 0 ? '#FFE600' : '#555' }}>{bigFood}</span>
           </button>
