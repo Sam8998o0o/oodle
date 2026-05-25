@@ -445,9 +445,14 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange }: RoomSc
 
       getPetAge().then(age => {
         if (age !== null) {
-          const estimatedCreatedAt = Date.now() - age * 86400000
+          const existing = localStorage.getItem('oodle_pet_created_at')
+          const existingAge = existing
+            ? Math.floor((Date.now() - parseInt(existing, 10)) / 86400000)
+            : 0
+          const finalAge = Math.max(age, existingAge)
+          const estimatedCreatedAt = Date.now() - finalAge * 86400000
           localStorage.setItem('oodle_pet_created_at', String(estimatedCreatedAt))
-          setDayCount(age + 1)
+          setDayCount(finalAge + 1)
         }
       }).catch(() => {})
 
