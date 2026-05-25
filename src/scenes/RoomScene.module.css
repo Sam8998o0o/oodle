@@ -21,7 +21,7 @@
 .nightOverlay {
   position: absolute;
   inset: 0;
-  background: rgba(10, 20, 60, 0.55);
+  background: rgba(10, 20, 60, 0.3);
   pointer-events: none;
   z-index: 5;
 }

@@ -104,47 +104,47 @@
 
     <!-- Rain (animated) -->
     <g id="plaza-rain" opacity="0">
-      <rect x="15"  y="0" width="2" height="18" fill="#88AACC">
-      <rect x="45"  y="0" width="2" height="18" fill="#88AACC">
-      <rect x="75"  y="0" width="2" height="18" fill="#88AACC">
-      <rect x="105" y="0" width="2" height="18" fill="#88AACC">
-      <rect x="135" y="0" width="2" height="18" fill="#88AACC">
-      <rect x="165" y="0" width="2" height="18" fill="#88AACC">
-      <rect x="195" y="0" width="2" height="18" fill="#88AACC">
-      <rect x="225" y="0" width="2" height="18" fill="#88AACC">
-      <rect x="255" y="0" width="2" height="18" fill="#88AACC">
-      <rect x="285" y="0" width="2" height="18" fill="#88AACC">
-      <rect x="315" y="0" width="2" height="18" fill="#88AACC">
-      <rect x="345" y="0" width="2" height="18" fill="#88AACC">
-      <rect x="375" y="0" width="2" height="18" fill="#88AACC">
-      <rect x="405" y="0" width="2" height="18" fill="#88AACC">
-      <rect x="435" y="0" width="2" height="18" fill="#88AACC">
-      <rect x="465" y="0" width="2" height="18" fill="#88AACC">
-      <rect x="495" y="0" width="2" height="18" fill="#88AACC">
-      <rect x="525" y="0" width="2" height="18" fill="#88AACC">
-      <rect x="555" y="0" width="2" height="18" fill="#88AACC">
-      <rect x="585" y="0" width="2" height="18" fill="#88AACC">
-      <rect x="615" y="0" width="2" height="18" fill="#88AACC">
-      <rect x="645" y="0" width="2" height="18" fill="#88AACC">
-      <rect x="675" y="0" width="2" height="18" fill="#88AACC">
-      <rect x="705" y="0" width="2" height="18" fill="#88AACC">
-      <rect x="735" y="0" width="2" height="18" fill="#88AACC">
-      <rect x="765" y="0" width="2" height="18" fill="#88AACC">
+      <rect x="15"  y="0" width="2" height="18" fill="#88AACC"/>
+      <rect x="45"  y="0" width="2" height="18" fill="#88AACC"/>
+      <rect x="75"  y="0" width="2" height="18" fill="#88AACC"/>
+      <rect x="105" y="0" width="2" height="18" fill="#88AACC"/>
+      <rect x="135" y="0" width="2" height="18" fill="#88AACC"/>
+      <rect x="165" y="0" width="2" height="18" fill="#88AACC"/>
+      <rect x="195" y="0" width="2" height="18" fill="#88AACC"/>
+      <rect x="225" y="0" width="2" height="18" fill="#88AACC"/>
+      <rect x="255" y="0" width="2" height="18" fill="#88AACC"/>
+      <rect x="285" y="0" width="2" height="18" fill="#88AACC"/>
+      <rect x="315" y="0" width="2" height="18" fill="#88AACC"/>
+      <rect x="345" y="0" width="2" height="18" fill="#88AACC"/>
+      <rect x="375" y="0" width="2" height="18" fill="#88AACC"/>
+      <rect x="405" y="0" width="2" height="18" fill="#88AACC"/>
+      <rect x="435" y="0" width="2" height="18" fill="#88AACC"/>
+      <rect x="465" y="0" width="2" height="18" fill="#88AACC"/>
+      <rect x="495" y="0" width="2" height="18" fill="#88AACC"/>
+      <rect x="525" y="0" width="2" height="18" fill="#88AACC"/>
+      <rect x="555" y="0" width="2" height="18" fill="#88AACC"/>
+      <rect x="585" y="0" width="2" height="18" fill="#88AACC"/>
+      <rect x="615" y="0" width="2" height="18" fill="#88AACC"/>
+      <rect x="645" y="0" width="2" height="18" fill="#88AACC"/>
+      <rect x="675" y="0" width="2" height="18" fill="#88AACC"/>
+      <rect x="705" y="0" width="2" height="18" fill="#88AACC"/>
+      <rect x="735" y="0" width="2" height="18" fill="#88AACC"/>
+      <rect x="765" y="0" width="2" height="18" fill="#88AACC"/>
       <!-- Second layer - offset -->
-      <rect x="30"  y="0" width="2" height="14" fill="#88AACC">
-      <rect x="90"  y="0" width="2" height="14" fill="#88AACC">
-      <rect x="150" y="0" width="2" height="14" fill="#88AACC">
-      <rect x="210" y="0" width="2" height="14" fill="#88AACC">
-      <rect x="270" y="0" width="2" height="14" fill="#88AACC">
-      <rect x="330" y="0" width="2" height="14" fill="#88AACC">
-      <rect x="390" y="0" width="2" height="14" fill="#88AACC">
-      <rect x="450" y="0" width="2" height="14" fill="#88AACC">
-      <rect x="510" y="0" width="2" height="14" fill="#88AACC">
-      <rect x="570" y="0" width="2" height="14" fill="#88AACC">
-      <rect x="630" y="0" width="2" height="14" fill="#88AACC">
-      <rect x="690" y="0" width="2" height="14" fill="#88AACC">
-      <rect x="750" y="0" width="2" height="14" fill="#88AACC">
-      <rect x="790" y="0" width="2" height="14" fill="#88AACC">
+      <rect x="30"  y="0" width="2" height="14" fill="#88AACC"/>
+      <rect x="90"  y="0" width="2" height="14" fill="#88AACC"/>
+      <rect x="150" y="0" width="2" height="14" fill="#88AACC"/>
+      <rect x="210" y="0" width="2" height="14" fill="#88AACC"/>
+      <rect x="270" y="0" width="2" height="14" fill="#88AACC"/>
+      <rect x="330" y="0" width="2" height="14" fill="#88AACC"/>
+      <rect x="390" y="0" width="2" height="14" fill="#88AACC"/>
+      <rect x="450" y="0" width="2" height="14" fill="#88AACC"/>
+      <rect x="510" y="0" width="2" height="14" fill="#88AACC"/>
+      <rect x="570" y="0" width="2" height="14" fill="#88AACC"/>
+      <rect x="630" y="0" width="2" height="14" fill="#88AACC"/>
+      <rect x="690" y="0" width="2" height="14" fill="#88AACC"/>
+      <rect x="750" y="0" width="2" height="14" fill="#88AACC"/>
+      <rect x="790" y="0" width="2" height="14" fill="#88AACC"/>
     </g>
 
     <!-- Back grass -->
