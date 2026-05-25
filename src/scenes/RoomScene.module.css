@@ -10,7 +10,7 @@
   flex: 1;
   position: relative;
   overflow: hidden;
-  min-height: 400%;
+  min-height: 100%;
   background-image: url('/room-bg.svg');
   background-size: cover;
   background-position: center;
