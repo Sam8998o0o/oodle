@@ -256,6 +256,10 @@ export default function DrawScene({ onPetCreated, isPremium, onSubscribeClick }:
 
         updateGrid(newGrid)
         setTab('draw')
+        // Skip validation, go straight to decorate
+        setTimeout(() => {
+          setStep('decorate')
+        }, 100)
       }
       img.src = e.target!.result as string
     }
