@@ -641,7 +641,7 @@ export default function DrawScene({ onPetCreated, isPremium, onSubscribeClick }:
                     </div>
 
                     {/* Row 2: Tools + Brush size + Undo/Clear + Grid */}
-                    <div className={styles.controlRow}>
+                    <div className={styles.controlRow} style={{ width: '100%', justifyContent: 'space-between' }}>
                       {/* Tools */}
                       <div className={styles.btnGroup}>
                         <button
