@@ -24,7 +24,7 @@ const validator = new OnnxValidator()
 type Tool      = 'draw' | 'erase' | 'fill'
 type BrushSize = 1 | 2 | 4
 type Step      = 'draw' | 'decorate' | 'done'
-type TabMode   = 'draw' | 'ai'
+type TabMode   = 'draw' | 'ai' | 'import'
 
 interface EyeOption { id: string; label: string; free: boolean }
 interface Particle  { id: number; char: string; x: number; y: number; angle: number; distance: number }
@@ -186,6 +186,46 @@ export default function DrawScene({ onPetCreated, isPremium, onSubscribeClick }:
     gridRef.current = next
     setGridState(next)
   }, [])
+
+  const importImage = useCallback((file: File) => {
+    const reader = new FileReader()
+    reader.onload = (e) => {
+      const img = new Image()
+      img.onload = () => {
+        const offscreen = document.createElement('canvas')
+        offscreen.width = GRID_SIZE
+        offscreen.height = GRID_SIZE
+        const ctx = offscreen.getContext('2d')!
+        ctx.imageSmoothingEnabled = false
+        ctx.drawImage(img, 0, 0, GRID_SIZE, GRID_SIZE)
+        const imageData = ctx.getImageData(0, 0, GRID_SIZE, GRID_SIZE)
+        const newGrid = makeGrid()
+        for (let r = 0; r < GRID_SIZE; r++) {
+          for (let c = 0; c < GRID_SIZE; c++) {
+            const i = (r * GRID_SIZE + c) * 4
+            const a = imageData.data[i + 3]
+            if (a < 128) { newGrid[r][c] = ''; continue }
+            const rr = imageData.data[i]
+            const gg = imageData.data[i + 1]
+            const bb = imageData.data[i + 2]
+            let best = PALETTE[0], bestDist = Infinity
+            for (const hex of PALETTE) {
+              const pr = parseInt(hex.slice(1, 3), 16)
+              const pg = parseInt(hex.slice(3, 5), 16)
+              const pb = parseInt(hex.slice(5, 7), 16)
+              const d = (rr - pr) ** 2 + (gg - pg) ** 2 + (bb - pb) ** 2
+              if (d < bestDist) { bestDist = d; best = hex }
+            }
+            newGrid[r][c] = best
+          }
+        }
+        updateGrid(newGrid)
+        setTab('draw')
+      }
+      img.src = e.target!.result as string
+    }
+    reader.readAsDataURL(file)
+  }, [updateGrid])
 
   // Load stored pets
   useEffect(() => {
@@ -437,9 +477,33 @@ export default function DrawScene({ onPetCreated, isPremium, onSubscribeClick }:
               className={`${styles.tab} ${tab === 'ai' ? styles.tabActive : ''}`}
               onClick={() => setTab('ai')}
             >AI GENERATE</button>
+            <button
+              className={`${styles.tab} ${tab === 'import' ? styles.tabActive : ''}`}
+              onClick={() => setTab('import')}
+            >IMPORT</button>
           </div>
 
-          {tab === 'ai' ? (
+          {tab === 'import' ? (
+            <div className={styles.aiPanel}>
+              <p className={styles.aiDesc}>Upload any image — meme, photo, or pixel art. We'll pixelate it for you!</p>
+              <label style={{
+                display: 'block', width: '100%', padding: '14px',
+                background: '#FFE600', color: '#2C2C2C',
+                border: '2px solid #2C2C2C', boxShadow: '4px 4px 0 #2C2C2C',
+                fontFamily: 'var(--font-pixel)', fontSize: '10px',
+                textAlign: 'center', cursor: 'pointer', letterSpacing: '2px',
+                boxSizing: 'border-box',
+              }}>
+                📁 CHOOSE IMAGE
+                <input type="file" accept="image/*" style={{ display: 'none' }}
+                  onChange={(e) => { const f = e.target.files?.[0]; if (f) importImage(f) }}
+                />
+              </label>
+              <p style={{ fontFamily: 'var(--font-pixel)', fontSize: '7px', color: '#888', textAlign: 'center', margin: 0 }}>
+                Works best with simple images or existing pixel art
+              </p>
+            </div>
+          ) : tab === 'ai' ? (
             <div className={styles.aiPanel}>
               {!isPremium ? (
                 <>
