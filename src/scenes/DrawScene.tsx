@@ -504,7 +504,7 @@ export default function DrawScene({ onPetCreated, isPremium, onSubscribeClick }:
         <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'flex-start', gap: '16px', width: '100%' }}>
 
           {/* LEFT: Guide boxes */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', width: '180px', flexShrink: 0 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', width: '180px', flexShrink: 0, marginTop: '48px' }}>
             <div className={styles.drawGuide}>
               <div className={styles.drawGuideTitle}>HOW TO DRAW</div>
               <div className={styles.drawGuideTips}>
