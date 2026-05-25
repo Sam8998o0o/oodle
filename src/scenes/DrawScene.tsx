@@ -216,7 +216,11 @@ export default function DrawScene({ onPetCreated, isPremium, onSubscribeClick }:
               const d = (rr - pr) ** 2 + (gg - pg) ** 2 + (bb - pb) ** 2
               if (d < bestDist) { bestDist = d; best = hex }
             }
-            newGrid[r][c] = best
+            if (best === '#ffffff' && !(rr > 240 && gg > 240 && bb > 240)) {
+              newGrid[r][c] = ''
+            } else {
+              newGrid[r][c] = best
+            }
           }
         }
 
@@ -228,6 +232,8 @@ export default function DrawScene({ onPetCreated, isPremium, onSubscribeClick }:
           newGrid[GRID_SIZE - 1][GRID_SIZE - 1],
         ])
         bgColors.delete('')  // don't flood-fill already empty cells
+        bgColors.delete('#ffffff')  // white is too common in characters, skip it
+        bgColors.delete('#eaeaea')  // also skip near-white
 
         for (const bgColor of bgColors) {
           if (!bgColor) continue
@@ -584,6 +590,17 @@ export default function DrawScene({ onPetCreated, isPremium, onSubscribeClick }:
                     <div>2. FILL WITH COLOURS</div>
                     <div>3. USE 3+ COLORS</div>
                     <div>4. ADD EYES / FACE</div>
+                    <div>5. NEED 65% TO PASS</div>
+                  </div>
+                </div>
+
+                <div className={styles.drawGuide}>
+                  <div className={styles.drawGuideTitle}>HOW TO IMPORT</div>
+                  <div className={styles.drawGuideTips}>
+                    <div>1. CLICK IMPORT TAB</div>
+                    <div>2. UPLOAD ANY IMAGE</div>
+                    <div>3. BACKGROUND AUTO-REMOVED</div>
+                    <div>4. EDIT IF NEEDED</div>
                     <div>5. NEED 65% TO PASS</div>
                   </div>
                 </div>
