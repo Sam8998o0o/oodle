@@ -2,6 +2,7 @@ import { useRef, useState, useEffect, useCallback } from 'react'
 import { OnnxValidator } from '../engine/OnnxValidator'
 import { drawEye } from '../engine/drawEye'
 import type { PetCoords } from '../api/aiRecognize'
+import { generatePetImage, validatePetImage } from '../lib/aiService'
 import styles from './DrawScene.module.css'
 
 // ── Grid constants ─────────────────────────────────────────
@@ -175,6 +176,10 @@ export default function DrawScene({ onPetCreated, isPremium, onSubscribeClick }:
   const [storedPets, setStoredPets] = useState<StoredPet[]>([])
   const [showGrid, setShowGrid]   = useState(true)
   const [importLocked, setImportLocked] = useState(false)
+  const [importError,  setImportError]  = useState('')
+  const [aiPrompt,     setAiPrompt]     = useState('')
+  const [aiLoading,    setAiLoading]    = useState(false)
+  const [aiError,      setAiError]      = useState('')
 
   const blinkRef = useRef({ countdown: 210, frame: 0, blinking: false, cycle: 210 })
 
@@ -193,7 +198,7 @@ export default function DrawScene({ onPetCreated, isPremium, onSubscribeClick }:
     const reader = new FileReader()
     reader.onload = (e) => {
       const img = new Image()
-      img.onload = () => {
+      img.onload = async () => {
         const offscreen = document.createElement('canvas')
         offscreen.width = GRID_SIZE
         offscreen.height = GRID_SIZE
@@ -256,6 +261,13 @@ export default function DrawScene({ onPetCreated, isPremium, onSubscribeClick }:
           }
         }
 
+        const base64 = offscreen.toDataURL('image/png').split(',')[1]
+        const validation = await validatePetImage(base64)
+        if (!validation.pass) {
+          setImportError(`Not a pet! Try a simpler creature. (${validation.reason})`)
+          return
+        }
+        setImportError('')
         updateGrid(newGrid)
         setTab('draw')
         setImportLocked(true)
@@ -265,6 +277,85 @@ export default function DrawScene({ onPetCreated, isPremium, onSubscribeClick }:
     }
     reader.readAsDataURL(file)
   }, [updateGrid])
+
+  const handleAiGenerate = useCallback(async () => {
+    if (!aiPrompt.trim()) return
+    setAiLoading(true)
+    setAiError('')
+    const base64 = await generatePetImage(aiPrompt.trim())
+    if (!base64) {
+      setAiError('Generation failed. Try again.')
+      setAiLoading(false)
+      return
+    }
+    const img = new Image()
+    img.onload = () => {
+      const offscreen = document.createElement('canvas')
+      offscreen.width = GRID_SIZE
+      offscreen.height = GRID_SIZE
+      const ctx = offscreen.getContext('2d')!
+      ctx.imageSmoothingEnabled = false
+      ctx.drawImage(img, 0, 0, GRID_SIZE, GRID_SIZE)
+      const imageData = ctx.getImageData(0, 0, GRID_SIZE, GRID_SIZE)
+      const newGrid = makeGrid()
+      for (let r = 0; r < GRID_SIZE; r++) {
+        for (let c = 0; c < GRID_SIZE; c++) {
+          const i = (r * GRID_SIZE + c) * 4
+          const a = imageData.data[i + 3]
+          if (a < 128) { newGrid[r][c] = ''; continue }
+          const rr = imageData.data[i]
+          const gg = imageData.data[i + 1]
+          const bb = imageData.data[i + 2]
+          let best = PALETTE[0], bestDist = Infinity
+          for (const hex of PALETTE) {
+            const pr = parseInt(hex.slice(1, 3), 16)
+            const pg = parseInt(hex.slice(3, 5), 16)
+            const pb = parseInt(hex.slice(5, 7), 16)
+            const d = (rr - pr) ** 2 + (gg - pg) ** 2 + (bb - pb) ** 2
+            if (d < bestDist) { bestDist = d; best = hex }
+          }
+          if (best === '#ffffff' && !(rr > 240 && gg > 240 && bb > 240)) {
+            newGrid[r][c] = ''
+          } else {
+            newGrid[r][c] = best
+          }
+        }
+      }
+      const bgColors = new Set([
+        newGrid[0][0], newGrid[0][GRID_SIZE - 1],
+        newGrid[GRID_SIZE - 1][0], newGrid[GRID_SIZE - 1][GRID_SIZE - 1],
+      ])
+      bgColors.delete('')
+      bgColors.delete('#ffffff')
+      bgColors.delete('#eaeaea')
+      for (const bgColor of bgColors) {
+        if (!bgColor) continue
+        const stack: [number, number][] = [
+          [0, 0], [0, GRID_SIZE - 1],
+          [GRID_SIZE - 1, 0], [GRID_SIZE - 1, GRID_SIZE - 1],
+        ]
+        const visited = new Set<string>()
+        while (stack.length) {
+          const [r, c] = stack.pop()!
+          const key = `${r},${c}`
+          if (r < 0 || r >= GRID_SIZE || c < 0 || c >= GRID_SIZE) continue
+          if (visited.has(key)) continue
+          if (newGrid[r][c] !== bgColor) continue
+          visited.add(key)
+          newGrid[r][c] = ''
+          stack.push([r-1,c],[r+1,c],[r,c-1],[r,c+1])
+        }
+      }
+      updateGrid(newGrid)
+      setTab('draw')
+      setAiLoading(false)
+    }
+    img.onerror = () => {
+      setAiError('Failed to load generated image.')
+      setAiLoading(false)
+    }
+    img.src = `data:image/png;base64,${base64}`
+  }, [aiPrompt, updateGrid])
 
   // Load stored pets
   useEffect(() => {
@@ -579,6 +670,11 @@ export default function DrawScene({ onPetCreated, isPremium, onSubscribeClick }:
                     <p style={{ fontFamily: 'var(--font-pixel)', fontSize: '7px', color: '#888', textAlign: 'center', margin: 0 }}>
                       Works best with simple images or existing pixel art
                     </p>
+                    {importError && (
+                      <p style={{ fontFamily: 'var(--font-pixel)', fontSize: '7px', color: '#e94560', textAlign: 'center', margin: 0 }}>
+                        {importError}
+                      </p>
+                    )}
                   </>
                 )}
               </div>
@@ -597,8 +693,25 @@ export default function DrawScene({ onPetCreated, isPremium, onSubscribeClick }:
                 ) : (
                   <>
                     <p className={styles.aiDesc}>Let AI draw your pixel pet for you!</p>
-                    <input className={styles.aiInput} placeholder="a chubby space cat..." />
-                    <button className={styles.generateBtn}>GENERATE</button>
+                    <input
+                      className={styles.aiInput}
+                      placeholder="a chubby space cat..."
+                      value={aiPrompt}
+                      onChange={e => setAiPrompt(e.target.value)}
+                      disabled={aiLoading}
+                    />
+                    <button
+                      className={styles.generateBtn}
+                      onClick={handleAiGenerate}
+                      disabled={aiLoading || !aiPrompt.trim()}
+                    >
+                      {aiLoading ? 'GENERATING...' : 'GENERATE'}
+                    </button>
+                    {aiError && (
+                      <p style={{ fontFamily: 'var(--font-pixel)', fontSize: '7px', color: '#e94560', margin: 0, textAlign: 'center' }}>
+                        {aiError}
+                      </p>
+                    )}
                   </>
                 )}
               </div>
