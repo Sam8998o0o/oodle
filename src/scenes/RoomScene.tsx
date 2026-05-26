@@ -743,7 +743,7 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange, isPremiu
 
   // ── Blow bubbles (PLAY activity) ─────────────────────────
   const blowBubbles = useCallback(() => {
-    if (blowCooldown || isSleepingRef.current || isFaintedRef.current) return
+    if (blowCooldown || isSleepingRef.current || isFaintedRef.current || isDizzyRef.current) return
     setBlowCooldown(true)
     const newBubbles = Array.from({ length: 3 }, (_, i) => ({
       id:  Date.now() + i,
@@ -1484,6 +1484,7 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange, isPremiu
                     className={styles.playPopupItem}
                     style={{ justifyContent: 'space-between' }}
                     onClick={() => {
+                      if (isFainted || isDizzy) return
                       if (!localStorage.getItem('oodle_teach_trick_seen')) {
                         setShowTeachIntro(true)
                         setShowTeachMenu(false)
@@ -1562,7 +1563,7 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange, isPremiu
             <button
               className={`${styles.actionBtn} ${showPlay ? styles.playBtnActive : styles.playBtn}`}
               onClick={e => { e.stopPropagation(); setShowPlay(v => !v) }}
-              disabled={isSleeping}
+              disabled={isFainted || isDizzy || isSleeping}
             >
               🎮 PLAY
             </button>
