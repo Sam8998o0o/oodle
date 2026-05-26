@@ -169,7 +169,7 @@ export default function PlazaScene({ petData, onGoToRoom, isPremium, petSize }: 
   const [likedShouts,  setLikedShouts]  = useState<Set<string>>(new Set())
   const [unlikedPets,  setUnlikedPets]  = useState<Set<string>>(new Set())
   const [isNight]                       = useState(() => { const h = new Date().getHours(); return h >= 22 || h < 6 })
-  const [weather, setWeather]           = useState<'clear' | 'rain' | 'thunder'>('rain')
+  const [weather, setWeather]           = useState<'clear' | 'rain' | 'thunder'>('thunder')
 
   useEffect(() => {
     document.documentElement.style.backgroundImage = "url('/plaza-bg.svg')"
@@ -759,15 +759,6 @@ export default function PlazaScene({ petData, onGoToRoom, isPremium, petSize }: 
               }} />
             ))}
           </div>
-        )}
-
-        {/* Thunder flash */}
-        {weather === 'thunder' && (
-          <div style={{
-            position: 'absolute', inset: 0,
-            pointerEvents: 'none', zIndex: 4,
-            animation: 'thunderFlash 4s ease-in-out infinite',
-          }} />
         )}
 
         {/* Thunder flash overlay */}
