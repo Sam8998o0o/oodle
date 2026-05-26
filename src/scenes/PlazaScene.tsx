@@ -730,6 +730,15 @@ export default function PlazaScene({ petData, onGoToRoom, isPremium, petSize }: 
       <div className={styles.room} ref={roomRef} style={{ position: 'relative', zIndex: 1 }}>
         <div className={styles.petCount}>🐾 {pets.length} PETS HERE</div>
 
+        {/* Grey sky on rain/thunder */}
+        {(weather === 'rain' || weather === 'thunder') && (
+          <div style={{
+            position: 'absolute', inset: 0,
+            background: 'rgba(60,70,80,0.35)',
+            pointerEvents: 'none', zIndex: 2,
+          }} />
+        )}
+
         {/* Rain falling from sky */}
         {(weather === 'rain' || weather === 'thunder') && (
           <div style={{
@@ -759,6 +768,29 @@ export default function PlazaScene({ petData, onGoToRoom, isPremium, petSize }: 
             pointerEvents: 'none', zIndex: 4,
             animation: 'thunderFlash 4s ease-in-out infinite',
           }} />
+        )}
+
+        {/* Thunder flash overlay */}
+        {weather === 'thunder' && (
+          <div style={{
+            position: 'absolute', inset: 0,
+            pointerEvents: 'none', zIndex: 6,
+            animation: 'thunderFlash 4s ease-in-out infinite',
+          }} />
+        )}
+
+        {/* Sky: lightning bolt */}
+        {weather === 'thunder' && (
+          <svg style={{
+            position: 'absolute',
+            left: '48%', top: '3%',
+            width: '60px', height: '180px',
+            pointerEvents: 'none', zIndex: 5,
+            animation: 'lightningBolt 4s ease-in-out infinite',
+            filter: 'drop-shadow(0 0 12px #FFE87C)',
+          }} viewBox="0 0 40 120">
+            <polyline points="24,0 10,55 22,55 16,120 34,50 20,50 28,0" fill="#FFE87C" stroke="#FFF176" strokeWidth="1"/>
+          </svg>
         )}
 
         {/* Night overlay */}

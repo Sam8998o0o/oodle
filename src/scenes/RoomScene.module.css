@@ -26,9 +26,18 @@
   100% { transform: rotate(10deg) translateY(800px); opacity: 0; }
 }
 
-@keyframes thunderFlash {
-  0%, 90%, 100% { background: rgba(255,255,255,0); }
-  92%, 96%      { background: rgba(255,255,255,0.5); }
+:global(@keyframes lightningBolt) {
+  0%, 88%, 100% { opacity: 0; }
+  90%, 93%      { opacity: 1; }
+  91%, 94%      { opacity: 0.3; }
+  92%           { opacity: 1; }
+}
+
+:global(@keyframes thunderFlash) {
+  0%, 85%, 100% { background: rgba(255,255,255,0); }
+  87%, 91%      { background: rgba(255,255,255,0.85); }
+  89%           { background: rgba(255,255,255,0.2); }
+  93%           { background: rgba(255,255,255,0.85); }
 }
 
 /* ── night overlay ────────────────────────────────────── */

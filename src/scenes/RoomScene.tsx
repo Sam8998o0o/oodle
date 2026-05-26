@@ -380,7 +380,7 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange, isPremiu
   const [isWeekend, setIsWeekend] = useState(() => { const d = new Date().getDay();   return d === 0 || d === 6 })
 
   type Weather = 'clear' | 'rain' | 'thunder'
-  const [weather, setWeather] = useState<Weather>('rain')
+  const [weather, setWeather] = useState<Weather>('thunder')
   useEffect(() => {
     const pick = () => {
       const r = Math.random()
@@ -1263,6 +1263,17 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange, isPremiu
           </div>
         )}
 
+        {/* Window: grey sky on rain/thunder */}
+        {(weather === 'rain' || weather === 'thunder') && (
+          <div style={{
+            position: 'absolute',
+            left: '17%', top: '8%',
+            width: '22%', height: '44%',
+            background: 'rgba(80,90,100,0.45)',
+            pointerEvents: 'none', zIndex: 1,
+          }} />
+        )}
+
         {/* Window: rain */}
         {(weather === 'rain' || weather === 'thunder') && (
           <div style={{
@@ -1287,13 +1298,30 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange, isPremiu
           </div>
         )}
 
-        {/* Thunder flash (whole room) */}
+        {/* Window: lightning bolt + flash */}
         {weather === 'thunder' && (
           <div style={{
-            position: 'absolute', inset: 0,
+            position: 'absolute',
+            left: '17%', top: '8%',
+            width: '22%', height: '44%',
+            overflow: 'hidden',
             pointerEvents: 'none', zIndex: 4,
-            animation: 'thunderFlash 3s ease-in-out infinite',
-          }} />
+          }}>
+            <div style={{
+              position: 'absolute', inset: 0,
+              pointerEvents: 'none', zIndex: 3,
+              animation: 'thunderFlash 3s ease-in-out infinite',
+            }} />
+            <svg style={{
+              position: 'absolute',
+              left: '40%', top: '5%',
+              width: '40px', height: '120px',
+              animation: 'lightningBolt 3s ease-in-out infinite',
+              filter: 'drop-shadow(0 0 8px #FFE87C)',
+            }} viewBox="0 0 40 120">
+              <polyline points="24,0 10,55 22,55 16,120 34,50 20,50 28,0" fill="#FFE87C" stroke="#FFF176" strokeWidth="1"/>
+            </svg>
+          </div>
         )}
 
         {/* Top-left: HUD */}

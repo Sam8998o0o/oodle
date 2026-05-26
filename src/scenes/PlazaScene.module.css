@@ -5,9 +5,16 @@
   100% { transform: rotate(12deg) translateY(1400px); opacity: 0; }
 }
 
-@keyframes thunderFlash {
+:global(@keyframes lightningBolt) {
+  0%, 88%, 100% { opacity: 0; }
+  90%, 93%      { opacity: 1; }
+  91%, 94%      { opacity: 0.3; }
+  92%           { opacity: 1; }
+}
+
+:global(@keyframes thunderFlash) {
   0%, 88%, 100% { background: rgba(255,255,255,0); }
-  90%, 94%      { background: rgba(255,255,255,0.5); }
+  90%, 94%      { background: rgba(255,255,255,0.6); }
 }
 
 .page {
