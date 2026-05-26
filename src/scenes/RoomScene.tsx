@@ -230,12 +230,10 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange, isPremiu
   const miniCanvasRef = useRef<HTMLCanvasElement>(null)
   const [miniColor,   setMiniColor]   = useState('#2C2C2C')
   const [isDrawing,   setIsDrawing]   = useState(false)
-  const [showDrawingBoard, setShowDrawingBoard] = useState(false)
-  const [drawingGrid, setDrawingGrid] = useState<string[][]>(() =>
-    Array.from({ length: 16 }, () => Array(16).fill(''))
-  )
-  const [drawingColor, setDrawingColor] = useState('#000000')
-  const [isDrawingOnBoard, setIsDrawingOnBoard] = useState(false)
+  const [showDrawCanvas, setShowDrawCanvas] = useState(false)
+  const drawCanvasRef    = useRef<HTMLCanvasElement>(null)
+  const isDrawingRef     = useRef(false)
+  const pendingDrawingRef = useRef<string | null>(null)
 
   // ── Daily talent (one trick per day) ─────────────────────
   const getDailyTalent = () => {
@@ -774,7 +772,7 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange, isPremiu
     // ── First click: begin phase 1 ───────────────────────
     if (learningStep === 0) {
       if (trickId === 'drawing') {
-        setShowDrawingBoard(true)
+        setShowDrawCanvas(true)
         setLearningTrick('drawing')
         setShowTeachMenu(false)
         setShowPlay(false)
@@ -830,7 +828,13 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange, isPremiu
         animatorRef.current?.setState('idle')
         setLearningStep(6)
         showBubble('I learned to draw! 🎨')
-        setDailyTalent(getDailyTalent())
+        if (pendingDrawingRef.current) {
+          await saveTalentDrawing(pendingDrawingRef.current)
+          const today = new Date().toDateString()
+          localStorage.setItem('oodle_daily_talent', JSON.stringify({ date: today, talent: 'drawing', drawing: pendingDrawingRef.current }))
+          setDailyTalent(getDailyTalent())
+          pendingDrawingRef.current = null
+        }
       }, 20000)
       return
     }
@@ -880,17 +884,11 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange, isPremiu
   }, [dailyTalent, learningTrick, learningStep, showBubble, showFloat])
 
   const handleFinishDrawing = async () => {
-    const canvas = document.createElement('canvas')
-    canvas.width = 160; canvas.height = 160
-    const ctx = canvas.getContext('2d')!
-    drawingGrid.forEach((row, r) => row.forEach((color, c) => {
-      if (color) { ctx.fillStyle = color; ctx.fillRect(c * 10, r * 10, 10, 10) }
-    }))
+    const canvas = drawCanvasRef.current
+    if (!canvas) return
     const dataURL = canvas.toDataURL()
-    await saveTalentDrawing(dataURL)
-    const today = new Date().toDateString()
-    localStorage.setItem('oodle_daily_talent', JSON.stringify({ date: today, talent: 'drawing', drawing: dataURL }))
-    setShowDrawingBoard(false)
+    pendingDrawingRef.current = dataURL
+    setShowDrawCanvas(false)
     isBusyRef.current = true
     animatorRef.current?.setState('eat')
     showBubble('Practice 1/3! ✏️')
@@ -1458,60 +1456,85 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange, isPremiu
           </div>
         </div>
 
-        {/* Drawing board */}
-        {showDrawingBoard && (() => {
-          const petX = walkXRef.current ?? window.innerWidth / 2
-          return (
+        {/* Mini drawing preview above pet during practice */}
+        {learningTrick === 'drawing' && [1,2,3,4,5].includes(learningStep) && pendingDrawingRef.current && (
+          <div style={{
+            position: 'absolute',
+            left: walkXRef.current ?? '50%',
+            bottom: 'calc(10% + 120px)',
+            width: 60, height: 60,
+            border: '2px solid #2C2C2C',
+            boxShadow: '3px 3px 0 #2C2C2C',
+            background: 'white',
+            zIndex: 10,
+            overflow: 'hidden',
+          }}>
+            <img src={pendingDrawingRef.current} style={{ width: '100%', height: '100%', imageRendering: 'pixelated' }} />
+          </div>
+        )}
+
+        {/* Drawing canvas modal */}
+        {showDrawCanvas && (
+          <div style={{
+            position: 'fixed', inset: 0,
+            background: 'rgba(0,0,0,0.7)',
+            zIndex: 100,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}>
             <div style={{
-              position: 'absolute',
-              left: petX - 60,
-              bottom: '22%',
-              transform: 'translateY(-110px)',
               background: '#FDF6E3',
-              border: '3px solid #2C2C2C',
-              boxShadow: '4px 4px 0 #2C2C2C',
-              zIndex: 15,
-              padding: '8px',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '6px',
+              border: '4px solid #2C2C2C',
+              boxShadow: '6px 6px 0 #2C2C2C',
+              padding: 16,
+              display: 'flex', flexDirection: 'column', gap: 8,
             }}>
-              <div style={{ fontFamily: 'var(--font-pixel)', fontSize: '7px', color: '#2C2C2C' }}>DRAW YOUR TALENT</div>
-              <div
-                style={{ display: 'grid', gridTemplateColumns: 'repeat(16, 10px)', gap: 0, border: '1px solid #ccc', cursor: 'crosshair' }}
-                onMouseLeave={() => setIsDrawingOnBoard(false)}
-              >
-                {drawingGrid.map((row, r) => row.map((cell, c) => (
-                  <div
-                    key={`${r}-${c}`}
-                    style={{ width: 10, height: 10, background: cell || '#fff', border: '0.5px solid #eee', boxSizing: 'border-box' }}
-                    onMouseDown={() => { setIsDrawingOnBoard(true); const g = drawingGrid.map(rr => [...rr]); g[r][c] = drawingColor; setDrawingGrid(g) }}
-                    onMouseEnter={() => { if (isDrawingOnBoard) { const g = drawingGrid.map(rr => [...rr]); g[r][c] = drawingColor; setDrawingGrid(g) } }}
-                  />
-                )))}
+              <div style={{ fontFamily: 'var(--font-pixel)', fontSize: '10px', color: '#2C2C2C' }}>
+                🎨 DRAW YOUR TALENT
               </div>
-              <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
-                {['#000000','#ffffff','#e63946','#f4a261','#e9c46a','#2a9d8f','#457b9d','#a8dadc','#6b4226','#888888'].map(col => (
-                  <div
-                    key={col}
-                    style={{ width: 14, height: 14, background: col, border: drawingColor === col ? '2px solid #FFE600' : '1px solid #333', cursor: 'pointer', boxSizing: 'border-box' }}
-                    onClick={() => setDrawingColor(col)}
-                  />
-                ))}
-              </div>
-              <div style={{ display: 'flex', gap: 4 }}>
+              <canvas
+                ref={drawCanvasRef}
+                width={300} height={300}
+                style={{ background: 'white', border: '2px solid #ccc', cursor: 'crosshair', display: 'block' }}
+                onMouseDown={(e) => {
+                  isDrawingRef.current = true
+                  const rect = e.currentTarget.getBoundingClientRect()
+                  const ctx = e.currentTarget.getContext('2d')!
+                  ctx.beginPath()
+                  ctx.moveTo(e.clientX - rect.left, e.clientY - rect.top)
+                }}
+                onMouseMove={(e) => {
+                  if (!isDrawingRef.current) return
+                  const rect = e.currentTarget.getBoundingClientRect()
+                  const ctx = e.currentTarget.getContext('2d')!
+                  ctx.lineWidth = 3
+                  ctx.lineCap = 'round'
+                  ctx.strokeStyle = '#2C2C2C'
+                  ctx.lineTo(e.clientX - rect.left, e.clientY - rect.top)
+                  ctx.stroke()
+                }}
+                onMouseUp={() => { isDrawingRef.current = false }}
+                onMouseLeave={() => { isDrawingRef.current = false }}
+              />
+              <div style={{ display: 'flex', gap: 8 }}>
                 <button
-                  style={{ fontFamily: 'var(--font-pixel)', fontSize: '7px', padding: '4px 8px', background: '#FFE600', border: '2px solid #2C2C2C', cursor: 'pointer' }}
+                  style={{ fontFamily: 'var(--font-pixel)', fontSize: '9px', padding: '8px 16px', background: '#FFE600', border: '2px solid #2C2C2C', boxShadow: '3px 3px 0 #2C2C2C', cursor: 'pointer' }}
                   onClick={handleFinishDrawing}
                 >✓ DONE</button>
                 <button
-                  style={{ fontFamily: 'var(--font-pixel)', fontSize: '7px', padding: '4px 8px', background: '#fff', border: '2px solid #2C2C2C', cursor: 'pointer' }}
-                  onClick={() => setDrawingGrid(Array.from({ length: 16 }, () => Array(16).fill('')))}
+                  style={{ fontFamily: 'var(--font-pixel)', fontSize: '9px', padding: '8px 16px', background: '#fff', border: '2px solid #2C2C2C', boxShadow: '3px 3px 0 #2C2C2C', cursor: 'pointer' }}
+                  onClick={() => {
+                    const ctx = drawCanvasRef.current?.getContext('2d')
+                    if (ctx) ctx.clearRect(0, 0, 300, 300)
+                  }}
                 >CLEAR</button>
+                <button
+                  style={{ fontFamily: 'var(--font-pixel)', fontSize: '9px', padding: '8px 12px', background: '#fff', border: '2px solid #2C2C2C', boxShadow: '3px 3px 0 #2C2C2C', cursor: 'pointer' }}
+                  onClick={() => { setShowDrawCanvas(false); setLearningTrick(null); setLearningStep(0) }}
+                >✕</button>
               </div>
             </div>
-          )
-        })()}
+          </div>
+        )}
 
         {/* Pet */}
         <div
@@ -1669,18 +1692,27 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange, isPremiu
                           </button>
                         )
                       })}
+                      {(() => {
+                        const isDrawingLearning = learningTrick === 'drawing'
+                        const isDrawingBusy     = isDrawingLearning && [1, 3, 5].includes(learningStep)
+                        const isDrawingClick2   = isDrawingLearning && learningStep === 2
+                        const isDrawingClick3   = isDrawingLearning && learningStep === 4
+                        const otherTrick        = learningTrick !== null && !isDrawingLearning
+                        const drawingDisabled   = !!dailyTalent || isDrawingBusy || otherTrick
+                        return (
                       <button
-                        disabled={!!dailyTalent || learningTrick !== null}
-                        style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', fontFamily: 'var(--font-pixel)', fontSize: '8px', color: '#2C2C2C', background: '#fff', border: 'none', padding: '10px 12px', cursor: (dailyTalent || learningTrick !== null) ? 'not-allowed' : 'pointer', whiteSpace: 'nowrap', opacity: (dailyTalent || learningTrick !== null) ? 0.5 : 1 }}
+                        disabled={drawingDisabled}
+                        style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', fontFamily: 'var(--font-pixel)', fontSize: '8px', color: '#2C2C2C', background: isDrawingClick2 || isDrawingClick3 ? '#FFE600' : '#fff', border: 'none', padding: '10px 12px', cursor: drawingDisabled ? 'not-allowed' : 'pointer', whiteSpace: 'nowrap', opacity: (dailyTalent || otherTrick) ? 0.5 : 1 }}
                         onClick={() => { if (dailyTalent) return; handleLearnTrick('drawing') }}
                       >
                         🎨 TEACH DRAWING
-                        {dailyTalent ? (
-                          <span style={{ fontFamily: 'var(--font-pixel)', fontSize: '5px', background: '#4CAF50', color: '#fff', padding: '2px 5px' }}>DONE TODAY ✓</span>
-                        ) : (
-                          <span style={{ fontFamily: 'var(--font-pixel)', fontSize: '5px', background: '#FF8C00', color: '#fff', padding: '2px 5px' }}>SPECIAL</span>
-                        )}
+                        {dailyTalent && <span style={{ fontFamily: 'var(--font-pixel)', fontSize: '5px', background: '#4CAF50', color: '#fff', padding: '2px 5px' }}>DONE TODAY ✓</span>}
+                        {!dailyTalent && isDrawingBusy && <span style={{ fontFamily: 'var(--font-pixel)', fontSize: '5px', background: '#FF8C00', color: '#fff', padding: '2px 5px' }}>LEARNING... ⏳</span>}
+                        {!dailyTalent && isDrawingClick2 && <span style={{ fontFamily: 'var(--font-pixel)', fontSize: '5px', background: '#2C2C2C', color: '#FFE600', padding: '2px 5px' }}>CLICK! (2/3)</span>}
+                        {!dailyTalent && isDrawingClick3 && <span style={{ fontFamily: 'var(--font-pixel)', fontSize: '5px', background: '#2C2C2C', color: '#FFE600', padding: '2px 5px' }}>CLICK! (3/3)</span>}
+                        {!dailyTalent && !isDrawingLearning && <span style={{ fontFamily: 'var(--font-pixel)', fontSize: '5px', background: '#FF8C00', color: '#fff', padding: '2px 5px' }}>SPECIAL</span>}
                       </button>
+                        )})()}
                     </div>
                   )}
                 </div>

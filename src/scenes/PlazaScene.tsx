@@ -565,6 +565,8 @@ export default function PlazaScene({ petData, onGoToRoom, isPremium, petSize }: 
         const petY = walker ? walker.y : window.innerHeight / 2
         setDrawingPerformance({ petId: pet.id, petX, petY, dataURL: pet.talent_drawing })
         setPlazaShows(prev => ({ ...prev, [pet.id]: { text: '🎨 Watch me draw!', drawing: pet.talent_drawing } }))
+        const anim = animMap.current.get(pet.id)
+        if (anim) anim.setState('draw')
         setTimeout(() => {
           setDrawingPerformance(null)
           setPlazaShows(prev => { const next = { ...prev }; delete next[pet.id]; return next })

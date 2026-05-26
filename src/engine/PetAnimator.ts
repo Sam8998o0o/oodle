@@ -8,7 +8,7 @@ export interface PetAnimData {
   eyeStyle?: string
 }
 
-export type PetState = 'idle' | 'walk' | 'eat' | 'play' | 'sleep' | 'sad' | 'squish' | 'dizzy' | 'faint' | 'dance'
+export type PetState = 'idle' | 'walk' | 'eat' | 'play' | 'sleep' | 'sad' | 'squish' | 'dizzy' | 'faint' | 'dance' | 'draw'
 
 export class PetAnimator {
   private canvas: HTMLCanvasElement
@@ -30,6 +30,7 @@ export class PetAnimator {
   private dizzyF  = 0
   private faintF  = 0
   private danceF  = 0
+  private drawF   = 0
   private jumpF   = 0
   private jumpCount = 0
   private isJumping = false
@@ -88,6 +89,7 @@ export class PetAnimator {
     if (s === 'dizzy') { this.dizzyF = 0 }
     if (s === 'faint') { this.faintF = 0 }
     if (s === 'dance') { this.danceF = 0 }
+    if (s === 'draw')  { this.drawF  = 0 }
   }
 
   private tick(): void {
@@ -179,6 +181,15 @@ export class PetAnimator {
         translateY = scaleY < 1 ? Math.round(size * 0.05) : 0
         // After 48 frames (6 beats), return to idle
         if (this.danceF >= 48) { this.danceF = 0; this.setState('idle') }
+        break
+      }
+      case 'draw': {
+        this.drawF++
+        const phase = Math.floor(this.drawF / 12) % 4
+        translateX = phase === 0 ? -8 : phase === 1 ? -4 : phase === 2 ? 0 : -6
+        translateY = phase === 0 ? -2 : phase === 1 ? 0 : phase === 2 ? -2 : -1
+        scaleY = 0.92
+        if (this.drawF >= 96) { this.drawF = 0; this.setState('idle') }
         break
       }
       case 'faint': {
