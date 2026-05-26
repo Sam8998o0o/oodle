@@ -122,6 +122,7 @@ function gridToDataURL(grid: string[][]): string {
   c.width   = CANVAS_PX; c.height = CANVAS_PX
   const ctx = c.getContext('2d')!
   ctx.imageSmoothingEnabled = false
+  ctx.clearRect(0, 0, CANVAS_PX, CANVAS_PX)
   for (let r = 0; r < GRID_SIZE; r++) {
     for (let cc = 0; cc < GRID_SIZE; cc++) {
       const col = grid[r][cc]

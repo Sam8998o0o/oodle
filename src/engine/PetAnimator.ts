@@ -59,12 +59,6 @@ export class PetAnimator {
       const ctx = pc.getContext('2d')!
       ctx.imageSmoothingEnabled = false
       ctx.drawImage(img, 0, 0)
-      const id = ctx.getImageData(0, 0, w, h)
-      const d  = id.data
-      for (let i = 0; i < d.length; i += 4) {
-        if (d[i] > 240 && d[i+1] > 240 && d[i+2] > 240) d[i+3] = 0
-      }
-      ctx.putImageData(id, 0, 0)
       this.src = pc
     }
     img.src = dataURL
