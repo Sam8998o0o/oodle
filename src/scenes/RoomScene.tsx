@@ -1211,7 +1211,18 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange, isPremiu
   return (
     <div className={styles.page}>
       <div className={styles.room} ref={roomRef}>
-
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          width: '100vw',
+          height: '100vh',
+          backgroundImage: "url('/room-bg.svg')",
+          backgroundSize: '100% 100%',
+          backgroundRepeat: 'no-repeat',
+          zIndex: -1,
+          pointerEvents: 'none',
+        }} />
 
         {/* Night overlay */}
         {isNight && <div className={styles.nightOverlay} />}

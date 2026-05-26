@@ -705,6 +705,18 @@ export default function PlazaScene({ petData, onGoToRoom, isPremium, petSize }: 
   return (
     <div className={styles.page}>
       <div className={styles.room} ref={roomRef}>
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          width: '100vw',
+          height: '100vh',
+          backgroundImage: "url('/plaza-bg.svg')",
+          backgroundSize: '100% 100%',
+          backgroundRepeat: 'no-repeat',
+          zIndex: -1,
+          pointerEvents: 'none',
+        }} />
         <div className={styles.petCount}>🐾 {pets.length} PETS HERE</div>
 
         {/* ── Airplane ads ── */}

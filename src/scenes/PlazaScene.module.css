@@ -13,10 +13,6 @@
   overflow: hidden;
   width: 100vw;
   min-height: 0;
-  background-image: url('/plaza-bg.svg');
-  background-size: 100% 100%;
-  background-position: center bottom;
-  background-repeat: no-repeat;
   background-color: #5ba3e0;
 }
 
