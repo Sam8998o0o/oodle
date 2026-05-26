@@ -157,6 +157,9 @@ export default function PlazaScene({ petData, onGoToRoom, isPremium, petSize }: 
   const [adForm, setAdForm]           = useState({ company: '', email: '', bannerText: '', website: '', logoUrl: '', plan: '7days' })
   const [adSubmitting, setAdSubmitting] = useState(false)
   const [adSubmitted, setAdSubmitted]   = useState(false)
+  const [drawingPerformance, setDrawingPerformance] = useState<{
+    petId: string, petX: number, petY: number, dataURL: string
+  } | null>(null)
 
   // Keep petSizeRef in sync — used by spawnPet without causing re-spawn
   useEffect(() => { petSizeRef.current = petSize }, [petSize])
@@ -557,8 +560,16 @@ export default function PlazaScene({ petData, onGoToRoom, isPremium, petSize }: 
       }
       else if (pet.talent === 'magic') text = '✨ Ta-da!'
       else if (pet.talent === 'drawing' && pet.talent_drawing) {
-        text    = '🎨 I made this!'
-        drawing = pet.talent_drawing
+        const walker = walkerMap.current.get(pet.id)
+        const petX = walker ? walker.x : window.innerWidth / 2
+        const petY = walker ? walker.y : window.innerHeight / 2
+        setDrawingPerformance({ petId: pet.id, petX, petY, dataURL: pet.talent_drawing })
+        setPlazaShows(prev => ({ ...prev, [pet.id]: { text: '🎨 Watch me draw!', drawing: pet.talent_drawing } }))
+        setTimeout(() => {
+          setDrawingPerformance(null)
+          setPlazaShows(prev => { const next = { ...prev }; delete next[pet.id]; return next })
+        }, 5000)
+        return
       } else if (pet.talent_drawing) {
         text    = '🎨 I made this!'
         drawing = pet.talent_drawing
@@ -1143,6 +1154,43 @@ export default function PlazaScene({ petData, onGoToRoom, isPremium, petSize }: 
               <div className={`${styles.doorRight} ${doorPhase === 'opening' || doorPhase === 'walking' || doorPhase === 'done' ? styles.doorRightOpen : ''}`} />
               <div className={styles.doorTop}>← MY ROOM</div>
             </div>
+          </div>
+        )}
+
+        {drawingPerformance && (
+          <div style={{
+            position: 'absolute',
+            left: drawingPerformance.petX + 20,
+            bottom: '22%',
+            transform: 'translateY(-40px)',
+            zIndex: 10,
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            gap: 4,
+            animation: 'drawingAppear 0.3s ease-out',
+          }}>
+            <div style={{
+              background: '#FDF6E3',
+              border: '3px solid #2C2C2C',
+              boxShadow: '4px 4px 0 #2C2C2C',
+              padding: 4,
+            }}>
+              <img
+                src={drawingPerformance.dataURL}
+                style={{
+                  width: 80, height: 80,
+                  imageRendering: 'pixelated',
+                  display: 'block',
+                  animation: 'drawingReveal 2s steps(16) ease-in forwards',
+                }}
+              />
+            </div>
+            <div style={{
+              fontFamily: 'var(--font-pixel)', fontSize: '6px',
+              color: '#2C2C2C', background: '#FFE600',
+              padding: '2px 6px', border: '1px solid #2C2C2C',
+            }}>MY ART</div>
           </div>
         )}
 
