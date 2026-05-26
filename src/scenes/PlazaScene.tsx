@@ -570,7 +570,9 @@ export default function PlazaScene({ petData, onGoToRoom, isPremium, petSize }: 
         setTimeout(() => {
           setDrawingPerformance(null)
           setPlazaShows(prev => { const next = { ...prev }; delete next[pet.id]; return next })
-        }, 5000)
+          const a = animMap.current.get(pet.id)
+          if (a) a.setState('walk')
+        }, 8000)
         return
       } else if (pet.talent_drawing) {
         text    = '🎨 I made this!'
@@ -1162,7 +1164,7 @@ export default function PlazaScene({ petData, onGoToRoom, isPremium, petSize }: 
         {drawingPerformance && (
           <div style={{
             position: 'absolute',
-            left: drawingPerformance.petX + 20,
+            left: drawingPerformance.petX + (canvasMap.current.get(drawingPerformance.petId)?.width ?? 80) + 10,
             bottom: '22%',
             transform: 'translateY(-40px)',
             zIndex: 10,
