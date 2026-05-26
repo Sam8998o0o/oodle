@@ -729,6 +729,284 @@ export default function PlazaScene({ petData, onGoToRoom, isPremium, petSize }: 
   return (
     <div className={styles.page}>
       <div className={styles.room} ref={roomRef} style={{ position: 'relative', zIndex: 1 }}>
+        <svg
+          style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%' }}
+          preserveAspectRatio="none"
+          viewBox="0 0 1920 1080"
+          xmlns="http://www.w3.org/2000/svg"
+          shapeRendering="crispEdges"
+        >
+          {/* Sky */}
+          <rect id="plaza-sky" width="1920" height="560" fill="#87CEEB"/>
+          <rect id="plaza-sky-gradient" y="0" width="1920" height="200" fill="#A8E0F0" opacity="0.5"/>
+
+          {/* Far buildings left */}
+          <rect x="0" y="200" width="160" height="440" fill="#8B9DC3" opacity="0.5"/>
+          <rect x="20" y="150" width="120" height="70" fill="#8B9DC3" opacity="0.5"/>
+          <g id="plaza-bld-win-left" opacity={isNight ? 1 : 0.3}>
+            <rect x="30" y="220" width="20" height="20" fill="#FFE87C"/>
+            <rect x="64" y="220" width="20" height="20" fill="#C8E6FF"/>
+            <rect x="98" y="220" width="20" height="20" fill="#FFE87C"/>
+            <rect x="30" y="258" width="20" height="20" fill="#C8E6FF"/>
+            <rect x="64" y="258" width="20" height="20" fill="#FFE87C"/>
+            <rect x="98" y="258" width="20" height="20" fill="#C8E6FF"/>
+            <rect x="30" y="296" width="20" height="20" fill="#FFE87C"/>
+            <rect x="64" y="296" width="20" height="20" fill="#C8E6FF"/>
+            <rect x="98" y="296" width="20" height="20" fill="#FFE87C"/>
+            <rect x="30" y="334" width="20" height="20" fill="#C8E6FF"/>
+            <rect x="64" y="334" width="20" height="20" fill="#FFE87C"/>
+            <rect x="98" y="334" width="20" height="20" fill="#C8E6FF"/>
+          </g>
+
+          {/* Far buildings right */}
+          <rect x="1760" y="180" width="160" height="460" fill="#8B9DC3" opacity="0.5"/>
+          <rect x="1780" y="130" width="120" height="60" fill="#7A8DB8" opacity="0.5"/>
+          <g id="plaza-bld-win-right" opacity={isNight ? 1 : 0.3}>
+            <rect x="1772" y="200" width="20" height="20" fill="#FFE87C"/>
+            <rect x="1806" y="200" width="20" height="20" fill="#C8E6FF"/>
+            <rect x="1840" y="200" width="20" height="20" fill="#FFE87C"/>
+            <rect x="1874" y="200" width="20" height="20" fill="#C8E6FF"/>
+            <rect x="1772" y="238" width="20" height="20" fill="#C8E6FF"/>
+            <rect x="1806" y="238" width="20" height="20" fill="#FFE87C"/>
+            <rect x="1840" y="238" width="20" height="20" fill="#C8E6FF"/>
+            <rect x="1874" y="238" width="20" height="20" fill="#FFE87C"/>
+            <rect x="1772" y="276" width="20" height="20" fill="#FFE87C"/>
+            <rect x="1806" y="276" width="20" height="20" fill="#C8E6FF"/>
+            <rect x="1840" y="276" width="20" height="20" fill="#FFE87C"/>
+            <rect x="1874" y="276" width="20" height="20" fill="#C8E6FF"/>
+          </g>
+
+          {/* Mid building left */}
+          <rect x="130" y="280" width="220" height="400" fill="#A0B0D0" opacity="0.6"/>
+          <rect x="150" y="230" width="180" height="60" fill="#9AA8C8" opacity="0.6"/>
+          <g id="plaza-bld-win-mid-left" opacity={isNight ? 1 : 0.3}>
+            <rect x="142" y="300" width="24" height="24" fill="#FFE87C"/>
+            <rect x="182" y="300" width="24" height="24" fill="#C8E6FF"/>
+            <rect x="222" y="300" width="24" height="24" fill="#FFE87C"/>
+            <rect x="262" y="300" width="24" height="24" fill="#C8E6FF"/>
+            <rect x="142" y="340" width="24" height="24" fill="#C8E6FF"/>
+            <rect x="182" y="340" width="24" height="24" fill="#FFE87C"/>
+            <rect x="222" y="340" width="24" height="24" fill="#C8E6FF"/>
+            <rect x="262" y="340" width="24" height="24" fill="#FFE87C"/>
+            <rect x="142" y="380" width="24" height="24" fill="#FFE87C"/>
+            <rect x="182" y="380" width="24" height="24" fill="#C8E6FF"/>
+            <rect x="222" y="380" width="24" height="24" fill="#FFE87C"/>
+            <rect x="262" y="380" width="24" height="24" fill="#C8E6FF"/>
+          </g>
+
+          {/* Mid building right */}
+          <rect x="1570" y="260" width="240" height="420" fill="#A0B0D0" opacity="0.6"/>
+          <rect x="1590" y="210" width="200" height="60" fill="#9AA8C8" opacity="0.6"/>
+          <g id="plaza-bld-win-mid-right" opacity={isNight ? 1 : 0.3}>
+            <rect x="1582" y="280" width="24" height="24" fill="#C8E6FF"/>
+            <rect x="1622" y="280" width="24" height="24" fill="#FFE87C"/>
+            <rect x="1662" y="280" width="24" height="24" fill="#C8E6FF"/>
+            <rect x="1702" y="280" width="24" height="24" fill="#FFE87C"/>
+            <rect x="1742" y="280" width="24" height="24" fill="#C8E6FF"/>
+            <rect x="1582" y="320" width="24" height="24" fill="#FFE87C"/>
+            <rect x="1622" y="320" width="24" height="24" fill="#C8E6FF"/>
+            <rect x="1662" y="320" width="24" height="24" fill="#FFE87C"/>
+            <rect x="1702" y="320" width="24" height="24" fill="#C8E6FF"/>
+            <rect x="1742" y="320" width="24" height="24" fill="#FFE87C"/>
+            <rect x="1582" y="360" width="24" height="24" fill="#C8E6FF"/>
+            <rect x="1622" y="360" width="24" height="24" fill="#FFE87C"/>
+            <rect x="1662" y="360" width="24" height="24" fill="#C8E6FF"/>
+            <rect x="1702" y="360" width="24" height="24" fill="#FFE87C"/>
+            <rect x="1742" y="360" width="24" height="24" fill="#C8E6FF"/>
+          </g>
+
+          {/* Clouds */}
+          <g id="plaza-clouds" opacity={isNight ? 0 : 1}>
+            <rect x="220" y="80" width="170" height="40" fill="white" opacity="0.9"/>
+            <rect x="212" y="96" width="186" height="40" fill="white" opacity="0.9"/>
+            <rect x="236" y="64" width="120" height="34" fill="white" opacity="0.9"/>
+            <rect x="760" y="50" width="200" height="44" fill="white" opacity="0.85"/>
+            <rect x="752" y="66" width="216" height="44" fill="white" opacity="0.85"/>
+            <rect x="776" y="36" width="152" height="36" fill="white" opacity="0.85"/>
+            <rect x="1340" y="70" width="180" height="40" fill="white" opacity="0.8"/>
+            <rect x="1332" y="86" width="196" height="40" fill="white" opacity="0.8"/>
+            <rect x="1352" y="56" width="132" height="34" fill="white" opacity="0.8"/>
+          </g>
+
+          {/* Stars */}
+          <g id="plaza-stars" opacity={isNight ? 1 : 0}>
+            <rect x="100" y="40" width="6" height="6" fill="white"/>
+            <rect x="280" y="90" width="4" height="4" fill="white"/>
+            <rect x="460" y="30" width="6" height="6" fill="white"/>
+            <rect x="620" y="80" width="4" height="4" fill="white"/>
+            <rect x="800" y="20" width="6" height="6" fill="white"/>
+            <rect x="960" y="70" width="4" height="4" fill="white"/>
+            <rect x="1120" y="35" width="6" height="6" fill="white"/>
+            <rect x="1300" y="85" width="4" height="4" fill="white"/>
+            <rect x="1480" y="25" width="6" height="6" fill="white"/>
+            <rect x="1660" y="75" width="4" height="4" fill="white"/>
+            <rect x="1820" y="40" width="6" height="6" fill="white"/>
+            <rect x="180" y="120" width="4" height="4" fill="white"/>
+            <rect x="540" y="110" width="4" height="4" fill="white"/>
+            <rect x="900" y="115" width="4" height="4" fill="white"/>
+            <rect x="1260" y="108" width="4" height="4" fill="white"/>
+            <rect x="1620" y="118" width="4" height="4" fill="white"/>
+            <rect x="1880" y="105" width="4" height="4" fill="white"/>
+            {/* Moon */}
+            <rect id="plaza-moon" x="1640" y="50" width="48" height="48" fill="#FFFACD" opacity="0"/>
+          </g>
+
+          {/* Rain — hidden, handled by React overlays */}
+          <g id="plaza-rain" opacity={0}>
+            <rect x="40" y="0" width="4" height="40" fill="#88AACC" opacity="0.5"/>
+            <rect x="120" y="0" width="4" height="40" fill="#88AACC" opacity="0.5"/>
+            <rect x="200" y="0" width="4" height="40" fill="#88AACC" opacity="0.5"/>
+            <rect x="280" y="0" width="4" height="40" fill="#88AACC" opacity="0.5"/>
+            <rect x="360" y="0" width="4" height="40" fill="#88AACC" opacity="0.5"/>
+            <rect x="440" y="0" width="4" height="40" fill="#88AACC" opacity="0.5"/>
+            <rect x="520" y="0" width="4" height="40" fill="#88AACC" opacity="0.5"/>
+            <rect x="600" y="0" width="4" height="40" fill="#88AACC" opacity="0.5"/>
+            <rect x="680" y="0" width="4" height="40" fill="#88AACC" opacity="0.5"/>
+            <rect x="760" y="0" width="4" height="40" fill="#88AACC" opacity="0.5"/>
+            <rect x="840" y="0" width="4" height="40" fill="#88AACC" opacity="0.5"/>
+            <rect x="920" y="0" width="4" height="40" fill="#88AACC" opacity="0.5"/>
+            <rect x="1000" y="0" width="4" height="40" fill="#88AACC" opacity="0.5"/>
+            <rect x="1080" y="0" width="4" height="40" fill="#88AACC" opacity="0.5"/>
+            <rect x="1160" y="0" width="4" height="40" fill="#88AACC" opacity="0.5"/>
+            <rect x="1240" y="0" width="4" height="40" fill="#88AACC" opacity="0.5"/>
+            <rect x="1320" y="0" width="4" height="40" fill="#88AACC" opacity="0.5"/>
+            <rect x="1400" y="0" width="4" height="40" fill="#88AACC" opacity="0.5"/>
+            <rect x="1480" y="0" width="4" height="40" fill="#88AACC" opacity="0.5"/>
+            <rect x="1560" y="0" width="4" height="40" fill="#88AACC" opacity="0.5"/>
+            <rect x="1640" y="0" width="4" height="40" fill="#88AACC" opacity="0.5"/>
+            <rect x="1720" y="0" width="4" height="40" fill="#88AACC" opacity="0.5"/>
+            <rect x="1800" y="0" width="4" height="40" fill="#88AACC" opacity="0.5"/>
+            <rect x="1880" y="0" width="4" height="40" fill="#88AACC" opacity="0.5"/>
+          </g>
+
+          {/* Back grass */}
+          <rect y="556" width="1920" height="110" fill="#4A8F3A"/>
+          <rect y="556" width="1920" height="12" fill="#5AAF4A"/>
+
+          {/* Trees left */}
+          <rect x="360" y="420" width="34" height="246" fill="#3D5A2B"/>
+          <rect x="330" y="310" width="94" height="120" fill="#4D7A3B"/>
+          <rect x="344" y="268" width="66" height="54" fill="#5D8A4B"/>
+          <rect x="354" y="238" width="46" height="38" fill="#6D9A5B"/>
+          <rect x="560" y="400" width="38" height="266" fill="#3D5A2B"/>
+          <rect x="526" y="284" width="106" height="130" fill="#4D7A3B"/>
+          <rect x="540" y="240" width="78" height="54" fill="#5D8A4B"/>
+          <rect x="552" y="208" width="54" height="42" fill="#6D9A5B"/>
+
+          {/* Trees right */}
+          <rect x="1300" y="420" width="34" height="246" fill="#3D5A2B"/>
+          <rect x="1270" y="310" width="94" height="120" fill="#4D7A3B"/>
+          <rect x="1284" y="268" width="66" height="54" fill="#5D8A4B"/>
+          <rect x="1294" y="238" width="46" height="38" fill="#6D9A5B"/>
+          <rect x="1520" y="400" width="38" height="266" fill="#3D5A2B"/>
+          <rect x="1486" y="284" width="106" height="130" fill="#4D7A3B"/>
+          <rect x="1500" y="240" width="78" height="54" fill="#5D8A4B"/>
+          <rect x="1512" y="208" width="54" height="42" fill="#6D9A5B"/>
+
+          {/* Path */}
+          <rect y="660" width="1920" height="134" fill="#C8A87A"/>
+          <rect y="660" width="1920" height="8" fill="#D8B88A"/>
+          <rect x="0" y="694" width="1920" height="4" fill="#B89860" opacity="0.4"/>
+          <rect x="0" y="728" width="1920" height="4" fill="#B89860" opacity="0.4"/>
+          <rect x="0" y="762" width="1920" height="4" fill="#B89860" opacity="0.4"/>
+          <rect x="192" y="660" width="4" height="134" fill="#B89860" opacity="0.25"/>
+          <rect x="384" y="660" width="4" height="134" fill="#B89860" opacity="0.25"/>
+          <rect x="576" y="660" width="4" height="134" fill="#B89860" opacity="0.25"/>
+          <rect x="768" y="660" width="4" height="134" fill="#B89860" opacity="0.25"/>
+          <rect x="960" y="660" width="4" height="134" fill="#B89860" opacity="0.25"/>
+          <rect x="1152" y="660" width="4" height="134" fill="#B89860" opacity="0.25"/>
+          <rect x="1344" y="660" width="4" height="134" fill="#B89860" opacity="0.25"/>
+          <rect x="1536" y="660" width="4" height="134" fill="#B89860" opacity="0.25"/>
+          <rect x="1728" y="660" width="4" height="134" fill="#B89860" opacity="0.25"/>
+
+          {/* Fence */}
+          <rect y="638" width="1920" height="28" fill="#8B6914"/>
+          <rect y="632" width="1920" height="10" fill="#C4920A"/>
+          <rect x="0" y="590" width="18" height="58" fill="#8B6914"/>
+          <rect x="96" y="590" width="18" height="58" fill="#8B6914"/>
+          <rect x="192" y="590" width="18" height="58" fill="#8B6914"/>
+          <rect x="288" y="590" width="18" height="58" fill="#8B6914"/>
+          <rect x="384" y="590" width="18" height="58" fill="#8B6914"/>
+          <rect x="480" y="590" width="18" height="58" fill="#8B6914"/>
+          <rect x="576" y="590" width="18" height="58" fill="#8B6914"/>
+          <rect x="672" y="590" width="18" height="58" fill="#8B6914"/>
+          <rect x="768" y="590" width="18" height="58" fill="#8B6914"/>
+          <rect x="864" y="590" width="18" height="58" fill="#8B6914"/>
+          <rect x="960" y="590" width="18" height="58" fill="#8B6914"/>
+          <rect x="1056" y="590" width="18" height="58" fill="#8B6914"/>
+          <rect x="1152" y="590" width="18" height="58" fill="#8B6914"/>
+          <rect x="1248" y="590" width="18" height="58" fill="#8B6914"/>
+          <rect x="1344" y="590" width="18" height="58" fill="#8B6914"/>
+          <rect x="1440" y="590" width="18" height="58" fill="#8B6914"/>
+          <rect x="1536" y="590" width="18" height="58" fill="#8B6914"/>
+          <rect x="1632" y="590" width="18" height="58" fill="#8B6914"/>
+          <rect x="1728" y="590" width="18" height="58" fill="#8B6914"/>
+          <rect x="1824" y="590" width="18" height="58" fill="#8B6914"/>
+          <rect x="1900" y="590" width="18" height="58" fill="#8B6914"/>
+
+          {/* Lamp posts */}
+          <rect x="346" y="466" width="18" height="228" fill="#666"/>
+          <rect x="328" y="450" width="60" height="22" fill="#888"/>
+          <rect x="332" y="424" width="54" height="28" fill="#FFE87C" opacity="0.9"/>
+          <rect x="322" y="662" width="58" height="14" fill="#555"/>
+          <rect id="plaza-lamp-glow-1" x="296" y="420" width="130" height="80" fill="#FFE87C" opacity={isNight || weather === 'rain' || weather === 'thunder' ? 0.28 : 0}/>
+          <rect x="938" y="466" width="18" height="228" fill="#666"/>
+          <rect x="920" y="450" width="60" height="22" fill="#888"/>
+          <rect x="924" y="424" width="54" height="28" fill="#FFE87C" opacity="0.9"/>
+          <rect x="914" y="662" width="58" height="14" fill="#555"/>
+          <rect id="plaza-lamp-glow-2" x="888" y="420" width="130" height="80" fill="#FFE87C" opacity={isNight || weather === 'rain' || weather === 'thunder' ? 0.28 : 0}/>
+          <rect x="1530" y="466" width="18" height="228" fill="#666"/>
+          <rect x="1512" y="450" width="60" height="22" fill="#888"/>
+          <rect x="1516" y="424" width="54" height="28" fill="#FFE87C" opacity="0.9"/>
+          <rect x="1506" y="662" width="58" height="14" fill="#555"/>
+          <rect id="plaza-lamp-glow-3" x="1480" y="420" width="130" height="80" fill="#FFE87C" opacity={isNight || weather === 'rain' || weather === 'thunder' ? 0.28 : 0}/>
+
+          {/* Benches */}
+          <rect x="620" y="624" width="168" height="18" fill="#8B6914"/>
+          <rect x="616" y="618" width="176" height="10" fill="#C4920A"/>
+          <rect x="628" y="642" width="20" height="28" fill="#7A5A10"/>
+          <rect x="748" y="642" width="20" height="28" fill="#7A5A10"/>
+          <rect x="1124" y="624" width="168" height="18" fill="#8B6914"/>
+          <rect x="1120" y="618" width="176" height="10" fill="#C4920A"/>
+          <rect x="1132" y="642" width="20" height="28" fill="#7A5A10"/>
+          <rect x="1252" y="642" width="20" height="28" fill="#7A5A10"/>
+
+          {/* Flowers */}
+          <rect x="454" y="614" width="10" height="10" fill="#E63946"/>
+          <rect x="450" y="618" width="18" height="6" fill="#E63946"/>
+          <rect x="458" y="600" width="4" height="16" fill="#4A8F3A"/>
+          <rect x="840" y="612" width="10" height="10" fill="#FFE600"/>
+          <rect x="836" y="616" width="18" height="6" fill="#FFE600"/>
+          <rect x="844" y="598" width="4" height="16" fill="#4A8F3A"/>
+          <rect x="1090" y="614" width="10" height="10" fill="#A8DADC"/>
+          <rect x="1086" y="618" width="18" height="6" fill="#A8DADC"/>
+          <rect x="1094" y="600" width="4" height="16" fill="#4A8F3A"/>
+          <rect x="1480" y="612" width="10" height="10" fill="#F4A261"/>
+          <rect x="1476" y="616" width="18" height="6" fill="#F4A261"/>
+          <rect x="1484" y="598" width="4" height="16" fill="#4A8F3A"/>
+
+          {/* Front grass */}
+          <rect y="790" width="1920" height="290" fill="#3A7A2A"/>
+          <rect y="790" width="1920" height="14" fill="#4A8F3A"/>
+
+          {/* Front flowers */}
+          <rect x="140" y="814" width="10" height="10" fill="#E63946"/>
+          <rect x="136" y="818" width="18" height="6" fill="#E63946"/>
+          <rect x="144" y="800" width="4" height="16" fill="#3A7A2A"/>
+          <rect x="480" y="820" width="10" height="10" fill="#FFE600"/>
+          <rect x="476" y="824" width="18" height="6" fill="#FFE600"/>
+          <rect x="484" y="806" width="4" height="16" fill="#3A7A2A"/>
+          <rect x="960" y="814" width="10" height="10" fill="#A8DADC"/>
+          <rect x="956" y="818" width="18" height="6" fill="#A8DADC"/>
+          <rect x="964" y="800" width="4" height="16" fill="#3A7A2A"/>
+          <rect x="1440" y="820" width="10" height="10" fill="#E63946"/>
+          <rect x="1436" y="824" width="18" height="6" fill="#E63946"/>
+          <rect x="1444" y="806" width="4" height="16" fill="#3A7A2A"/>
+          <rect x="1780" y="814" width="10" height="10" fill="#FFE600"/>
+          <rect x="1776" y="818" width="18" height="6" fill="#FFE600"/>
+          <rect x="1784" y="800" width="4" height="16" fill="#3A7A2A"/>
+        </svg>
+
         <div className={styles.petCount}>🐾 {pets.length} PETS HERE</div>
 
         {/* Grey sky on rain/thunder */}
