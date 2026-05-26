@@ -168,6 +168,8 @@ export default function PlazaScene({ petData, onGoToRoom, isPremium, petSize }: 
   const [activeShouts, setActiveShouts] = useState<Record<string, { message: string; shoutId: string }>>({})
   const [likedShouts,  setLikedShouts]  = useState<Set<string>>(new Set())
   const [unlikedPets,  setUnlikedPets]  = useState<Set<string>>(new Set())
+  const [isNight, setIsNight]           = useState(() => { const h = new Date().getHours(); return h >= 22 || h < 6 })
+  const [weather, setWeather]           = useState<'clear' | 'rain' | 'thunder'>('rain')
 
   useEffect(() => {
     document.documentElement.style.backgroundImage = "url('/plaza-bg.svg')"
@@ -183,6 +185,16 @@ export default function PlazaScene({ petData, onGoToRoom, isPremium, petSize }: 
   useEffect(() => {
     const t = setTimeout(() => setOwnGlowing(false), 8000)
     return () => clearTimeout(t)
+  }, [])
+
+  useEffect(() => {
+    const id = setInterval(() => {
+      const r = Math.random()
+      if (r < 0.15) setWeather('thunder')
+      else if (r < 0.35) setWeather('rain')
+      else setWeather('clear')
+    }, 5 * 60 * 1000)
+    return () => clearInterval(id)
   }, [])
 
   useEffect(() => {
@@ -717,6 +729,46 @@ export default function PlazaScene({ petData, onGoToRoom, isPremium, petSize }: 
     <div className={styles.page}>
       <div className={styles.room} ref={roomRef} style={{ position: 'relative', zIndex: 1 }}>
         <div className={styles.petCount}>🐾 {pets.length} PETS HERE</div>
+
+        {/* Rain falling from sky */}
+        {(weather === 'rain' || weather === 'thunder') && (
+          <div style={{
+            position: 'absolute', inset: 0,
+            overflow: 'hidden',
+            pointerEvents: 'none', zIndex: 3,
+          }}>
+            {Array.from({ length: 60 }).map((_, i) => (
+              <div key={i} style={{
+                position: 'absolute',
+                left: `${(i * 1.7) % 100}%`,
+                top: '-5%',
+                width: '2px',
+                height: '18px',
+                background: 'rgba(174,214,241,0.6)',
+                animation: `plazaRainDrop ${0.5 + (i % 6) * 0.07}s linear ${(i * 0.05) % 0.6}s infinite`,
+                transform: 'rotate(12deg)',
+              }} />
+            ))}
+          </div>
+        )}
+
+        {/* Thunder flash */}
+        {weather === 'thunder' && (
+          <div style={{
+            position: 'absolute', inset: 0,
+            pointerEvents: 'none', zIndex: 4,
+            animation: 'thunderFlash 4s ease-in-out infinite',
+          }} />
+        )}
+
+        {/* Night overlay */}
+        {isNight && (
+          <div style={{
+            position: 'absolute', inset: 0,
+            background: 'rgba(10,20,60,0.45)',
+            pointerEvents: 'none', zIndex: 2,
+          }} />
+        )}
 
         {/* ── Airplane ads ── */}
         <div className={styles.skyLayer}>

@@ -376,8 +376,19 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange, isPremiu
   const petSize = Math.round(PET_SIZE_MIN + (growthPoints / 100) * (PET_SIZE_MAX - PET_SIZE_MIN))
 
   // ── Day / Night + Weekend ─────────────────────────────────
-  const [isNight,   setIsNight]   = useState(() => { const h = new Date().getHours(); return h >= 22 || h < 6 })
+  const [isNight,   setIsNight]   = useState(() => { const h = new Date().getHours(); return h >= 19 || h < 6 })
   const [isWeekend, setIsWeekend] = useState(() => { const d = new Date().getDay();   return d === 0 || d === 6 })
+
+  type Weather = 'clear' | 'rain' | 'thunder'
+  const [weather, setWeather] = useState<Weather>('rain')
+  useEffect(() => {
+    const pick = () => {
+      const r = Math.random()
+      setWeather(r < 0.6 ? 'clear' : r < 0.85 ? 'rain' : 'thunder')
+    }
+    const id = setInterval(pick, 60000)
+    return () => clearInterval(id)
+  }, [])
 
   useEffect(() => { statsRef.current = stats }, [stats])
 
@@ -1225,6 +1236,65 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange, isPremiu
 
         {/* Night overlay */}
         {isNight && <div className={styles.nightOverlay} />}
+
+        {/* Window: night sky with stars */}
+        {isNight && (
+          <div style={{
+            position: 'absolute', left: '14%', top: '9%',
+            width: '28%', height: '35%',
+            background: '#0a1428',
+            pointerEvents: 'none', zIndex: 2,
+          }}>
+            {/* Stars */}
+            {['15%','35%','55%','75%','25%','65%','45%','85%','10%','90%'].map((l, i) => (
+              <div key={i} style={{
+                position: 'absolute', left: l,
+                top: ['20%','45%','15%','60%','75%','30%','55%','10%','85%','40%'][i],
+                width: 3, height: 3, background: 'white',
+                borderRadius: 0,
+                opacity: Math.random() > 0.5 ? 1 : 0.6,
+              }} />
+            ))}
+            {/* Moon */}
+            <div style={{
+              position: 'absolute', right: '15%', top: '15%',
+              width: 20, height: 20, background: '#FFFACD',
+            }} />
+          </div>
+        )}
+
+        {/* Window: rain */}
+        {(weather === 'rain' || weather === 'thunder') && (
+          <div style={{
+            position: 'absolute',
+            left: '17%', top: '10%',
+            width: '22%', height: '38%',
+            overflow: 'hidden',
+            pointerEvents: 'none', zIndex: 2,
+          }}>
+            {Array.from({ length: 20 }).map((_, i) => (
+              <div key={i} style={{
+                position: 'absolute',
+                left: `${(i * 5.2) % 100}%`,
+                top: '-10%',
+                width: '2px',
+                height: '12px',
+                background: 'rgba(174,214,241,0.7)',
+                animation: `rainDrop ${0.4 + (i % 5) * 0.08}s linear ${(i * 0.07) % 0.5}s infinite`,
+                transform: 'rotate(10deg)',
+              }} />
+            ))}
+          </div>
+        )}
+
+        {/* Thunder flash (whole room) */}
+        {weather === 'thunder' && (
+          <div style={{
+            position: 'absolute', inset: 0,
+            pointerEvents: 'none', zIndex: 4,
+            animation: 'thunderFlash 3s ease-in-out infinite',
+          }} />
+        )}
 
         {/* Top-left: HUD */}
         <div className={styles.topLeft}>

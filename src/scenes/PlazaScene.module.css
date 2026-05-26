@@ -1,3 +1,15 @@
+:global(@keyframes plazaRainDrop) {
+  0%   { transform: rotate(12deg) translateY(0); opacity: 0; }
+  10%  { opacity: 1; }
+  90%  { opacity: 1; }
+  100% { transform: rotate(12deg) translateY(1400px); opacity: 0; }
+}
+
+@keyframes thunderFlash {
+  0%, 88%, 100% { background: rgba(255,255,255,0); }
+  90%, 94%      { background: rgba(255,255,255,0.5); }
+}
+
 .page {
   display: flex;
   flex-direction: column;
