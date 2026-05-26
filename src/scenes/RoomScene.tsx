@@ -1210,7 +1210,7 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange, isPremiu
 
   return (
     <div className={styles.page}>
-      <div className={styles.room} ref={roomRef}>
+      <div className={styles.room} ref={roomRef} style={{ position: 'relative', zIndex: 1 }}>
         <div style={{
           position: 'fixed',
           top: 0,
@@ -1220,7 +1220,7 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange, isPremiu
           backgroundImage: "url('/room-bg.svg')",
           backgroundSize: '100% 100%',
           backgroundRepeat: 'no-repeat',
-          zIndex: -1,
+          zIndex: 0,
           pointerEvents: 'none',
         }} />
 
