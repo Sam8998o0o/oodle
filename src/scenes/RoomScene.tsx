@@ -1296,6 +1296,12 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange, isPremiu
   }, [startBounce, showFloat])
 
   useEffect(() => {
+    if (!isSleeping) return
+    const id = setInterval(() => showFloat('💤'), 3000)
+    return () => clearInterval(id)
+  }, [isSleeping, showFloat])
+
+  useEffect(() => {
     window.addEventListener('mousemove', handleMouseMove)
     window.addEventListener('mouseup',   handleMouseUp)
     return () => {

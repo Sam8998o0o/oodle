@@ -223,6 +223,8 @@ export class PetAnimator {
     let blink = false
     if (state === 'sleep') {
       blink = false
+      this.isBlinking = false
+      this.blinkFrame = 0
     } else if (state === 'sad') {
       blink = true
     } else if (state === 'faint') {
