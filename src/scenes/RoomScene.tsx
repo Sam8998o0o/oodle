@@ -380,13 +380,15 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange, isPremiu
   const [isWeekend, setIsWeekend] = useState(() => { const d = new Date().getDay();   return d === 0 || d === 6 })
 
   type Weather = 'clear' | 'rain' | 'thunder'
-  const [weather, setWeather] = useState<Weather>('thunder')
+  const [weather, setWeather] = useState<Weather>('clear')
   useEffect(() => {
     const pick = () => {
       const r = Math.random()
-      setWeather(r < 0.6 ? 'clear' : r < 0.85 ? 'rain' : 'thunder')
+      if (r < 0.60) setWeather('clear')
+      else if (r < 0.85) setWeather('rain')
+      else setWeather('thunder')
     }
-    const id = setInterval(pick, 60000)
+    const id = setInterval(pick, 20 * 60 * 1000)
     return () => clearInterval(id)
   }, [])
 

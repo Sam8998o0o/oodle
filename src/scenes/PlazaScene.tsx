@@ -169,7 +169,7 @@ export default function PlazaScene({ petData, onGoToRoom, isPremium, petSize }: 
   const [likedShouts,  setLikedShouts]  = useState<Set<string>>(new Set())
   const [unlikedPets,  setUnlikedPets]  = useState<Set<string>>(new Set())
   const [isNight]                       = useState(() => { const h = new Date().getHours(); return h >= 22 || h < 6 })
-  const [weather, setWeather]           = useState<'clear' | 'rain' | 'thunder'>('thunder')
+  const [weather, setWeather]           = useState<'clear' | 'rain' | 'thunder'>('clear')
 
   useEffect(() => {
     document.documentElement.style.backgroundImage = "url('/plaza-bg.svg')"
@@ -188,12 +188,13 @@ export default function PlazaScene({ petData, onGoToRoom, isPremium, petSize }: 
   }, [])
 
   useEffect(() => {
-    const id = setInterval(() => {
+    const pick = () => {
       const r = Math.random()
-      if (r < 0.15) setWeather('thunder')
-      else if (r < 0.35) setWeather('rain')
-      else setWeather('clear')
-    }, 5 * 60 * 1000)
+      if (r < 0.60) setWeather('clear')
+      else if (r < 0.85) setWeather('rain')
+      else setWeather('thunder')
+    }
+    const id = setInterval(pick, 20 * 60 * 1000)
     return () => clearInterval(id)
   }, [])
 
