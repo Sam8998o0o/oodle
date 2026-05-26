@@ -170,6 +170,19 @@ export default function PlazaScene({ petData, onGoToRoom, isPremium, petSize }: 
   const [unlikedPets,  setUnlikedPets]  = useState<Set<string>>(new Set())
 
   useEffect(() => {
+    document.body.style.backgroundImage = "url('/plaza-bg.svg')"
+    document.body.style.backgroundSize = '100% 100%'
+    document.body.style.backgroundRepeat = 'no-repeat'
+    document.body.style.backgroundAttachment = 'fixed'
+    return () => {
+      document.body.style.backgroundImage = ''
+      document.body.style.backgroundSize = ''
+      document.body.style.backgroundRepeat = ''
+      document.body.style.backgroundAttachment = ''
+    }
+  }, [])
+
+  useEffect(() => {
     const t = setTimeout(() => setOwnGlowing(false), 8000)
     return () => clearTimeout(t)
   }, [])
@@ -705,18 +718,6 @@ export default function PlazaScene({ petData, onGoToRoom, isPremium, petSize }: 
   return (
     <div className={styles.page}>
       <div className={styles.room} ref={roomRef} style={{ position: 'relative', zIndex: 1 }}>
-        <div style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          width: '100vw',
-          height: '100vh',
-          backgroundImage: "url('/plaza-bg.svg')",
-          backgroundSize: '100% 100%',
-          backgroundRepeat: 'no-repeat',
-          zIndex: 0,
-          pointerEvents: 'none',
-        }} />
         <div className={styles.petCount}>🐾 {pets.length} PETS HERE</div>
 
         {/* ── Airplane ads ── */}

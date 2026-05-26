@@ -209,6 +209,19 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange, isPremiu
   const [bubbles,      setBubbles]      = useState<{ id: number; x: number; y: number; vx: number; vy: number }[]>([])
   const [blowCooldown, setBlowCooldown] = useState(false)
   const bubblesRef = useRef<{ id: number; x: number; y: number; vx: number; vy: number }[]>([])
+  useEffect(() => {
+    document.body.style.backgroundImage = "url('/room-bg.svg')"
+    document.body.style.backgroundSize = '100% 100%'
+    document.body.style.backgroundRepeat = 'no-repeat'
+    document.body.style.backgroundAttachment = 'fixed'
+    return () => {
+      document.body.style.backgroundImage = ''
+      document.body.style.backgroundSize = ''
+      document.body.style.backgroundRepeat = ''
+      document.body.style.backgroundAttachment = ''
+    }
+  }, [])
+
   useEffect(() => { bubblesRef.current = bubbles }, [bubbles])
 
   // ── Teach Trick ────────────────────────────────────────────
@@ -1211,18 +1224,6 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange, isPremiu
   return (
     <div className={styles.page}>
       <div className={styles.room} ref={roomRef} style={{ position: 'relative', zIndex: 1 }}>
-        <div style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          width: '100vw',
-          height: '100vh',
-          backgroundImage: "url('/room-bg.svg')",
-          backgroundSize: '100% 100%',
-          backgroundRepeat: 'no-repeat',
-          zIndex: 0,
-          pointerEvents: 'none',
-        }} />
 
         {/* Night overlay */}
         {isNight && <div className={styles.nightOverlay} />}
