@@ -115,7 +115,7 @@
 /* ── pet wrapper ──────────────────────────────────────── */
 .petWrapper {
   position: absolute;
-  bottom: 22%;
+  bottom: 10%;
   width: 100px;
   height: 100px;
   background: transparent;
