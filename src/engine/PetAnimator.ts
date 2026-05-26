@@ -81,7 +81,7 @@ export class PetAnimator {
     this.state = s
     if (s === 'play')  { this.isJumping = true; this.jumpCount = 0; this.jumpF = 0 }
     if (s === 'eat')   { this.nodF = 0 }
-    if (s === 'sleep') { this.isBlinking = false; this.blinkFrame = 0 }
+    if (s === 'sleep') { this.isBlinking = false; this.blinkFrame = 0; this.blinkCountdown = 210 }
     if (prev === 'sleep' && s !== 'sleep') { /* nothing extra needed */ }
     if (s === 'sad')   { this.sadF = 0 }
     if (s === 'walk')  { this.walkF = 0 }
@@ -228,16 +228,18 @@ export class PetAnimator {
     } else if (state === 'faint') {
       blink = false  // eye_x shows open X eyes
     } else {
-      this.blinkCountdown--
-      if (this.blinkCountdown <= 0) {
-        this.isBlinking    = true
-        this.blinkFrame    = 0
-        this.blinkCountdown = 180 + Math.round((Math.random() - 0.5) * 120)
-      }
-      if (this.isBlinking) {
-        this.blinkFrame++
-        blink = this.blinkFrame <= 6
-        if (this.blinkFrame > 6) this.isBlinking = false
+      if (this.state !== 'sleep' && this.state !== 'faint') {
+        this.blinkCountdown--
+        if (this.blinkCountdown <= 0) {
+          this.isBlinking    = true
+          this.blinkFrame    = 0
+          this.blinkCountdown = 180 + Math.round((Math.random() - 0.5) * 120)
+        }
+        if (this.isBlinking) {
+          this.blinkFrame++
+          blink = this.blinkFrame <= 6
+          if (this.blinkFrame > 6) this.isBlinking = false
+        }
       }
     }
 
