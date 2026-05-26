@@ -382,6 +382,7 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange, isPremiu
   // ── Day / Night + Weekend ─────────────────────────────────
   const [isNight,   setIsNight]   = useState(() => { const h = new Date().getHours(); return h >= 19 || h < 6 })
   const [isWeekend, setIsWeekend] = useState(() => { const d = new Date().getDay();   return d === 0 || d === 6 })
+  const [winPos, setWinPos] = useState({ left: 0, top: 0, width: 0, height: 0 })
 
   type Weather = 'clear' | 'rain' | 'thunder'
   const [weather, setWeather] = useState<Weather>('clear')
@@ -601,11 +602,31 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange, isPremiu
   useEffect(() => {
     const tick = () => {
       const now = new Date()
-      setIsNight(now.getHours() >= 22 || now.getHours() < 6)
+      setIsNight(now.getHours() >= 19 || now.getHours() < 6)
       setIsWeekend(now.getDay() === 0 || now.getDay() === 6)
     }
     const id = setInterval(tick, 60000)
     return () => clearInterval(id)
+  }, [])
+
+  // ── Window overlay position (SVG-coord based) ─────────────
+  useEffect(() => {
+    const el = roomRef.current
+    if (!el) return
+    const calc = () => {
+      const rw = el.offsetWidth
+      const rh = el.offsetHeight
+      setWinPos({
+        left:   (320 / 1920) * rw,
+        top:    (108 / 1080) * (rh + 60),
+        width:  ((760 - 320) / 1920) * rw,
+        height: ((512 - 108) / 1080) * (rh + 60),
+      })
+    }
+    calc()
+    const ro = new ResizeObserver(calc)
+    ro.observe(el)
+    return () => ro.disconnect()
   }, [])
 
   // ── Night → force sleep ───────────────────────────────────
@@ -1317,9 +1338,9 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange, isPremiu
         {/* Window: night sky with stars */}
         {isNight && (
           <div style={{
-            position: 'absolute', left: '14%', top: '9%',
-            width: '28%', height: '35%',
-            background: '#0a1428',
+            position: 'absolute', left: winPos.left, top: winPos.top,
+            width: winPos.width, height: winPos.height,
+            background: 'rgba(5, 10, 35, 0.82)',
             pointerEvents: 'none', zIndex: 2,
           }}>
             {/* Stars */}
@@ -1344,8 +1365,8 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange, isPremiu
         {(weather === 'rain' || weather === 'thunder') && (
           <div style={{
             position: 'absolute',
-            left: '17%', top: '8%',
-            width: '22%', height: '44%',
+            left: winPos.left, top: winPos.top,
+            width: winPos.width, height: winPos.height,
             background: 'rgba(80,90,100,0.45)',
             pointerEvents: 'none', zIndex: 1,
           }} />
@@ -1379,8 +1400,8 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange, isPremiu
         {weather === 'thunder' && (
           <div style={{
             position: 'absolute',
-            left: '17%', top: '8%',
-            width: '22%', height: '44%',
+            left: winPos.left, top: winPos.top,
+            width: winPos.width, height: winPos.height,
             overflow: 'hidden',
             pointerEvents: 'none', zIndex: 4,
           }}>
