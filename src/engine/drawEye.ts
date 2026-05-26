@@ -39,9 +39,7 @@ export function drawEye(
       break
     }
     case 'eye_sleepy': {
-      // Horizontal line + lower drooping half
       dot(0, -2); dot(0, -1); dot(0, 0); dot(0, 1); dot(0, 2)
-      dot(1, -1); dot(1, 0); dot(1, 1)
       break
     }
     case 'eye_star': {
