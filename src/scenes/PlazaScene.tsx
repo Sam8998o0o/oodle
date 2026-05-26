@@ -170,9 +170,13 @@ export default function PlazaScene({ petData, onGoToRoom, isPremium, petSize }: 
   const [unlikedPets,  setUnlikedPets]  = useState<Set<string>>(new Set())
 
   useEffect(() => {
-    document.documentElement.classList.add('plaza-scene')
+    document.documentElement.style.backgroundImage = "url('/plaza-bg.svg')"
+    document.documentElement.style.backgroundSize = '100vw 100vh'
+    document.documentElement.style.backgroundRepeat = 'no-repeat'
     return () => {
-      document.documentElement.classList.remove('plaza-scene')
+      document.documentElement.style.backgroundImage = ''
+      document.documentElement.style.backgroundSize = ''
+      document.documentElement.style.backgroundRepeat = ''
     }
   }, [])
 

@@ -210,9 +210,13 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange, isPremiu
   const [blowCooldown, setBlowCooldown] = useState(false)
   const bubblesRef = useRef<{ id: number; x: number; y: number; vx: number; vy: number }[]>([])
   useEffect(() => {
-    document.documentElement.classList.add('room-scene')
+    document.documentElement.style.backgroundImage = "url('/room-bg.svg')"
+    document.documentElement.style.backgroundSize = '100vw 100vh'
+    document.documentElement.style.backgroundRepeat = 'no-repeat'
     return () => {
-      document.documentElement.classList.remove('room-scene')
+      document.documentElement.style.backgroundImage = ''
+      document.documentElement.style.backgroundSize = ''
+      document.documentElement.style.backgroundRepeat = ''
     }
   }, [])
 

@@ -27,12 +27,25 @@
   box-sizing: border-box;
 }
 
+html, body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  overflow-x: hidden;
+}
+
+html {
+  background-size: 100vw 100vh;
+}
+
+body, #root {
+  background: transparent;
+}
+
 body {
   background: var(--color-bg);
   color: var(--color-text);
   font-family: var(--font-pixel);
-  margin: 0;
-  padding: 0;
   image-rendering: pixelated;
 }
 
@@ -64,16 +77,3 @@ button:disabled {
   cursor: not-allowed;
 }
 
-html.room-scene {
-  background-image: url('/room-bg.svg');
-  background-size: 100vw 100vh;
-  background-attachment: fixed;
-  background-repeat: no-repeat;
-}
-
-html.plaza-scene {
-  background-image: url('/plaza-bg.svg');
-  background-size: 100vw 100vh;
-  background-attachment: fixed;
-  background-repeat: no-repeat;
-}
