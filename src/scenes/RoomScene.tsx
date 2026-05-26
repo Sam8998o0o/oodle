@@ -682,7 +682,8 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange, isPremiu
 
     const walk = () => {
       if (!mounted) return
-      if (statsRef.current.energy > 0 && !isFaintedRef.current && !isDizzyRef.current && !isSleepingRef.current && !isBusyRef.current) {
+      if (isSleepingRef.current) { walkRafRef.current = requestAnimationFrame(walk); return }
+      if (statsRef.current.energy > 0 && !isFaintedRef.current && !isDizzyRef.current && !isBusyRef.current) {
         const maxX = room.offsetWidth - petSize
         const chasing = bubblesRef.current.length > 0
         if (chasing) {
@@ -728,7 +729,7 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange, isPremiu
       if (!wrapper || !canvas || !room) return
 
       cancelAnimationFrame(walkRafRef.current)
-      animatorRef.current?.setState('walk')
+      if (!isSleepingRef.current) animatorRef.current?.setState('walk')
 
       const targetX = room.offsetWidth * 0.85 - petSize / 2
       canvas.style.transform = 'none'
@@ -802,7 +803,7 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange, isPremiu
       setLearningTrick(trickId)
       setLearningStep(1)
       isBusyRef.current = true
-      animatorRef.current?.setState('eat')
+      if (!isSleepingRef.current) animatorRef.current?.setState('eat')
       showBubble("I'm learning... 📚")
       setShowTeachMenu(false)
       setShowPlay(false)
@@ -813,7 +814,7 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange, isPremiu
       learningTimerRef.current = setTimeout(() => {
         setLearningStep(2)
         isBusyRef.current = false
-        animatorRef.current?.setState('idle')
+        if (!isSleepingRef.current) animatorRef.current?.setState('idle')
         learningTimerRef.current = null
       }, 20000)
       return
@@ -824,14 +825,14 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange, isPremiu
 
     if (trickId === 'drawing' && learningStep === 2) {
       isBusyRef.current = true
-      animatorRef.current?.setState('eat')
+      if (!isSleepingRef.current) animatorRef.current?.setState('eat')
       showBubble('Practice 2/3! ✏️')
       setLearningStep(3)
       const floatInterval2 = setInterval(() => showFloat('🎨'), 1500)
       setTimeout(() => {
         clearInterval(floatInterval2)
         isBusyRef.current = false
-        animatorRef.current?.setState('idle')
+        if (!isSleepingRef.current) animatorRef.current?.setState('idle')
         setLearningStep(4)
         showBubble('One more time! 🎨')
       }, 20000)
@@ -839,14 +840,14 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange, isPremiu
     }
     if (trickId === 'drawing' && learningStep === 4) {
       isBusyRef.current = true
-      animatorRef.current?.setState('eat')
+      if (!isSleepingRef.current) animatorRef.current?.setState('eat')
       showBubble('Practice 3/3! ✏️')
       setLearningStep(5)
       const floatInterval3 = setInterval(() => showFloat('🎨'), 1500)
       setTimeout(async () => {
         clearInterval(floatInterval3)
         isBusyRef.current = false
-        animatorRef.current?.setState('idle')
+        if (!isSleepingRef.current) animatorRef.current?.setState('idle')
         setLearningStep(6)
         showBubble('I learned to draw! 🎨')
         if (pendingDrawingRef.current) {
@@ -864,7 +865,7 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange, isPremiu
     if (learningStep === 2) {
       setLearningStep(3)
       isBusyRef.current = true
-      animatorRef.current?.setState('eat')
+      if (!isSleepingRef.current) animatorRef.current?.setState('eat')
       showBubble('Almost there... 💪')
       const emojis3: Record<string, string> = { sing: '🎵', dance: '💃', magic: '✨', drawing: '🎨' }
       const floatEmoji3 = emojis3[trickId] ?? '⭐'
@@ -873,7 +874,7 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange, isPremiu
       learningTimerRef.current = setTimeout(() => {
         setLearningStep(4)
         isBusyRef.current = false
-        animatorRef.current?.setState('idle')
+        if (!isSleepingRef.current) animatorRef.current?.setState('idle')
         learningTimerRef.current = null
       }, 20000)
       return
@@ -883,7 +884,7 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange, isPremiu
     if (learningStep === 4) {
       setLearningStep(5)
       isBusyRef.current = true
-      animatorRef.current?.setState('eat')
+      if (!isSleepingRef.current) animatorRef.current?.setState('eat')
       showBubble('I got it! ⭐')
       const emojis5: Record<string, string> = { sing: '🎵', dance: '💃', magic: '✨', drawing: '🎨' }
       const floatEmoji5 = emojis5[trickId] ?? '⭐'
@@ -898,7 +899,7 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange, isPremiu
         setLearningTrick(null)
         setLearningStep(6)
         isBusyRef.current = false
-        animatorRef.current?.setState('idle')
+        if (!isSleepingRef.current) animatorRef.current?.setState('idle')
         learningTimerRef.current = null
       }, 20000)
     }
@@ -911,14 +912,14 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange, isPremiu
     pendingDrawingRef.current = dataURL
     setShowDrawCanvas(false)
     isBusyRef.current = true
-    animatorRef.current?.setState('eat')
+    if (!isSleepingRef.current) animatorRef.current?.setState('eat')
     showBubble('Practice 1/3! ✏️')
     setLearningStep(1)
     const floatInterval1 = setInterval(() => showFloat('🎨'), 1500)
     setTimeout(() => {
       clearInterval(floatInterval1)
       isBusyRef.current = false
-      animatorRef.current?.setState('idle')
+      if (!isSleepingRef.current) animatorRef.current?.setState('idle')
       setLearningStep(2)
       showBubble('Keep going! 🎨')
     }, 20000)
@@ -1000,7 +1001,7 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange, isPremiu
         for (let i = 0; i < 3; i++) setTimeout(() => showFloat('🎵'), i * 400)
       } else if (trick === 'dance') {
         showBubble('💃 Watch me!')
-        animatorRef.current?.setState('dance')
+        if (!isSleepingRef.current) animatorRef.current?.setState('dance')
       } else if (trick === 'magic') {
         showBubble('✨ Ta-da!')
         const wrapper = petWrapperRef.current
@@ -1099,14 +1100,14 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange, isPremiu
     })
     showFloat('🍖')
     showBubble(pick(FEED_LINES))
-    animatorRef.current?.setState('eat')
+    if (!isSleepingRef.current) animatorRef.current?.setState('eat')
 
     // Recover from faint
     if (isFaintedRef.current) {
       isFaintedRef.current = false
       setIsFainted(false)
     }
-    setTimeout(() => animatorRef.current?.setState('walk'), 2000)
+    setTimeout(() => { if (!isSleepingRef.current) animatorRef.current?.setState('walk') }, 2000)
   }, [todayEats, smallFood, bigFood, showFloat, showBubble])
 
   // ── Pinch / drag / throw ─────────────────────────────────
@@ -1142,7 +1143,7 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange, isPremiu
         ny  = floor - PET_W
         pvy = -Math.abs(pvy) * BOUNCE
         pvx *= FRICTION
-        animatorRef.current?.setState('squish')
+        if (!isSleepingRef.current) animatorRef.current?.setState('squish')
         if (Math.abs(pvy) < 1) pvy = 0
       }
       if (nx < 0)             { nx = 0;           pvx =  Math.abs(pvx) * BOUNCE }
@@ -1164,12 +1165,12 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange, isPremiu
           // Trigger dizzy NOW after bounce settles
           isDizzyRef.current = true
           setIsDizzy(true)
-          animatorRef.current?.setState('dizzy')
+          if (!isSleepingRef.current) animatorRef.current?.setState('dizzy')
           setTimeout(() => {
             isDizzyRef.current    = false
             throwCountRef.current = 0
             setIsDizzy(false)
-            animatorRef.current?.setState('walk')
+            if (!isSleepingRef.current) animatorRef.current?.setState('walk')
             // Resume walk loop
             const canvas = petCanvasRef.current
             if (canvas) {
@@ -1188,7 +1189,7 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange, isPremiu
           }, 15000)
         } else {
           // Resume normal walk
-          animatorRef.current?.setState('walk')
+          if (!isSleepingRef.current) animatorRef.current?.setState('walk')
           const canvas = petCanvasRef.current
           if (canvas) {
             walkDirRef.current = 1
@@ -1247,7 +1248,7 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange, isPremiu
       isDraggingRef.current  = true
       cancelAnimationFrame(walkRafRef.current)
       cancelAnimationFrame(throwRafRef.current)
-      animatorRef.current?.setState('squish')
+      if (!isSleepingRef.current) animatorRef.current?.setState('squish')
       const rect = wrapper.getBoundingClientRect()
       dragOffsetRef.current = { x: e.clientX - rect.left, y: e.clientY - rect.top }
       lastPosRef.current    = { x: e.clientX, y: e.clientY }
@@ -1277,10 +1278,10 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange, isPremiu
     if (!isDraggingRef.current) {
       // Only scratch if click originated on the pet
       if (isPetClickRef.current && !isDizzyRef.current) {
-        animatorRef.current?.setState('squish')
+        if (!isSleepingRef.current) animatorRef.current?.setState('squish')
         setStats(s => ({ ...s, happy: Math.min(100, s.happy + 10) }))
         showFloat('⭐')
-        setTimeout(() => animatorRef.current?.setState('walk'), 600)
+        setTimeout(() => { if (!isSleepingRef.current) animatorRef.current?.setState('walk') }, 600)
       }
       isPetClickRef.current = false
       return
