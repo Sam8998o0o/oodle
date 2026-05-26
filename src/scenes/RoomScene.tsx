@@ -1216,7 +1216,7 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange, isPremiu
     if (clickResetTimerRef.current) clearTimeout(clickResetTimerRef.current)
     clickResetTimerRef.current = setTimeout(() => { clickCountRef.current = 0 }, 2000)
 
-    if (clickCountRef.current >= 5) {
+    if (clickCountRef.current >= 5 && !isSleepingRef.current) {
       showBubble('Hehe! 🤭')
       setStats((prev: PetStats) => ({ ...prev, happy: Math.min(100, prev.happy + 2) }))
       clickCountRef.current = 0
@@ -1228,22 +1228,12 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange, isPremiu
 
     if (isDizzyRef.current || isFaintedRef.current) return
 
-    // Wake up if sleeping and energy >= 30
-    if (isSleepingRef.current) {
-      if (statsRef.current.energy >= 30) {
-        isSleepingRef.current = false
-        setIsSleeping(false)
-        setBubble(null)
-        const wrapper = petWrapperRef.current
-        if (wrapper) {
-          wrapper.style.left      = `${walkXRef.current}px`
-          wrapper.style.transform = ''
-        }
-        animatorRef.current?.setState('walk')
-        showBubble('Good morning! 🌞')
-      } else {
-        showBubble('Still sleepy... 😴')
-      }
+    // Wake up only if energy >= 30; too tired → do nothing
+    if (isSleepingRef.current && statsRef.current.energy < 30) return
+    if (isSleepingRef.current && statsRef.current.energy >= 30) {
+      isSleepingRef.current = false
+      setIsSleeping(false)
+      animatorRef.current?.setState('idle')
       return
     }
     const wrapper = petWrapperRef.current
