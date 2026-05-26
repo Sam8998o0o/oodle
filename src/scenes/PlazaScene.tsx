@@ -168,7 +168,7 @@ export default function PlazaScene({ petData, onGoToRoom, isPremium, petSize }: 
   const [activeShouts, setActiveShouts] = useState<Record<string, { message: string; shoutId: string }>>({})
   const [likedShouts,  setLikedShouts]  = useState<Set<string>>(new Set())
   const [unlikedPets,  setUnlikedPets]  = useState<Set<string>>(new Set())
-  const [isNight, setIsNight]           = useState(() => { const h = new Date().getHours(); return h >= 22 || h < 6 })
+  const [isNight]                       = useState(() => { const h = new Date().getHours(); return h >= 22 || h < 6 })
   const [weather, setWeather]           = useState<'clear' | 'rain' | 'thunder'>('rain')
 
   useEffect(() => {
