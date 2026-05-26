@@ -18,6 +18,12 @@ export function drawEye(
     ctx.fillRect(Math.round(cx + c * p), Math.round(cy + r * p), p, p)
   }
 
+  if (style === 'eye_sleepy') {
+    // Force draw straight line, ignore blink parameter
+    for (let c = -2; c <= 2; c++) dot(0, c)
+    return
+  }
+
   if (blink) {
     for (let c = -2; c <= 2; c++) dot(0, c)
     return
