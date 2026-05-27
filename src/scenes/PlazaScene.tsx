@@ -140,6 +140,7 @@ export default function PlazaScene({ petData, onGoToRoom, isPremium, petSize }: 
   const walkerMap  = useRef(new Map<string, Walker>())
   const rafRef     = useRef(0)
   const petSizeRef = useRef(petSize)
+  const performingPets = useRef<Set<string>>(new Set())
 
   // Queue of pets waiting to be spawned (DOM not ready yet when pets state updates)
   const spawnQueue = useRef<PlazaPet[]>([])
@@ -438,6 +439,7 @@ export default function PlazaScene({ petData, onGoToRoom, isPremium, petSize }: 
 
       // Move all walkers
       walkerMap.current.forEach((w, id) => {
+        if (performingPets.current.has(id)) return
         const wr = wrapperMap.current.get(id)
         const cv = canvasMap.current.get(id)
         if (!wr || !cv) return
@@ -572,13 +574,53 @@ export default function PlazaScene({ petData, onGoToRoom, isPremium, petSize }: 
 
       let text = ''
       let drawing: string | undefined
-      if (pet.talent === 'sing')  text = '🎵 La la la~'
+      if (pet.talent === 'sing') {
+        performingPets.current.add(pet.id)
+        setPlazaShows(prev => ({ ...prev, [pet.id]: { text: '🎵 La la la~' } }))
+        setTimeout(() => {
+          setPlazaShows(prev => { const next = { ...prev }; delete next[pet.id]; return next })
+          performingPets.current.delete(pet.id)
+        }, 10000)
+        return
+      }
       else if (pet.talent === 'dance') {
         text = '💃 Watch me!'
         const anim = animMap.current.get(pet.id)
         if (anim) anim.setState('dance')
       }
-      else if (pet.talent === 'magic') text = '✨ Ta-da!'
+      else if (pet.talent === 'magic') {
+        const anim = animMap.current.get(pet.id)
+        const walker = walkerMap.current.get(pet.id)
+        if (!walker) return
+        performingPets.current.add(pet.id)
+
+        // Pet disappears
+        if (anim) anim.setState('idle')
+        const canvas = canvasMap.current.get(pet.id)
+        if (canvas) canvas.style.opacity = '0'
+
+        // After 4 seconds, reappear at random position
+        setTimeout(() => {
+          // Move to random position
+          const newX = Math.random() * (window.innerWidth - 100)
+          walker.x = newX
+          const wrapper = wrapperMap.current.get(pet.id)
+          if (wrapper) wrapper.style.left = `${newX}px`
+
+          // Reappear
+          if (canvas) canvas.style.opacity = '1'
+          if (anim) anim.setState('walk')
+
+          // Show tada bubble after reappear
+          setTimeout(() => {
+            setPlazaShows(prev => ({ ...prev, [pet.id]: { text: '✨ Ta-da!' } }))
+            setTimeout(() => {
+              setPlazaShows(prev => { const next = { ...prev }; delete next[pet.id]; return next })
+              performingPets.current.delete(pet.id)
+            }, 3000)
+          }, 500)
+        }, 4000)
+      }
       else if (pet.talent === 'drawing' && pet.talent_drawing) {
         const walker = walkerMap.current.get(pet.id)
         const petX = walker ? walker.x : window.innerWidth / 2
@@ -587,11 +629,13 @@ export default function PlazaScene({ petData, onGoToRoom, isPremium, petSize }: 
         setPlazaShows(prev => ({ ...prev, [pet.id]: { text: '🎨 Watch me draw!', drawing: pet.talent_drawing } }))
         const anim = animMap.current.get(pet.id)
         if (anim) anim.setState('draw')
+        performingPets.current.add(pet.id)
         setTimeout(() => {
           setDrawingPerformance(null)
           setPlazaShows(prev => { const next = { ...prev }; delete next[pet.id]; return next })
           const a = animMap.current.get(pet.id)
           if (a) a.setState('walk')
+          performingPets.current.delete(pet.id)
         }, 8000)
         return
       } else if (pet.talent_drawing) {
@@ -600,12 +644,16 @@ export default function PlazaScene({ petData, onGoToRoom, isPremium, petSize }: 
       }
       if (!text) return
 
+      performingPets.current.add(pet.id)
       setPlazaShows(prev => ({ ...prev, [pet.id]: { text, drawing } }))
-      setTimeout(() => setPlazaShows(prev => {
-        const next = { ...prev }
-        delete next[pet.id]
-        return next
-      }), 4000)
+      setTimeout(() => {
+        setPlazaShows(prev => {
+          const next = { ...prev }
+          delete next[pet.id]
+          return next
+        })
+        performingPets.current.delete(pet.id)
+      }, 4000)
     }, 45000)
     return () => clearInterval(interval)
   }, [])
