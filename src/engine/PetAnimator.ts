@@ -173,14 +173,39 @@ export class PetAnimator {
       }
       case 'dance': {
         this.danceF++
-        // Left-right sway every 8 frames ±12px
-        translateX = Math.floor(this.danceF / 8) % 2 === 0 ? 12 : -12
-        // Squish on every other beat (every 16 frames)
-        const beat = Math.floor(this.danceF / 8) % 4
-        scaleY = beat === 1 || beat === 3 ? 0.85 : 1
-        translateY = scaleY < 1 ? Math.round(size * 0.05) : 0
-        // After 48 frames (6 beats), return to idle
-        if (this.danceF >= 48) { this.danceF = 0; this.setState('idle') }
+        const fps = 60
+        const totalFrames = fps * 10 // 10 seconds
+
+        if (this.danceF <= fps * 3) {
+          // Phase 1 (0-3s): Spin in circles - rotate position in a circle
+          const angle = (this.danceF / (fps * 3)) * Math.PI * 4 // 2 full circles
+          translateX = Math.round(Math.sin(angle) * 16)
+          translateY = Math.round(-Math.abs(Math.cos(angle)) * 8)
+          scaleX = 1 + Math.abs(Math.sin(angle)) * 0.1
+          scaleY = 0.9 + Math.abs(Math.cos(angle)) * 0.1
+
+        } else if (this.danceF <= fps * 6) {
+          // Phase 2 (3-6s): Jump up and down
+          const jumpF = this.danceF - fps * 3
+          const jumpCycle = (jumpF % 30) / 30
+          translateY = jumpCycle < 0.5
+            ? Math.round(-Math.sin(jumpCycle * Math.PI * 2) * 18)
+            : 0
+          scaleY = translateY < -5 ? 1.1 : (translateY === 0 ? 0.85 : 1)
+          translateX = Math.floor(this.danceF / 15) % 2 === 0 ? 4 : -4
+
+        } else if (this.danceF <= totalFrames) {
+          // Phase 3 (6-10s): Left right sway with squish
+          translateX = Math.floor(this.danceF / 8) % 2 === 0 ? 14 : -14
+          const beat = Math.floor(this.danceF / 8) % 4
+          scaleY = beat === 1 || beat === 3 ? 0.82 : 1
+          translateY = scaleY < 1 ? Math.round(size * 0.07) : 0
+        }
+
+        if (this.danceF >= totalFrames) {
+          this.danceF = 0
+          this.setState('walk')
+        }
         break
       }
       case 'draw': {
