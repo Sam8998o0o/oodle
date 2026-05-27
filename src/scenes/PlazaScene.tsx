@@ -172,6 +172,7 @@ export default function PlazaScene({ petData, onGoToRoom, isPremium, petSize }: 
   const [likedShouts,  setLikedShouts]  = useState<Set<string>>(new Set())
   const [unlikedPets,  setUnlikedPets]  = useState<Set<string>>(new Set())
   const [isNight, setIsNight]           = useState(() => { const h = new Date().getHours(); return h >= 19 || h < 6 })
+  const [shootingStar, setShootingStar] = useState(false)
   const [weather, setWeather]           = useState<'clear' | 'rain' | 'thunder'>('clear')
 
   useEffect(() => {
@@ -216,6 +217,16 @@ export default function PlazaScene({ petData, onGoToRoom, isPremium, petSize }: 
     }, 60000)
     return () => clearInterval(id)
   }, [])
+
+  // ── Shooting star (every 15s at night) ───────────────────
+  useEffect(() => {
+    if (!isNight) return
+    const id = setInterval(() => {
+      setShootingStar(true)
+      setTimeout(() => setShootingStar(false), 1500)
+    }, 60000)
+    return () => clearInterval(id)
+  }, [isNight])
 
   // ── Shout: load today's count on mount ────────────────────
   useEffect(() => {
@@ -753,6 +764,45 @@ export default function PlazaScene({ petData, onGoToRoom, isPremium, petSize }: 
   return (
     <div className={styles.page}>
       <div className={styles.room} ref={roomRef} style={{ position: 'relative', zIndex: 1 }}>
+
+        {isNight && (
+          <div style={{
+            position: 'absolute', top: 0, left: 0,
+            width: '100%', height: '52%',
+            pointerEvents: 'none', zIndex: 6,
+            overflow: 'hidden',
+          }}>
+            {/* Twinkling stars */}
+            {[
+              {l:'8%',t:'15%',d:'1.2s'},{l:'18%',t:'8%',d:'2.1s'},{l:'28%',t:'20%',d:'1.7s'},
+              {l:'38%',t:'10%',d:'2.4s'},{l:'48%',t:'18%',d:'1.5s'},{l:'58%',t:'7%',d:'2.0s'},
+              {l:'68%',t:'22%',d:'1.3s'},{l:'78%',t:'12%',d:'1.9s'},{l:'88%',t:'16%',d:'2.2s'},
+              {l:'13%',t:'30%',d:'1.6s'},{l:'33%',t:'35%',d:'2.3s'},{l:'53%',t:'28%',d:'1.4s'},
+              {l:'73%',t:'32%',d:'2.0s'},{l:'93%',t:'25%',d:'1.8s'},{l:'23%',t:'42%',d:'1.5s'},
+              {l:'43%',t:'45%',d:'2.1s'},{l:'63%',t:'40%',d:'1.7s'},{l:'83%',t:'38%',d:'2.4s'},
+            ].map((s, i) => (
+              <div key={i} style={{
+                position: 'absolute', left: s.l, top: s.t,
+                width: 3, height: 3, background: 'white',
+                animation: `twinkle ${s.d} ease-in-out infinite alternate`,
+                animationDelay: `${i * 0.15}s`,
+              }} />
+            ))}
+
+            {/* Shooting star */}
+            {shootingStar && (
+              <div style={{
+                position: 'absolute',
+                top: '15%', left: '-5%',
+                width: 80, height: 2,
+                background: 'linear-gradient(90deg, transparent, white, transparent)',
+                animation: 'shootingStar 1.5s ease-out forwards',
+                transformOrigin: 'left center',
+              }} />
+            )}
+          </div>
+        )}
+
         <svg
           style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%' }}
           preserveAspectRatio="none"
