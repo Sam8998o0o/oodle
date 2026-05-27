@@ -366,7 +366,7 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange, isPremiu
   const petSize = Math.round(PET_SIZE_MIN + (growthPoints / 100) * (PET_SIZE_MAX - PET_SIZE_MIN))
 
   // ── Day / Night + Weekend ─────────────────────────────────
-  const [isNight,   setIsNight]   = useState(() => { const h = new Date().getHours(); return h >= 19 || h < 6 })
+  const [isNight,   setIsNight]   = useState(() => { const h = new Date().getHours(); return h >= 22 || h < 6 })
   const [isWeekend, setIsWeekend] = useState(() => { const d = new Date().getDay();   return d === 0 || d === 6 })
   const [winPos, setWinPos] = useState({ left: 0, top: 0, width: 0, height: 0 })
 
@@ -588,7 +588,7 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange, isPremiu
   useEffect(() => {
     const tick = () => {
       const now = new Date()
-      setIsNight(now.getHours() >= 19 || now.getHours() < 6)
+      setIsNight(now.getHours() >= 22 || now.getHours() < 6)
       setIsWeekend(now.getDay() === 0 || now.getDay() === 6)
     }
     const id = setInterval(tick, 60000)
