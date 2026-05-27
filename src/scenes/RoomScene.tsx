@@ -287,10 +287,10 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange, isPremiu
       return new Set(['eye_round', 'eye_happy', 'eye_sleepy', ...saved])
     } catch { return new Set<string>(['eye_round', 'eye_happy', 'eye_sleepy']) }
   })
-  const [equippedHat, setEquippedHat] = useState<string>(() => {
+  const [equippedHat] = useState<string>(() => {
     try { return localStorage.getItem('oodle_equipped_hat') ?? '' } catch { return '' }
   })
-  const [equippedEye, setEquippedEye] = useState<string>(() => {
+  const [equippedEye] = useState<string>(() => {
     try { return localStorage.getItem('oodle_eye_style') ?? 'eye_round' } catch { return 'eye_round' }
   })
 
@@ -1836,14 +1836,6 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange, isPremiu
       {/* ── SHOP MODAL ──────────────────────────────────────── */}
       {showShop && (() => {
         const isOwned = (id: string) => ownedItems.has(id)
-
-        const handleBuyItem = (item: ShopItem) => {
-          if (likeBalance < item.price || isOwned(item.id)) return
-          setLikeBalance((prev: number) => prev - item.price)
-          const next = new Set([...ownedItems, item.id])
-          setOwnedItems(next)
-          localStorage.setItem('oodle_owned_items', JSON.stringify(Array.from(next)))
-        }
 
         const shopTabs: Array<{ id: 'food' | 'hats' | 'glasses' | 'eyes' | 'room'; label: string }> = [
           { id: 'food',    label: '🍖 FOOD'    },
