@@ -1397,20 +1397,19 @@ export default function PlazaScene({ petData, onGoToRoom, isPremium, petSize }: 
                   onClick={async () => {
                     setAdSubmitting(true)
                     try {
-                      await fetch('https://api.web3forms.com/submit', {
+                      const res = await fetch('https://formspree.io/f/mbdbpndo', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({
-                          access_key: 'YOUR_WEB3FORMS_KEY',
-                          subject: `[Oodle Ad] ${adForm.company} — ${adForm.plan}`,
                           company: adForm.company,
                           email: adForm.email,
-                          banner_text: adForm.bannerText,
+                          bannerText: adForm.bannerText,
                           website: adForm.website,
-                          logo_url: adForm.logoUrl,
+                          logo: adForm.logoUrl,
                           plan: adForm.plan,
                         }),
                       })
+                      if (!res.ok) throw new Error('formspree error')
                       setAdSubmitted(true)
                     } catch {
                       // fail silently, still show success to avoid friction
