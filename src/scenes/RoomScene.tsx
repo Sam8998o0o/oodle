@@ -1941,26 +1941,26 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange, isPremiu
                 )}
 
                 {shopTab === 'hats' && (
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px' }}>
-                    {SHOP_HATS.map(item => <ItemCard key={item.id} item={item} equippedId={equippedHat} onEquip={handleEquipHat} />)}
+                  <div style={{ textAlign: 'center', fontFamily: 'var(--font-pixel)', fontSize: '10px', color: '#888', padding: '40px 20px' }}>
+                    🚧 COMING SOON
                   </div>
                 )}
 
                 {shopTab === 'glasses' && (
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '8px' }}>
-                    {SHOP_GLASSES.map(item => <ItemCard key={item.id} item={item} equippedId={equippedHat} onEquip={handleEquipHat} />)}
+                  <div style={{ textAlign: 'center', fontFamily: 'var(--font-pixel)', fontSize: '10px', color: '#888', padding: '40px 20px' }}>
+                    🚧 COMING SOON
                   </div>
                 )}
 
                 {shopTab === 'eyes' && (
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px' }}>
-                    {SHOP_EYES.map(item => <ItemCard key={item.id} item={item} equippedId={equippedEye} onEquip={item.price === 0 || isOwned(item.id) ? handleEquipEye : undefined} />)}
+                  <div style={{ textAlign: 'center', fontFamily: 'var(--font-pixel)', fontSize: '10px', color: '#888', padding: '40px 20px' }}>
+                    🚧 COMING SOON
                   </div>
                 )}
 
                 {shopTab === 'room' && (
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '8px' }}>
-                    {SHOP_ROOM.map(item => <ItemCard key={item.id} item={item} />)}
+                  <div style={{ textAlign: 'center', fontFamily: 'var(--font-pixel)', fontSize: '10px', color: '#888', padding: '40px 20px' }}>
+                    🚧 COMING SOON
                   </div>
                 )}
               </div>
