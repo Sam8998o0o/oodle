@@ -75,10 +75,6 @@ const SHOP_HATS: ShopItem[]    = [
   { id: 'hat_wizard', label: 'Wizard',    emoji: '🪄', price: 50 },
   { id: 'hat_crown',  label: 'Crown',     emoji: '👑', price: 100, rare: true },
 ]
-const SHOP_GLASSES: ShopItem[] = [
-  { id: 'glasses_star',  label: 'Star Eyes',  emoji: '⭐', price: 25 },
-  { id: 'glasses_heart', label: 'Heart Eyes', emoji: '💕', price: 25 },
-]
 const SHOP_EYES: ShopItem[]    = [
   { id: 'eye_round',  label: 'Round',  emoji: '👁', price: 0  },
   { id: 'eye_happy',  label: 'Happy',  emoji: '😊', price: 0  },
@@ -86,10 +82,6 @@ const SHOP_EYES: ShopItem[]    = [
   { id: 'eye_star',   label: 'Star',   emoji: '✦', price: 20 },
   { id: 'eye_heart',  label: 'Heart',  emoji: '♥', price: 20 },
   { id: 'eye_x',      label: 'X Eyes', emoji: '✕', price: 20 },
-]
-const SHOP_ROOM: ShopItem[]    = [
-  { id: 'room_plant',    label: 'Plant',    emoji: '🪴', price: 15 },
-  { id: 'room_painting', label: 'Painting', emoji: '🖼️', price: 25 },
 ]
 
 // ── Confetti data ─────────────────────────────────────────
@@ -1853,17 +1845,6 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange, isPremiu
           localStorage.setItem('oodle_owned_items', JSON.stringify(Array.from(next)))
         }
 
-        const handleEquipHat = (id: string) => {
-          const next = equippedHat === id ? '' : id
-          setEquippedHat(next)
-          localStorage.setItem('oodle_equipped_hat', next)
-        }
-
-        const handleEquipEye = (id: string) => {
-          setEquippedEye(id)
-          localStorage.setItem('oodle_eye_style', id)
-        }
-
         const shopTabs: Array<{ id: 'food' | 'hats' | 'glasses' | 'eyes' | 'room'; label: string }> = [
           { id: 'food',    label: '🍖 FOOD'    },
           { id: 'hats',    label: '🎩 HATS'    },
@@ -1871,33 +1852,6 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange, isPremiu
           { id: 'eyes',    label: '👁 EYES'    },
           { id: 'room',    label: '🪴 ROOM'    },
         ]
-
-        const ItemCard = ({ item, equippedId, onEquip }: { item: ShopItem; equippedId?: string; onEquip?: (id: string) => void }) => {
-          const owned     = isOwned(item.id)
-          const equipped  = equippedId === item.id
-          const canAfford = likeBalance >= item.price
-          return (
-            <div style={{ border: `2px solid ${item.rare ? '#9B59B6' : '#2C2C2C'}`, boxShadow: '2px 2px 0 #2C2C2C', padding: '10px 6px', textAlign: 'center', background: equipped ? '#FFE600' : owned ? '#f0fff0' : '#fff', position: 'relative' }}>
-              <div style={{ fontSize: '22px', marginBottom: '4px' }}>{item.emoji}</div>
-              <div style={{ fontFamily: 'var(--font-pixel)', fontSize: '13px', color: item.rare ? '#9B59B6' : '#2C2C2C', marginBottom: '6px', lineHeight: 1.4 }}>{item.label}</div>
-              {equipped && <div style={{ fontFamily: 'var(--font-pixel)', fontSize: '11px', color: '#4CAF50', marginBottom: '4px' }}>ON</div>}
-              {owned && !equipped && onEquip && (
-                <button onClick={() => onEquip(item.id)} style={{ fontFamily: 'var(--font-pixel)', fontSize: '11px', padding: '4px 6px', background: '#2C2C2C', color: '#FFE600', border: 'none', cursor: 'pointer', width: '100%' }}>EQUIP</button>
-              )}
-              {owned && !onEquip && !equipped && <div style={{ fontFamily: 'var(--font-pixel)', fontSize: '11px', color: '#4CAF50' }}>OWNED</div>}
-              {!owned && item.price === 0 && <div style={{ fontFamily: 'var(--font-pixel)', fontSize: '11px', color: '#4CAF50' }}>FREE</div>}
-              {!owned && item.price > 0 && (
-                <button
-                  onClick={() => handleBuyItem(item)}
-                  disabled={!canAfford}
-                  style={{ fontFamily: 'var(--font-pixel)', fontSize: '12px', padding: '4px 6px', background: canAfford ? '#FFE600' : '#eee', color: '#2C2C2C', border: `1px solid ${item.rare ? '#9B59B6' : '#2C2C2C'}`, cursor: canAfford ? 'pointer' : 'not-allowed', width: '100%' }}
-                >
-                  ❤️ {item.price}
-                </button>
-              )}
-            </div>
-          )
-        }
 
         return (
           <div onClick={() => setShowShop(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>

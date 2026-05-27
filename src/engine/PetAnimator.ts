@@ -181,7 +181,6 @@ export class PetAnimator {
           const angle = (this.danceF / (fps * 3)) * Math.PI * 4 // 2 full circles
           translateX = Math.round(Math.sin(angle) * 16)
           translateY = Math.round(-Math.abs(Math.cos(angle)) * 8)
-          scaleX = 1 + Math.abs(Math.sin(angle)) * 0.1
           scaleY = 0.9 + Math.abs(Math.cos(angle)) * 0.1
 
         } else if (this.danceF <= fps * 6) {
