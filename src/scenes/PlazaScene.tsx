@@ -171,7 +171,7 @@ export default function PlazaScene({ petData, onGoToRoom, isPremium, petSize }: 
   const [activeShouts, setActiveShouts] = useState<Record<string, { message: string; shoutId: string }>>({})
   const [likedShouts,  setLikedShouts]  = useState<Set<string>>(new Set())
   const [unlikedPets,  setUnlikedPets]  = useState<Set<string>>(new Set())
-  const [isNight]                       = useState(() => { const h = new Date().getHours(); return h >= 22 || h < 6 })
+  const [isNight, setIsNight]           = useState(() => { const h = new Date().getHours(); return h >= 19 || h < 6 })
   const [weather, setWeather]           = useState<'clear' | 'rain' | 'thunder'>('clear')
 
   useEffect(() => {
@@ -206,6 +206,15 @@ export default function PlazaScene({ petData, onGoToRoom, isPremium, petSize }: 
       if (data.length > 0) setAds(data)
       else setAds(DEFAULT_ADS)
     }).catch(() => setAds(DEFAULT_ADS))
+  }, [])
+
+  // ── Time check (every minute) ─────────────────────────────
+  useEffect(() => {
+    const id = setInterval(() => {
+      const h = new Date().getHours()
+      setIsNight(h >= 19 || h < 6)
+    }, 60000)
+    return () => clearInterval(id)
   }, [])
 
   // ── Shout: load today's count on mount ────────────────────
