@@ -281,12 +281,6 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange, isPremiu
 
   // ── Shop state ─────────────────────────────────────────────
   const [shopTab, setShopTab] = useState<'food' | 'hats' | 'glasses' | 'eyes' | 'room'>('food')
-  const [ownedItems] = useState<Set<string>>(() => {
-    try {
-      const saved = JSON.parse(localStorage.getItem('oodle_owned_items') ?? '[]') as string[]
-      return new Set(['eye_round', 'eye_happy', 'eye_sleepy', ...saved])
-    } catch { return new Set<string>(['eye_round', 'eye_happy', 'eye_sleepy']) }
-  })
   const [equippedHat] = useState<string>(() => {
     try { return localStorage.getItem('oodle_equipped_hat') ?? '' } catch { return '' }
   })
