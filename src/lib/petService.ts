@@ -157,7 +157,6 @@ export async function fetchAllPets(): Promise<PetRecord[]> {
   const { data, error } = await supabase
     .from('pets')
     .select('*')
-    .eq('is_online', true)
     .gte('last_seen', tenMinsAgo)
     .order('created_at', { ascending: false })
     .limit(50)
