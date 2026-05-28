@@ -59,4 +59,5 @@ export const linkGoogle = signInWithGoogle
 export async function signOut(): Promise<void> {
   await supabase.auth.signOut()
   useAuthStore.getState().setUser(null, false)
+  window.location.href = '/'
 }

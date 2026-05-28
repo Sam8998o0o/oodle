@@ -88,6 +88,30 @@ export async function savePet(pet: {
   return id
 }
 
+// ── fetchUserPet ─────────────────────────────────────────
+// Returns the signed-in user's current alive pet, or null if none exists.
+export async function fetchUserPet(): Promise<{ id: string; name: string; pixelData: string; coords: PetCoords } | null> {
+  let userId = useAuthStore.getState().userId
+  if (!userId) {
+    const { data: { user } } = await supabase.auth.getUser()
+    userId = user?.id ?? null
+  }
+  if (!userId) return null
+
+  const { data, error } = await supabase
+    .from('pets')
+    .select('id, name, pixel_data, coords')
+    .eq('user_id', userId)
+    .eq('is_dead', false)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+
+  if (error || !data) return null
+  const pet = data as { id: string; name: string; pixel_data: string; coords: PetCoords }
+  return { id: pet.id, name: pet.name, pixelData: pet.pixel_data, coords: pet.coords }
+}
+
 // ── setOnline ────────────────────────────────────────────
 // Marks the current user's pet as online or offline in Supabase.
 export async function setOnline(online: boolean): Promise<void> {

@@ -4,6 +4,7 @@ import { drawEye } from '../engine/drawEye'
 import type { PetCoords } from '../api/aiRecognize'
 import { generatePetImage, validatePetImage } from '../lib/aiService'
 import { signInWithGoogle, useAuthStore } from '../lib/auth'
+import { savePet } from '../lib/petService'
 import styles from './DrawScene.module.css'
 
 // ── Grid constants ─────────────────────────────────────────
@@ -147,7 +148,7 @@ function gridToSmallCanvas(grid: string[][]): HTMLCanvasElement {
 }
 
 // ── Component ──────────────────────────────────────────────
-export default function DrawScene({ isPremium, onSubscribeClick }: DrawSceneProps) {
+export default function DrawScene({ onPetCreated, isPremium, onSubscribeClick }: DrawSceneProps) {
   const { userId } = useAuthStore()
 
   const canvasRef  = useRef<HTMLCanvasElement>(null)
@@ -546,7 +547,8 @@ export default function DrawScene({ isPremium, onSubscribeClick }: DrawSceneProp
   const handleDecMouseUp   = useCallback(() => { isDragEyeRef.current = false }, [])
 
   // ── Confirm ───────────────────────────────────────────────
-  // Saves pending pet data to localStorage then redirects to Google sign-in.
+  // Signed-in user (returning, dead pet): save directly and enter game.
+  // New user (no session): stash pending pet in localStorage, redirect to Google.
   // App.tsx picks up 'oodle_pending_pet' on return and finishes the flow.
   const handleConfirm = useCallback(async () => {
     setIsConfirming(true)
@@ -567,17 +569,29 @@ export default function DrawScene({ isPremium, onSubscribeClick }: DrawSceneProp
         has_legs: false,
       }
 
-      localStorage.setItem('oodle_pending_pet', JSON.stringify({ name: finalName, pixelData, coords }))
       localStorage.setItem('oodle_eye_style', selectedEye.id)
       localStorage.removeItem('oodle_leg_style')
 
-      // Redirect to Google — page navigates away, nothing after this runs
-      await signInWithGoogle()
+      if (userId) {
+        // Already signed in — save pet directly and enter game
+        const id = await savePet({ name: finalName, pixelData, coords })
+        if (!id) {
+          setConfirmError('Could not save pet. Please try again.')
+          setIsConfirming(false)
+          return
+        }
+        onPetCreated(pixelData, coords, finalName)
+      } else {
+        // Not signed in — stash pet and redirect to Google
+        localStorage.setItem('oodle_pending_pet', JSON.stringify({ name: finalName, pixelData, coords }))
+        await signInWithGoogle()
+        // Page navigates away; nothing below runs
+      }
     } catch {
       setConfirmError('Something went wrong. Please try again.')
       setIsConfirming(false)
     }
-  }, [petName, eyePos, selectedEye])
+  }, [petName, eyePos, selectedEye, userId, onPetCreated])
 
 
   // ── Render ────────────────────────────────────────────────
@@ -882,7 +896,7 @@ export default function DrawScene({ isPremium, onSubscribeClick }: DrawSceneProp
             onClick={handleConfirm}
             disabled={isConfirming}
           >
-            {isConfirming ? 'Redirecting to Google...' : '✓ BRING IT TO LIFE!'}
+            {isConfirming ? (userId ? 'Setting up...' : 'Redirecting to Google...') : '✓ BRING IT TO LIFE!'}
           </button>
           {confirmError && (
             <div style={{ color: '#e94560', fontFamily: 'var(--font-pixel)', fontSize: '10px', marginTop: 8, textAlign: 'center' }}>

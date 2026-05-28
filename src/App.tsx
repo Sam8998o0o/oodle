@@ -7,7 +7,7 @@ import { initAuth, signInWithGoogle, useAuthStore } from './lib/auth'
 import type { PetCoords } from './api/aiRecognize'
 import PaywallScene from './scenes/PaywallScene'
 import ArrestedScene from './scenes/ArrestedScene'
-import { savePet, checkSubscription, checkJailStatus } from './lib/petService'
+import { savePet, fetchUserPet, checkSubscription, checkJailStatus } from './lib/petService'
 
 export interface PetData {
   pixelData: string
@@ -40,30 +40,57 @@ function App() {
     await signInWithGoogle()
   }
 
-  // Boot: restore session, then pick up any pending pet created before OAuth redirect
+  // Boot: restore session then route to the right scene
   useEffect(() => {
-    initAuth().then(() => {
+    initAuth().then(async () => {
       const uid = useAuthStore.getState().userId
+
+      // Case A — not signed in → show draw screen
+      if (!uid) {
+        setPetData(null)
+        localStorage.removeItem(PET_STORAGE_KEY)
+        setScene('draw')
+        return
+      }
+
+      // Pending pet from OAuth redirect → save it, enter room
       const raw = localStorage.getItem('oodle_pending_pet')
-      if (uid && raw) {
+      if (raw) {
         try {
           const pending = JSON.parse(raw) as { name: string; pixelData: string; coords: PetCoords }
           localStorage.removeItem('oodle_pending_pet')
-          savePet({ name: pending.name, pixelData: pending.pixelData, coords: pending.coords }).then(id => {
-            if (id) {
-              const data: PetData = { pixelData: pending.pixelData, coords: pending.coords, name: pending.name }
-              setPetData(data)
-              localStorage.setItem(PET_STORAGE_KEY, JSON.stringify(data))
-              if (!localStorage.getItem('oodle_pet_created_at')) {
-                localStorage.setItem('oodle_pet_created_at', String(Date.now()))
-              }
-              setScene('room')
+          const id = await savePet({ name: pending.name, pixelData: pending.pixelData, coords: pending.coords })
+          if (id) {
+            const data: PetData = { pixelData: pending.pixelData, coords: pending.coords, name: pending.name }
+            setPetData(data)
+            localStorage.setItem(PET_STORAGE_KEY, JSON.stringify(data))
+            if (!localStorage.getItem('oodle_pet_created_at')) {
+              localStorage.setItem('oodle_pet_created_at', String(Date.now()))
             }
-          })
+            setScene('room')
+            return
+          }
         } catch {
           localStorage.removeItem('oodle_pending_pet')
         }
       }
+
+      // Case B — signed in, fetch alive pet from Supabase → enter room
+      const existing = await fetchUserPet()
+      if (existing) {
+        const data: PetData = { pixelData: existing.pixelData, coords: existing.coords, name: existing.name }
+        setPetData(data)
+        localStorage.setItem(PET_STORAGE_KEY, JSON.stringify(data))
+        localStorage.setItem('oodle_pet_supabase_id', existing.id)
+        setScene('room')
+        return
+      }
+
+      // Case C — signed in but no alive pet → draw screen
+      setPetData(null)
+      localStorage.removeItem(PET_STORAGE_KEY)
+      localStorage.removeItem('oodle_pet_supabase_id')
+      setScene('draw')
     })
   }, [])
 
