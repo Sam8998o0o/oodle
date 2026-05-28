@@ -3,8 +3,7 @@ import { OnnxValidator } from '../engine/OnnxValidator'
 import { drawEye } from '../engine/drawEye'
 import type { PetCoords } from '../api/aiRecognize'
 import { generatePetImage, validatePetImage } from '../lib/aiService'
-import { initAuth, useAuthStore } from '../lib/auth'
-import { savePet } from '../lib/petService'
+import { signInWithGoogle } from '../lib/auth'
 import styles from './DrawScene.module.css'
 
 // ── Grid constants ─────────────────────────────────────────
@@ -561,18 +560,12 @@ export default function DrawScene({ onPetCreated, isPremium, onSubscribeClick }:
   }, [])
 
   // ── Confirm ───────────────────────────────────────────────
+  // Saves pending pet data to localStorage then redirects to Google sign-in.
+  // App.tsx picks up 'oodle_pending_pet' on return and finishes the flow.
   const handleConfirm = useCallback(async () => {
     setIsConfirming(true)
     setConfirmError(null)
     try {
-      await initAuth()
-      const userId = useAuthStore.getState().userId
-      if (!userId) {
-        setConfirmError('Auth failed. Please try again.')
-        setIsConfirming(false)
-        return
-      }
-
       const finalName = petName.trim() || 'My Pet'
       const pixelData = gridToDataURL(gridRef.current)
       const ep        = eyePos
@@ -588,29 +581,17 @@ export default function DrawScene({ onPetCreated, isPremium, onSubscribeClick }:
         has_legs: false,
       }
 
-      const id = await savePet({ name: finalName, pixelData, coords })
-      if (!id) {
-        setConfirmError('Could not save pet. Please try again.')
-        setIsConfirming(false)
-        return
-      }
-
+      localStorage.setItem('oodle_pending_pet', JSON.stringify({ name: finalName, pixelData, coords }))
       localStorage.setItem('oodle_eye_style', selectedEye.id)
       localStorage.removeItem('oodle_leg_style')
 
-      const newPet: StoredPet = { id: crypto.randomUUID(), pixelData, name: finalName }
-      const updated = [...storedPets, newPet].slice(-20)
-      setStoredPets(updated)
-      localStorage.setItem('oodle_pets', JSON.stringify(updated))
-
-      spawnParticles()
-      setStep('done')
-      onPetCreated(pixelData, coords, finalName)
+      // Redirect to Google — page navigates away, nothing after this runs
+      await signInWithGoogle()
     } catch {
       setConfirmError('Something went wrong. Please try again.')
       setIsConfirming(false)
     }
-  }, [petName, eyePos, selectedEye, storedPets, spawnParticles, onPetCreated])
+  }, [petName, eyePos, selectedEye])
 
 
   // ── Render ────────────────────────────────────────────────
@@ -915,7 +896,7 @@ export default function DrawScene({ onPetCreated, isPremium, onSubscribeClick }:
             onClick={handleConfirm}
             disabled={isConfirming}
           >
-            {isConfirming ? 'Setting up...' : '✓ BRING IT TO LIFE!'}
+            {isConfirming ? 'Redirecting to Google...' : '✓ BRING IT TO LIFE!'}
           </button>
           {confirmError && (
             <div style={{ color: '#e94560', fontFamily: 'var(--font-pixel)', fontSize: '10px', marginTop: 8, textAlign: 'center' }}>

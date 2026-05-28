@@ -3,12 +3,12 @@ import DrawScene from './scenes/DrawScene'
 import RoomScene from './scenes/RoomScene'
 import PlazaScene from './scenes/PlazaScene'
 import AuthButton from './components/AuthButton'
-import { initAuth, linkGoogle, useAuthStore } from './lib/auth'
+import { initAuth, signInWithGoogle, useAuthStore } from './lib/auth'
 import { createCheckoutSession } from './lib/stripe'
 import type { PetCoords } from './api/aiRecognize'
 import PaywallScene from './scenes/PaywallScene'
 import ArrestedScene from './scenes/ArrestedScene'
-import { checkSubscription, checkJailStatus } from './lib/petService'
+import { savePet, checkSubscription, checkJailStatus } from './lib/petService'
 
 export interface PetData {
   pixelData: string
@@ -35,13 +35,38 @@ function App() {
   const [petSize, setPetSize]       = useState(60)
   const [jailedUntil, setJailedUntil] = useState<Date | null>(null)
 
-  const { userId, isAnonymous } = useAuthStore()
+  const { userId } = useAuthStore()
 
   const handleLoginClick = async () => {
-    await linkGoogle()
+    await signInWithGoogle()
   }
 
-  useEffect(() => { initAuth() }, [])
+  // Boot: restore session, then pick up any pending pet created before OAuth redirect
+  useEffect(() => {
+    initAuth().then(() => {
+      const uid = useAuthStore.getState().userId
+      const raw = localStorage.getItem('oodle_pending_pet')
+      if (uid && raw) {
+        try {
+          const pending = JSON.parse(raw) as { name: string; pixelData: string; coords: PetCoords }
+          localStorage.removeItem('oodle_pending_pet')
+          savePet({ name: pending.name, pixelData: pending.pixelData, coords: pending.coords }).then(id => {
+            if (id) {
+              const data: PetData = { pixelData: pending.pixelData, coords: pending.coords, name: pending.name }
+              setPetData(data)
+              localStorage.setItem(PET_STORAGE_KEY, JSON.stringify(data))
+              if (!localStorage.getItem('oodle_pet_created_at')) {
+                localStorage.setItem('oodle_pet_created_at', String(Date.now()))
+              }
+              setScene('room')
+            }
+          })
+        } catch {
+          localStorage.removeItem('oodle_pending_pet')
+        }
+      }
+    })
+  }, [])
 
   // Check jail status on mount
   useEffect(() => {
@@ -87,12 +112,8 @@ function App() {
           userId={userId}
           onSubscribed={() => { setIsPremium(true); setScene('room') }}
           onLoginAndSubscribe={async () => {
-            await linkGoogle()
-            const uid = useAuthStore.getState().userId
-            if (uid) {
-              const url = await createCheckoutSession(uid)
-              if (url) window.location.href = url
-            }
+            // Redirect to Google; after returning the user can click Subscribe again
+            await signInWithGoogle()
           }}
           onClose={() => setScene('room')}
         />
@@ -114,8 +135,8 @@ function App() {
   }
 
   if (scene === 'plaza') {
-    // Require Google login to enter plaza
-    if (isAnonymous) {
+    // Require Google sign-in to enter plaza
+    if (!userId) {
       return (
         <>
           <AuthButton />
@@ -191,7 +212,7 @@ function App() {
           petData={petData}
           onSubscribeClick={() => setScene('paywall')}
           onLoginClick={handleLoginClick}
-          isLoggedIn={!!userId && !isAnonymous}
+          isLoggedIn={!!userId}
           jailedUntil={jailedUntil}
           onGoBack={() => { setJailedUntil(null); setScene('room') }}
         />

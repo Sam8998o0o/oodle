@@ -1,19 +1,11 @@
-import { useAuthStore, linkGoogle, signOut } from '../lib/auth'
+import { useAuthStore, signInWithGoogle, signOut } from '../lib/auth'
 import styles from './AuthButton.module.css'
 
 export default function AuthButton() {
-  const { userId, isAnonymous } = useAuthStore()
+  const { userId } = useAuthStore()
 
-  // Don't render until auth is initialised
+  // Not signed in — hide button (game requires Google sign-in to proceed)
   if (!userId) return null
-
-  if (isAnonymous) {
-    return (
-      <button className={styles.btn} onClick={linkGoogle}>
-        🔑 LOGIN WITH GOOGLE
-      </button>
-    )
-  }
 
   return (
     <div className={styles.group}>
