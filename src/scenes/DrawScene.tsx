@@ -173,7 +173,7 @@ export default function DrawScene({ isPremium, onSubscribeClick }: DrawSceneProp
   const [selectedEye, setSelectedEye] = useState<EyeOption>(EYES[0])
   const [eyePos, setEyePos]       = useState({ row: 20, col: 32 })
   const [petName, setPetName]     = useState('')
-  const [particles, setParticles] = useState<Particle[]>([])
+  const [particles] = useState<Particle[]>([])
   const [_storedPets, setStoredPets] = useState<StoredPet[]>([])
   const [showGrid, setShowGrid]   = useState(true)
   const [importLocked, setImportLocked] = useState(false)
@@ -543,21 +543,6 @@ export default function DrawScene({ isPremium, onSubscribeClick }: DrawSceneProp
   const handleDecMouseDown = useCallback((e: React.MouseEvent) => { isDragEyeRef.current = true;  updateEyePos(e.clientX, e.clientY) }, [updateEyePos])
   const handleDecMouseMove = useCallback((e: React.MouseEvent) => { if (isDragEyeRef.current) updateEyePos(e.clientX, e.clientY) }, [updateEyePos])
   const handleDecMouseUp   = useCallback(() => { isDragEyeRef.current = false }, [])
-
-  // ── Particles ──────────────────────────────────────────────
-  const _spawnParticles = useCallback(() => {
-    const btn = btnRef.current
-    if (!btn) return
-    const rect = btn.getBoundingClientRect()
-    const cx   = rect.left + rect.width  / 2
-    const cy   = rect.top  + rect.height / 2
-    const ps   = Array.from({ length: 12 }, (_, i) => ({
-      id: Date.now() + i, char: CHARS[i % CHARS.length],
-      x: cx, y: cy, angle: (i / 12) * 360, distance: 60 + Math.random() * 60,
-    }))
-    setParticles(ps)
-    setTimeout(() => setParticles([]), 900)
-  }, [])
 
   // ── Confirm ───────────────────────────────────────────────
   // Saves pending pet data to localStorage then redirects to Google sign-in.
