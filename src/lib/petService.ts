@@ -65,7 +65,7 @@ export async function savePet(pet: {
       pixel_data:    pet.pixelData,
       coords:        pet.coords,
       growth_points: parseInt(localStorage.getItem('oodle_growth') ?? '0', 10),
-      last_seen:     new Date().toISOString(),
+      last_seen:     new Date(0).toISOString(),
     })
     .select('id')
     .single()
@@ -157,6 +157,7 @@ export async function fetchAllPets(): Promise<PetRecord[]> {
   const { data, error } = await supabase
     .from('pets')
     .select('*')
+    .eq('is_online', true)
     .gte('last_seen', tenMinsAgo)
     .order('created_at', { ascending: false })
     .limit(50)
