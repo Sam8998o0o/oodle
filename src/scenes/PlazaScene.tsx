@@ -4,7 +4,7 @@ import type { PetCoords } from '../api/aiRecognize'
 import {
   fetchAllPets, getAllLikeCounts, likePet, getTodayLikedPetIds,
   postShout, getActiveShouts, countTodayShouts, likeShout, unlikePet,
-  fetchAds, updateGrowth, setOnlineStatus,
+  fetchAds, updateGrowth, pingOnline,
 } from '../lib/petService'
 import type { AdRecord } from '../lib/petService'
 import { subscribeToNewPets } from '../lib/realtimeService'
@@ -559,14 +559,11 @@ export default function PlazaScene({ petData, onGoToRoom, isPremium, petSize }: 
     updateGrowth().catch(() => {})
   }, [petData])
 
-  // ── Online presence — mark online on enter, offline on leave ─
+  // ── Online presence — heartbeat every 30s while in Plaza ────
   useEffect(() => {
-    const petId = localStorage.getItem('oodle_pet_supabase_id')
-    if (petId) setOnlineStatus(petId, true).catch(() => {})
-    return () => {
-      const petId = localStorage.getItem('oodle_pet_supabase_id')
-      if (petId) setOnlineStatus(petId, false).then(() => {}).catch(() => {})
-    }
+    pingOnline()
+    const id = setInterval(pingOnline, 30_000)
+    return () => clearInterval(id)
   }, [])
 
   // ── Auto-performance of other pets' tricks (every 45 s) ──

@@ -129,6 +129,14 @@ export async function setOnlineStatus(petId: string, online: boolean): Promise<v
   if (error) console.error('[petService] setOnlineStatus failed:', error.message)
 }
 
+// ── pingOnline ────────────────────────────────────────────
+// Heartbeat: stamps last_seen to now so the pet stays visible in Plaza.
+export async function pingOnline(): Promise<void> {
+  const petId = localStorage.getItem('oodle_pet_supabase_id')
+  if (!petId) return
+  await supabase.rpc('ping_pet_online', { p_pet_id: petId })
+}
+
 // ── killPet ───────────────────────────────────────────────
 // Marks the current pet as dead in Supabase.
 export async function killPet(): Promise<void> {
@@ -153,13 +161,13 @@ export async function checkPetDead(): Promise<boolean> {
 }
 
 // ── fetchAllPets ──────────────────────────────────────────
-// Returns currently online pets, ordered newest first.
+// Returns pets active in the last 2 minutes, ordered newest first.
 // Returns [] on failure (caller should fall back to localStorage).
 export async function fetchAllPets(): Promise<PetRecord[]> {
   const { data, error } = await supabase
     .from('pets')
     .select('*')
-    .eq('is_online', true)
+    .gte('last_seen', new Date(Date.now() - 2 * 60 * 1000).toISOString())
     .order('created_at', { ascending: false })
     .limit(50)
 
