@@ -562,7 +562,7 @@ export default function PlazaScene({ petData, onGoToRoom, isPremium, petSize }: 
   // ── Online presence — heartbeat every 30s while in Plaza ────
   useEffect(() => {
     pingOnline()
-    const id = setInterval(pingOnline, 30_000)
+    const id = setInterval(pingOnline, 10_000)
     return () => clearInterval(id)
   }, [])
 
@@ -686,7 +686,7 @@ export default function PlazaScene({ petData, onGoToRoom, isPremium, petSize }: 
         return ownPet ? [ownPet, ...newOthers] : newOthers
       })
       getAllLikeCounts().then(counts => setLikes(counts)).catch(() => {})
-    }, 15000)
+    }, 10000)
     return () => clearInterval(poll)
   }, [])
 

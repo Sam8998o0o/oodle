@@ -167,7 +167,7 @@ export async function fetchAllPets(): Promise<PetRecord[]> {
   const { data, error } = await supabase
     .from('pets')
     .select('*')
-    .gte('last_seen', new Date(Date.now() - 35_000).toISOString())
+    .gte('last_seen', new Date(Date.now() - 20_000).toISOString())
     .order('created_at', { ascending: false })
     .limit(50)
 
