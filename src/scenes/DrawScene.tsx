@@ -597,6 +597,27 @@ export default function DrawScene({ onPetCreated, isPremium, onSubscribeClick }:
   // ── Render ────────────────────────────────────────────────
   return (
     <div className={styles.page}>
+      {!userId && (
+        <button
+          onClick={signInWithGoogle}
+          style={{
+            position: 'fixed',
+            top: '16px',
+            right: '16px',
+            fontFamily: 'var(--font-pixel)',
+            fontSize: '12px',
+            padding: '8px 16px',
+            background: '#4285F4',
+            color: 'white',
+            border: '2px solid #2C2C2C',
+            cursor: 'pointer',
+            zIndex: 1000,
+          }}
+        >
+          SIGN IN
+        </button>
+      )}
+
       <div className={styles.titleBlock}>
         <h1 className={styles.title}>OODLE</h1>
         <p className={styles.sub}>draw a pixel pet. make it life.</p>
@@ -920,27 +941,6 @@ export default function DrawScene({ onPetCreated, isPremium, onSubscribeClick }:
         </span>
       ))}
 
-      {!userId && (
-        <div style={{ textAlign: 'center', marginTop: '20px' }}>
-          <p style={{ fontFamily: 'var(--font-pixel)', fontSize: '12px', color: '#666' }}>
-            ALREADY HAVE A PET?
-          </p>
-          <button
-            onClick={signInWithGoogle}
-            style={{
-              fontFamily: 'var(--font-pixel)',
-              fontSize: '14px',
-              padding: '10px 24px',
-              background: '#4285F4',
-              color: 'white',
-              border: '2px solid #2C2C2C',
-              cursor: 'pointer',
-            }}
-          >
-            SIGN IN WITH GOOGLE
-          </button>
-        </div>
-      )}
     </div>
   )
 }
