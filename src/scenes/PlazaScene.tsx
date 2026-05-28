@@ -9,7 +9,6 @@ import {
 import type { AdRecord } from '../lib/petService'
 import { subscribeToNewPets } from '../lib/realtimeService'
 import { useAuthStore } from '../lib/auth'
-import { supabase } from '../lib/supabase'
 import styles from './PlazaScene.module.css'
 
 // ── Default ads (shown when no advertisers in Supabase) ───
