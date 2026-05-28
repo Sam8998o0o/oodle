@@ -3,6 +3,8 @@ import { OnnxValidator } from '../engine/OnnxValidator'
 import { drawEye } from '../engine/drawEye'
 import type { PetCoords } from '../api/aiRecognize'
 import { generatePetImage, validatePetImage } from '../lib/aiService'
+import { initAuth, useAuthStore } from '../lib/auth'
+import { savePet } from '../lib/petService'
 import styles from './DrawScene.module.css'
 
 // ── Grid constants ─────────────────────────────────────────
@@ -180,6 +182,8 @@ export default function DrawScene({ onPetCreated, isPremium, onSubscribeClick }:
   const [aiPrompt,     setAiPrompt]     = useState('')
   const [aiLoading,    setAiLoading]    = useState(false)
   const [aiError,      setAiError]      = useState('')
+  const [isConfirming, setIsConfirming] = useState(false)
+  const [confirmError, setConfirmError] = useState<string | null>(null)
 
   const blinkRef = useRef({ countdown: 210, frame: 0, blinking: false, cycle: 210 })
 
@@ -557,33 +561,55 @@ export default function DrawScene({ onPetCreated, isPremium, onSubscribeClick }:
   }, [])
 
   // ── Confirm ───────────────────────────────────────────────
-  const handleConfirm = useCallback(() => {
-    const finalName  = petName.trim() || 'My Pet'
-    const pixelData  = gridToDataURL(gridRef.current)
-    const ep         = eyePos
+  const handleConfirm = useCallback(async () => {
+    setIsConfirming(true)
+    setConfirmError(null)
+    try {
+      await initAuth()
+      const userId = useAuthStore.getState().userId
+      if (!userId) {
+        setConfirmError('Auth failed. Please try again.')
+        setIsConfirming(false)
+        return
+      }
 
-    const coords: PetCoords = {
-      eyes: [
-        { x: (ep.col - 5) / GRID_SIZE, y: ep.row / GRID_SIZE },
-        { x: (ep.col + 5) / GRID_SIZE, y: ep.row / GRID_SIZE },
-      ],
-      legs:     [],
-      center:   { x: 0.5, y: 0.5 },
-      has_eyes: true,
-      has_legs: false,
+      const finalName = petName.trim() || 'My Pet'
+      const pixelData = gridToDataURL(gridRef.current)
+      const ep        = eyePos
+
+      const coords: PetCoords = {
+        eyes: [
+          { x: (ep.col - 5) / GRID_SIZE, y: ep.row / GRID_SIZE },
+          { x: (ep.col + 5) / GRID_SIZE, y: ep.row / GRID_SIZE },
+        ],
+        legs:     [],
+        center:   { x: 0.5, y: 0.5 },
+        has_eyes: true,
+        has_legs: false,
+      }
+
+      const id = await savePet({ name: finalName, pixelData, coords })
+      if (!id) {
+        setConfirmError('Could not save pet. Please try again.')
+        setIsConfirming(false)
+        return
+      }
+
+      localStorage.setItem('oodle_eye_style', selectedEye.id)
+      localStorage.removeItem('oodle_leg_style')
+
+      const newPet: StoredPet = { id: crypto.randomUUID(), pixelData, name: finalName }
+      const updated = [...storedPets, newPet].slice(-20)
+      setStoredPets(updated)
+      localStorage.setItem('oodle_pets', JSON.stringify(updated))
+
+      spawnParticles()
+      setStep('done')
+      onPetCreated(pixelData, coords, finalName)
+    } catch {
+      setConfirmError('Something went wrong. Please try again.')
+      setIsConfirming(false)
     }
-
-    localStorage.setItem('oodle_eye_style', selectedEye.id)
-    localStorage.removeItem('oodle_leg_style')
-
-    const newPet: StoredPet = { id: crypto.randomUUID(), pixelData, name: finalName }
-    const updated = [...storedPets, newPet].slice(-20)
-    setStoredPets(updated)
-    localStorage.setItem('oodle_pets', JSON.stringify(updated))
-
-    spawnParticles()
-    setStep('done')
-    onPetCreated(pixelData, coords, finalName)
   }, [petName, eyePos, selectedEye, storedPets, spawnParticles, onPetCreated])
 
 
@@ -887,9 +913,15 @@ export default function DrawScene({ onPetCreated, isPremium, onSubscribeClick }:
           <button
             className={`${styles.ctaBtn} ${styles.ctaBtnGreen}`}
             onClick={handleConfirm}
+            disabled={isConfirming}
           >
-            ✓ BRING IT TO LIFE!
+            {isConfirming ? 'Setting up...' : '✓ BRING IT TO LIFE!'}
           </button>
+          {confirmError && (
+            <div style={{ color: '#e94560', fontFamily: 'var(--font-pixel)', fontSize: '10px', marginTop: 8, textAlign: 'center' }}>
+              {confirmError}
+            </div>
+          )}
         </>
       )}
 
