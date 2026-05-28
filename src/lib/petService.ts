@@ -122,7 +122,11 @@ export async function saveTalentDrawing(drawingData: string): Promise<void> {
 // ── setOnlineStatus ───────────────────────────────────────
 // Sets the pet's is_online flag. Call with true on Plaza enter, false on leave.
 export async function setOnlineStatus(petId: string, online: boolean): Promise<void> {
-  await supabase.from('pets').update({ is_online: online }).eq('id', petId)
+  const { error } = await supabase.rpc('set_pet_online', {
+    p_pet_id: petId,
+    p_online: online,
+  })
+  if (error) console.error('[petService] setOnlineStatus failed:', error.message)
 }
 
 // ── killPet ───────────────────────────────────────────────
