@@ -148,6 +148,8 @@ function gridToSmallCanvas(grid: string[][]): HTMLCanvasElement {
 
 // ── Component ──────────────────────────────────────────────
 export default function DrawScene({ isPremium, onSubscribeClick }: DrawSceneProps) {
+  const { userId } = useAuthStore()
+
   const canvasRef  = useRef<HTMLCanvasElement>(null)
   const decorateRef = useRef<HTMLCanvasElement>(null)
   const rafRef     = useRef(0)
@@ -578,16 +580,6 @@ export default function DrawScene({ isPremium, onSubscribeClick }: DrawSceneProp
   }, [petName, eyePos, selectedEye])
 
 
-  // ── Subscribe gate ────────────────────────────────────────
-  const handleSubscribeClick = async () => {
-    const userId = useAuthStore.getState().userId
-    if (!userId) {
-      await signInWithGoogle()
-      return
-    }
-    onSubscribeClick()
-  }
-
   // ── Render ────────────────────────────────────────────────
   return (
     <div className={styles.page}>
@@ -648,8 +640,8 @@ export default function DrawScene({ isPremium, onSubscribeClick }: DrawSceneProp
                   <>
                     <div className={styles.premiumBadge}>🔒 PRO FEATURE</div>
                     <p className={styles.aiDesc}>Import any image and turn it into your pixel pet!</p>
-                    <button className={styles.subscribeUnlockBtn} onClick={handleSubscribeClick}>
-                      UNLOCK $2.99/mo
+                    <button className={styles.subscribeUnlockBtn} onClick={userId ? onSubscribeClick : signInWithGoogle}>
+                      {userId ? 'UNLOCK $2.99/mo' : 'SIGN IN TO SUBSCRIBE'}
                     </button>
                   </>
                 ) : (
@@ -687,8 +679,8 @@ export default function DrawScene({ isPremium, onSubscribeClick }: DrawSceneProp
                     <p className={styles.aiDesc}>Let AI draw your pixel pet for you!</p>
                     <input className={styles.aiInput} placeholder="a chubby space cat..." disabled />
                     <button className={styles.generateBtn} disabled>GENERATE</button>
-                    <button className={styles.subscribeUnlockBtn} onClick={handleSubscribeClick}>
-                      SUBSCRIBE TO UNLOCK
+                    <button className={styles.subscribeUnlockBtn} onClick={userId ? onSubscribeClick : signInWithGoogle}>
+                      {userId ? 'SUBSCRIBE TO UNLOCK' : 'SIGN IN TO SUBSCRIBE'}
                     </button>
                   </>
                 ) : (
