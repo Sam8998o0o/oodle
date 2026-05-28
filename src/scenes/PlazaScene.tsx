@@ -480,11 +480,23 @@ export default function PlazaScene({ petData, onGoToRoom, isPremium, petSize }: 
     }
   }, [spawnPet])  // spawnPet is stable (useCallback with no deps)
 
-  // ── When pets list changes, spawn new ones ────────────────
+  // ── When pets list changes, spawn new or clean up removed pets ──
   useEffect(() => {
+    // Spawn new pets
     for (const pet of pets) {
       spawnPet(pet)
     }
+    // Clean up pets that went offline (no longer in list)
+    const currentIds = new Set(pets.map(p => p.id))
+    animMap.current.forEach((anim, id) => {
+      if (!currentIds.has(id)) {
+        anim.stop()
+        animMap.current.delete(id)
+        walkerMap.current.delete(id)
+        const wrapper = wrapperMap.current.get(id)
+        if (wrapper) wrapper.style.display = 'none'
+      }
+    })
   }, [pets, spawnPet])
 
   // ── Load pets ─────────────────────────────────────────────
