@@ -1010,7 +1010,7 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange, isPremiu
         showBubble('💃 Watch me!')
         if (!isSleepingRef.current) animatorRef.current?.setState('dance')
       } else if (trick === 'magic') {
-        showBubble('✨ Ta-da!')
+        showBubble('✨ Ta-da Magic!')
         const wrapper = petWrapperRef.current
         if (wrapper) {
           wrapper.style.visibility = 'hidden'

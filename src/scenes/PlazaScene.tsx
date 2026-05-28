@@ -613,7 +613,7 @@ export default function PlazaScene({ petData, onGoToRoom, isPremium, petSize }: 
 
           // Show tada bubble after reappear
           setTimeout(() => {
-            setPlazaShows(prev => ({ ...prev, [pet.id]: { text: '✨ Ta-da!' } }))
+            setPlazaShows(prev => ({ ...prev, [pet.id]: { text: '✨ Ta-da Magic!' } }))
             setTimeout(() => {
               setPlazaShows(prev => { const next = { ...prev }; delete next[pet.id]; return next })
               performingPets.current.delete(pet.id)
