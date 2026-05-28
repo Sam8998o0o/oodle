@@ -66,6 +66,7 @@ export async function savePet(pet: {
       coords:        pet.coords,
       growth_points: parseInt(localStorage.getItem('oodle_growth') ?? '0', 10),
       last_seen:     new Date(0).toISOString(),
+      is_online:     true,
     })
     .select('id')
     .single()
@@ -118,12 +119,10 @@ export async function saveTalentDrawing(drawingData: string): Promise<void> {
   await supabase.from('pets').update({ talent_drawing: drawingData }).eq('id', petId)
 }
 
-// ── updateLastSeen ────────────────────────────────────────
-// Heartbeat: stamps the pet row so it stays visible in Plaza (10-min window).
-export async function updateLastSeen(): Promise<void> {
-  const petId = localStorage.getItem('oodle_pet_supabase_id')
-  if (!petId) return
-  await supabase.from('pets').update({ last_seen: new Date().toISOString() }).eq('id', petId)
+// ── setOnlineStatus ───────────────────────────────────────
+// Sets the pet's is_online flag. Call with true on Plaza enter, false on leave.
+export async function setOnlineStatus(petId: string, online: boolean): Promise<void> {
+  await supabase.from('pets').update({ is_online: online }).eq('id', petId)
 }
 
 // ── killPet ───────────────────────────────────────────────
@@ -150,14 +149,13 @@ export async function checkPetDead(): Promise<boolean> {
 }
 
 // ── fetchAllPets ──────────────────────────────────────────
-// Returns pets seen in the last 5 minutes, ordered newest first.
+// Returns currently online pets, ordered newest first.
 // Returns [] on failure (caller should fall back to localStorage).
 export async function fetchAllPets(): Promise<PetRecord[]> {
-  const tenMinsAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString()
   const { data, error } = await supabase
     .from('pets')
     .select('*')
-    .gte('last_seen', tenMinsAgo)
+    .eq('is_online', true)
     .order('created_at', { ascending: false })
     .limit(50)
 

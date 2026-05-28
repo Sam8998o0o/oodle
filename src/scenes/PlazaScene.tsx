@@ -4,7 +4,7 @@ import type { PetCoords } from '../api/aiRecognize'
 import {
   fetchAllPets, getAllLikeCounts, likePet, getTodayLikedPetIds,
   postShout, getActiveShouts, countTodayShouts, likeShout, unlikePet,
-  fetchAds, updateGrowth, updateLastSeen, setOnline,
+  fetchAds, updateGrowth, setOnlineStatus,
 } from '../lib/petService'
 import type { AdRecord } from '../lib/petService'
 import { subscribeToNewPets } from '../lib/realtimeService'
@@ -548,19 +548,13 @@ export default function PlazaScene({ petData, onGoToRoom, isPremium, petSize }: 
     updateGrowth().catch(() => {})
   }, [petData])
 
-  // ── Last-seen heartbeat — keep pet visible in Plaza ───────
+  // ── Online presence — mark online on enter, offline on leave ─
   useEffect(() => {
-    setOnline(true).catch(() => {})
-    updateLastSeen().catch(() => {})
-    const interval = setInterval(() => updateLastSeen().catch(() => {}), 60 * 1000)
+    const petId = localStorage.getItem('oodle_pet_supabase_id')
+    if (petId) setOnlineStatus(petId, true).catch(() => {})
     return () => {
-      clearInterval(interval)
-      // Mark as offline immediately when leaving Plaza
-      setOnline(false).catch(() => {})
       const petId = localStorage.getItem('oodle_pet_supabase_id')
-      if (petId) {
-        supabase.from('pets').update({ last_seen: new Date(0).toISOString() }).eq('id', petId)
-      }
+      if (petId) setOnlineStatus(petId, false).then(() => {}).catch(() => {})
     }
   }, [])
 
