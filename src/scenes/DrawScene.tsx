@@ -919,6 +919,28 @@ export default function DrawScene({ onPetCreated, isPremium, onSubscribeClick }:
           {p.char}
         </span>
       ))}
+
+      {!userId && (
+        <div style={{ textAlign: 'center', marginTop: '20px' }}>
+          <p style={{ fontFamily: 'var(--font-pixel)', fontSize: '12px', color: '#666' }}>
+            ALREADY HAVE A PET?
+          </p>
+          <button
+            onClick={signInWithGoogle}
+            style={{
+              fontFamily: 'var(--font-pixel)',
+              fontSize: '14px',
+              padding: '10px 24px',
+              background: '#4285F4',
+              color: 'white',
+              border: '2px solid #2C2C2C',
+              cursor: 'pointer',
+            }}
+          >
+            SIGN IN WITH GOOGLE
+          </button>
+        </div>
+      )}
     </div>
   )
 }
