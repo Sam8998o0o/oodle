@@ -148,7 +148,7 @@ function gridToSmallCanvas(grid: string[][]): HTMLCanvasElement {
 }
 
 // ── Component ──────────────────────────────────────────────
-export default function DrawScene({ onPetCreated, isPremium, onSubscribeClick }: DrawSceneProps) {
+export default function DrawScene({ isPremium, onSubscribeClick }: DrawSceneProps) {
   const canvasRef  = useRef<HTMLCanvasElement>(null)
   const decorateRef = useRef<HTMLCanvasElement>(null)
   const rafRef     = useRef(0)
@@ -174,7 +174,7 @@ export default function DrawScene({ onPetCreated, isPremium, onSubscribeClick }:
   const [eyePos, setEyePos]       = useState({ row: 20, col: 32 })
   const [petName, setPetName]     = useState('')
   const [particles, setParticles] = useState<Particle[]>([])
-  const [storedPets, setStoredPets] = useState<StoredPet[]>([])
+  const [_storedPets, setStoredPets] = useState<StoredPet[]>([])
   const [showGrid, setShowGrid]   = useState(true)
   const [importLocked, setImportLocked] = useState(false)
   const [importError,  setImportError]  = useState('')
@@ -545,7 +545,7 @@ export default function DrawScene({ onPetCreated, isPremium, onSubscribeClick }:
   const handleDecMouseUp   = useCallback(() => { isDragEyeRef.current = false }, [])
 
   // ── Particles ──────────────────────────────────────────────
-  const spawnParticles = useCallback(() => {
+  const _spawnParticles = useCallback(() => {
     const btn = btnRef.current
     if (!btn) return
     const rect = btn.getBoundingClientRect()

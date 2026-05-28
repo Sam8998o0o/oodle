@@ -1,4 +1,4 @@
-import { useAuthStore, signInWithGoogle, signOut } from '../lib/auth'
+import { useAuthStore, signOut } from '../lib/auth'
 import styles from './AuthButton.module.css'
 
 export default function AuthButton() {
