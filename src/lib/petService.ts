@@ -356,12 +356,12 @@ export async function likeShout(shoutId: string): Promise<void> {
 // ── getLikeBalance ────────────────────────────────────────
 // Returns the current user's like balance (0 if no row exists yet).
 export async function getLikeBalance(): Promise<number> {
-  const { data, error } = await supabase
-    .from('like_balance')
-    .select('balance')
-    .maybeSingle()
-  if (error) return 0
-  return (data?.balance ?? 0) as number
+  const { data, error } = await supabase.rpc('get_my_like_balance')
+  if (error) {
+    console.error('[petService] getLikeBalance failed:', error.message)
+    return 0
+  }
+  return (data as number) ?? 0
 }
 
 // ── redeemLikesForFood ────────────────────────────────────
