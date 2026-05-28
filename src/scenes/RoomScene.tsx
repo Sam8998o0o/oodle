@@ -238,8 +238,20 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange, isPremiu
     } catch { return null }
   }
   const [dailyTalent,   setDailyTalent]   = useState<{ date: string; talent: string; drawing?: string } | null>(() => getDailyTalent())
-  const [learningTrick, setLearningTrick] = useState<string | null>(null)
-  const [learningStep,  setLearningStep]  = useState(0)
+  const [learningTrick, setLearningTrick] = useState<string | null>(() => {
+    const saved = localStorage.getItem('oodle_learning')
+    return saved ? (JSON.parse(saved) as { step: number; trick: string }).trick : null
+  })
+  const [learningStep,  setLearningStep]  = useState(() => {
+    const saved = localStorage.getItem('oodle_learning')
+    if (!saved) return 0
+    const { step } = JSON.parse(saved) as { step: number; trick: string }
+    // Downgrade mid-phase steps (timer gone on refresh) to previous click-wait step
+    if (step === 1) return 0
+    if (step === 3) return 2
+    if (step === 5) return 4
+    return step
+  })
   const learningTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const isBusyRef        = useRef(false)
   const [tasks, setTasks] = useState<DailyTasks>(() => {
@@ -504,6 +516,13 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange, isPremiu
   useEffect(() => { localStorage.setItem('oodle_stats',      JSON.stringify(stats))    }, [stats])
   useEffect(() => { localStorage.setItem('oodle_day_count',  String(dayCount))          }, [dayCount])
   useEffect(() => { localStorage.setItem('oodle_growth',     String(growthPoints))      }, [growthPoints])
+  useEffect(() => {
+    if (learningStep > 0 && learningTrick) {
+      localStorage.setItem('oodle_learning', JSON.stringify({ step: learningStep, trick: learningTrick }))
+    } else {
+      localStorage.removeItem('oodle_learning')
+    }
+  }, [learningStep, learningTrick])
   useEffect(() => { onSizeChange(petSize) }, [petSize, onSizeChange])
   useEffect(() => {
     localStorage.setItem('oodle_food_state', JSON.stringify({
@@ -1094,6 +1113,7 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange, isPremiu
     if (isFaintedRef.current) {
       isFaintedRef.current = false
       setIsFainted(false)
+      animatorRef.current?.setState('walk')
     }
     setTimeout(() => { if (!isSleepingRef.current) animatorRef.current?.setState('walk') }, 2000)
   }, [todayEats, smallFood, bigFood, showFloat, showBubble])
