@@ -286,12 +286,17 @@ export default function PlazaScene({ petData, onGoToRoom, isPremium, petSize }: 
     const channel = supabase
       .channel('plaza-likes-' + ownPetId)
       .on('postgres_changes', {
-        event: 'INSERT',
-        schema: 'public',
-        table: 'likes',
+        event: 'INSERT', schema: 'public', table: 'likes',
         filter: `pet_id=eq.${ownPetId}`,
       }, () => {
         setLikeNotif('❤️ Someone liked you!')
+        setTimeout(() => setLikeNotif(null), 3000)
+      })
+      .on('postgres_changes', {
+        event: 'INSERT', schema: 'public', table: 'pet_unlikes',
+        filter: `pet_id=eq.${ownPetId}`,
+      }, () => {
+        setLikeNotif('💔 Someone disliked you!')
         setTimeout(() => setLikeNotif(null), 3000)
       })
       .subscribe()

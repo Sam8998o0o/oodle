@@ -356,22 +356,11 @@ export async function likeShout(shoutId: string): Promise<void> {
 // ── getLikeBalance ────────────────────────────────────────
 // Returns the current user's like balance (0 if no row exists yet).
 export async function getLikeBalance(): Promise<number> {
-  const userId = useAuthStore.getState().userId
-  if (!userId) return 0
-
   const { data, error } = await supabase
     .from('like_balance')
     .select('balance')
-    .eq('user_id', userId)
     .maybeSingle()
-
-  if (error) {
-    // PGRST116 = no rows → user has never received a like yet
-    if (error.code !== 'PGRST116') {
-      console.error('[petService] getLikeBalance failed:', error.message)
-    }
-    return 0
-  }
+  if (error) return 0
   return (data?.balance ?? 0) as number
 }
 
