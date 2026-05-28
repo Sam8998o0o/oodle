@@ -917,7 +917,9 @@ export default function DrawScene({ onPetCreated, isPremium, onSubscribeClick }:
             onClick={handleConfirm}
             disabled={isConfirming}
           >
-            {isConfirming ? (userId ? 'Setting up...' : 'Redirecting to Google...') : '✓ BRING IT TO LIFE!'}
+            {isConfirming
+              ? (userId ? 'Setting up...' : 'Redirecting to Google...')
+              : (userId ? '✓ BRING IT TO LIFE!' : 'SIGN UP TO MAKE IT LIFE')}
           </button>
           {confirmError && (
             <div style={{ color: '#e94560', fontFamily: 'var(--font-pixel)', fontSize: '10px', marginTop: 8, textAlign: 'center' }}>
