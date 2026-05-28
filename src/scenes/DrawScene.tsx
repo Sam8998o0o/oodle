@@ -5,6 +5,7 @@ import type { PetCoords } from '../api/aiRecognize'
 import { generatePetImage, validatePetImage } from '../lib/aiService'
 import { signInWithGoogle, useAuthStore } from '../lib/auth'
 import { savePet } from '../lib/petService'
+import SignInModal from '../components/SignInModal'
 import styles from './DrawScene.module.css'
 
 // ── Grid constants ─────────────────────────────────────────
@@ -185,6 +186,7 @@ export default function DrawScene({ onPetCreated, isPremium, onSubscribeClick }:
   const [aiError,      setAiError]      = useState('')
   const [isConfirming, setIsConfirming] = useState(false)
   const [confirmError, setConfirmError] = useState<string | null>(null)
+  const [showSignIn,   setShowSignIn]   = useState(false)
 
   const blinkRef = useRef({ countdown: 210, frame: 0, blinking: false, cycle: 210 })
 
@@ -582,16 +584,16 @@ export default function DrawScene({ onPetCreated, isPremium, onSubscribeClick }:
         }
         onPetCreated(pixelData, coords, finalName)
       } else {
-        // Not signed in — stash pet and redirect to Google
+        // Not signed in — stash pet and open sign-in modal
         localStorage.setItem('oodle_pending_pet', JSON.stringify({ name: finalName, pixelData, coords }))
-        await signInWithGoogle()
-        // Page navigates away; nothing below runs
+        setIsConfirming(false)
+        setShowSignIn(true)
       }
     } catch {
       setConfirmError('Something went wrong. Please try again.')
       setIsConfirming(false)
     }
-  }, [petName, eyePos, selectedEye, userId, onPetCreated])
+  }, [petName, eyePos, selectedEye, userId, onPetCreated, setShowSignIn])
 
 
   // ── Render ────────────────────────────────────────────────
@@ -599,7 +601,7 @@ export default function DrawScene({ onPetCreated, isPremium, onSubscribeClick }:
     <div className={styles.page}>
       {!userId && (
         <button
-          onClick={signInWithGoogle}
+          onClick={() => setShowSignIn(true)}
           style={{
             position: 'fixed',
             top: '16px',
@@ -943,6 +945,7 @@ export default function DrawScene({ onPetCreated, isPremium, onSubscribeClick }:
         </span>
       ))}
 
+      {showSignIn && <SignInModal onClose={() => setShowSignIn(false)} />}
     </div>
   )
 }
