@@ -161,13 +161,13 @@ export async function checkPetDead(): Promise<boolean> {
 }
 
 // ── fetchAllPets ──────────────────────────────────────────
-// Returns pets active in the last 2 minutes, ordered newest first.
+// Returns pets active in the last 45 seconds, ordered newest first.
 // Returns [] on failure (caller should fall back to localStorage).
 export async function fetchAllPets(): Promise<PetRecord[]> {
   const { data, error } = await supabase
     .from('pets')
     .select('*')
-    .gte('last_seen', new Date(Date.now() - 2 * 60 * 1000).toISOString())
+    .gte('last_seen', new Date(Date.now() - 20_000).toISOString())
     .order('created_at', { ascending: false })
     .limit(50)
 
