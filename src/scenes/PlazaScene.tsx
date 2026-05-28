@@ -9,6 +9,7 @@ import {
 import type { AdRecord } from '../lib/petService'
 import { subscribeToNewPets } from '../lib/realtimeService'
 import { useAuthStore } from '../lib/auth'
+import { supabase } from '../lib/supabase'
 import styles from './PlazaScene.module.css'
 
 // ── Default ads (shown when no advertisers in Supabase) ───
@@ -160,6 +161,7 @@ export default function PlazaScene({ petData, onGoToRoom, isPremium, petSize }: 
   const [drawingPerformance, setDrawingPerformance] = useState<{
     petId: string, petX: number, petY: number, dataURL: string
   } | null>(null)
+  const [likeNotif, setLikeNotif] = useState<string | null>(null)
 
   // Keep petSizeRef in sync — used by spawnPet without causing re-spawn
   useEffect(() => { petSizeRef.current = petSize }, [petSize])
@@ -275,6 +277,25 @@ export default function PlazaScene({ petData, onGoToRoom, isPremium, petSize }: 
     poll()
     const id = setInterval(poll, 5000)
     return () => clearInterval(id)
+  }, [])
+
+  // ── Like notification (realtime) ─────────────────────────
+  useEffect(() => {
+    const ownPetId = localStorage.getItem('oodle_pet_supabase_id')
+    if (!ownPetId) return
+    const channel = supabase
+      .channel('plaza-likes-' + ownPetId)
+      .on('postgres_changes', {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'likes',
+        filter: `pet_id=eq.${ownPetId}`,
+      }, () => {
+        setLikeNotif('❤️ Someone liked you!')
+        setTimeout(() => setLikeNotif(null), 3000)
+      })
+      .subscribe()
+    return () => { supabase.removeChannel(channel) }
   }, [])
 
   // ── Plaza → Room door transition ──────────────────────────
@@ -1135,6 +1156,15 @@ export default function PlazaScene({ petData, onGoToRoom, isPremium, petSize }: 
         </svg>
 
         <div className={styles.petCount}>🐾 {pets.length} PETS HERE</div>
+
+        {likeNotif && (
+          <div style={{
+            position: 'absolute', top: 20, left: '50%', transform: 'translateX(-50%)',
+            background: '#e94560', color: 'white', padding: '8px 20px',
+            fontFamily: 'var(--font-pixel)', fontSize: '14px',
+            border: '2px solid #2C2C2C', zIndex: 999,
+          }}>{likeNotif}</div>
+        )}
 
         {/* Grey sky on rain/thunder */}
         {(weather === 'rain' || weather === 'thunder') && (
