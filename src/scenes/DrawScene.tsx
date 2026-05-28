@@ -19,7 +19,6 @@ const PALETTE = [
   '#b71c1c', '#1b5e20', '#0d47a1', '#ffccbc',
 ]
 
-const CHARS = ['✦', '★', '♥', '✿', '◆', '•']
 
 const validator = new OnnxValidator()
 
