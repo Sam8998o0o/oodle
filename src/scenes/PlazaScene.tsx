@@ -688,6 +688,7 @@ export default function PlazaScene({ petData, onGoToRoom, isPremium, petSize }: 
         const ownPet = prev.find(p => p.isOwn)
         return ownPet ? [ownPet, ...newOthers] : newOthers
       })
+      getAllLikeCounts().then(counts => setLikes(counts)).catch(() => {})
     }, 15000)
     return () => clearInterval(poll)
   }, [])
