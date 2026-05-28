@@ -71,6 +71,7 @@ export default function SignInModal({ onClose }: SignInModalProps) {
             border: '3px solid #2C2C2C',
             boxShadow: '4px 4px 0 #000',
             cursor: 'pointer', letterSpacing: '1px',
+            whiteSpace: 'nowrap',
             marginBottom: '20px',
           }}
         >
