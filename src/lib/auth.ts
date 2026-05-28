@@ -3,15 +3,19 @@ import { supabase } from './supabase'
 
 // ── Zustand store ─────────────────────────────────────────
 interface AuthState {
-  userId:      string | null
-  isAnonymous: boolean
-  setUser: (userId: string | null, isAnonymous: boolean) => void
+  userId:             string | null
+  isAnonymous:        boolean
+  showSignInModal:    boolean
+  setUser:            (userId: string | null, isAnonymous: boolean) => void
+  setShowSignInModal: (show: boolean) => void
 }
 
 export const useAuthStore = create<AuthState>(set => ({
-  userId:      null,
-  isAnonymous: false,
-  setUser: (userId, isAnonymous) => set({ userId, isAnonymous }),
+  userId:             null,
+  isAnonymous:        false,
+  showSignInModal:    false,
+  setUser:            (userId, isAnonymous) => set({ userId, isAnonymous }),
+  setShowSignInModal: (show) => set({ showSignInModal: show }),
 }))
 
 // ── Helpers ───────────────────────────────────────────────

@@ -3,9 +3,8 @@ import { OnnxValidator } from '../engine/OnnxValidator'
 import { drawEye } from '../engine/drawEye'
 import type { PetCoords } from '../api/aiRecognize'
 import { generatePetImage, validatePetImage } from '../lib/aiService'
-import { signInWithGoogle, useAuthStore } from '../lib/auth'
+import { useAuthStore } from '../lib/auth'
 import { savePet } from '../lib/petService'
-import SignInModal from '../components/SignInModal'
 import styles from './DrawScene.module.css'
 
 // ── Grid constants ─────────────────────────────────────────
@@ -186,7 +185,6 @@ export default function DrawScene({ onPetCreated, isPremium, onSubscribeClick }:
   const [aiError,      setAiError]      = useState('')
   const [isConfirming, setIsConfirming] = useState(false)
   const [confirmError, setConfirmError] = useState<string | null>(null)
-  const [showSignIn,   setShowSignIn]   = useState(false)
 
   const blinkRef = useRef({ countdown: 210, frame: 0, blinking: false, cycle: 210 })
 
@@ -584,16 +582,16 @@ export default function DrawScene({ onPetCreated, isPremium, onSubscribeClick }:
         }
         onPetCreated(pixelData, coords, finalName)
       } else {
-        // Not signed in — stash pet and open sign-in modal
+        // Not signed in — stash pet and open sign-in modal via store
         localStorage.setItem('oodle_pending_pet', JSON.stringify({ name: finalName, pixelData, coords }))
         setIsConfirming(false)
-        setShowSignIn(true)
+        useAuthStore.getState().setShowSignInModal(true)
       }
     } catch {
       setConfirmError('Something went wrong. Please try again.')
       setIsConfirming(false)
     }
-  }, [petName, eyePos, selectedEye, userId, onPetCreated, setShowSignIn])
+  }, [petName, eyePos, selectedEye, userId, onPetCreated])
 
 
   // ── Render ────────────────────────────────────────────────
@@ -601,7 +599,7 @@ export default function DrawScene({ onPetCreated, isPremium, onSubscribeClick }:
     <div className={styles.page}>
       {!userId && (
         <button
-          onClick={() => setShowSignIn(true)}
+          onClick={() => useAuthStore.getState().setShowSignInModal(true)}
           style={{
             position: 'fixed',
             top: '16px',
@@ -677,7 +675,7 @@ export default function DrawScene({ onPetCreated, isPremium, onSubscribeClick }:
                   <>
                     <div className={styles.premiumBadge}>🔒 PRO FEATURE</div>
                     <p className={styles.aiDesc}>Import any image and turn it into your pixel pet!</p>
-                    <button className={styles.subscribeUnlockBtn} onClick={userId ? onSubscribeClick : signInWithGoogle}>
+                    <button className={styles.subscribeUnlockBtn} onClick={userId ? onSubscribeClick : () => useAuthStore.getState().setShowSignInModal(true)}>
                       {userId ? 'UNLOCK $2.99/mo' : 'SIGN IN TO SUBSCRIBE'}
                     </button>
                   </>
@@ -716,7 +714,7 @@ export default function DrawScene({ onPetCreated, isPremium, onSubscribeClick }:
                     <p className={styles.aiDesc}>Let AI draw your pixel pet for you!</p>
                     <input className={styles.aiInput} placeholder="a chubby space cat..." disabled />
                     <button className={styles.generateBtn} disabled>GENERATE</button>
-                    <button className={styles.subscribeUnlockBtn} onClick={userId ? onSubscribeClick : signInWithGoogle}>
+                    <button className={styles.subscribeUnlockBtn} onClick={userId ? onSubscribeClick : () => useAuthStore.getState().setShowSignInModal(true)}>
                       {userId ? 'SUBSCRIBE TO UNLOCK' : 'SIGN IN TO SUBSCRIBE'}
                     </button>
                   </>
@@ -945,7 +943,6 @@ export default function DrawScene({ onPetCreated, isPremium, onSubscribeClick }:
         </span>
       ))}
 
-      {showSignIn && <SignInModal onClose={() => setShowSignIn(false)} />}
     </div>
   )
 }

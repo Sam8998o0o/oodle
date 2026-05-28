@@ -3,7 +3,8 @@ import DrawScene from './scenes/DrawScene'
 import RoomScene from './scenes/RoomScene'
 import PlazaScene from './scenes/PlazaScene'
 import AuthButton from './components/AuthButton'
-import { initAuth, signInWithGoogle, useAuthStore } from './lib/auth'
+import { initAuth, useAuthStore } from './lib/auth'
+import SignInModal from './components/SignInModal'
 import type { PetCoords } from './api/aiRecognize'
 import PaywallScene from './scenes/PaywallScene'
 import ArrestedScene from './scenes/ArrestedScene'
@@ -34,11 +35,9 @@ function App() {
   const [petSize, setPetSize]       = useState(60)
   const [jailedUntil, setJailedUntil] = useState<Date | null>(null)
 
-  const { userId } = useAuthStore()
+  const { userId, showSignInModal, setShowSignInModal } = useAuthStore()
 
-  const handleLoginClick = async () => {
-    await signInWithGoogle()
-  }
+  const handleLoginClick = () => setShowSignInModal(true)
 
   // Boot: restore session then route to the right scene
   useEffect(() => {
@@ -128,6 +127,10 @@ function App() {
     setScene('room')
   }
 
+  const modal = showSignInModal
+    ? <SignInModal onClose={() => setShowSignInModal(false)} />
+    : null
+
   if (scene === 'paywall') {
     return (
       <>
@@ -137,12 +140,10 @@ function App() {
           isLoggedIn={!!userId}
           userId={userId}
           onSubscribed={() => { setIsPremium(true); setScene('room') }}
-          onLoginAndSubscribe={async () => {
-            // Redirect to Google; after returning the user can click Subscribe again
-            await signInWithGoogle()
-          }}
+          onLoginAndSubscribe={() => setShowSignInModal(true)}
           onClose={() => setScene('room')}
         />
+        {modal}
       </>
     )
   }
@@ -156,6 +157,7 @@ function App() {
           isPremium={isPremium}
           onSubscribeClick={() => setScene('paywall')}
         />
+        {modal}
       </>
     )
   }
@@ -213,6 +215,7 @@ function App() {
               ← BACK TO ROOM
             </button>
           </div>
+          {modal}
         </>
       )
     }
@@ -226,6 +229,7 @@ function App() {
           onGoToRoom={() => setScene('room')}
           isPremium={isPremium}
         />
+        {modal}
       </>
     )
   }
@@ -242,6 +246,7 @@ function App() {
           jailedUntil={jailedUntil}
           onGoBack={() => { setJailedUntil(null); setScene('room') }}
         />
+        {modal}
       </>
     )
   }
@@ -255,6 +260,7 @@ function App() {
         onSizeChange={(size) => setPetSize(size)}
         isPremium={isPremium}
       />
+      {modal}
     </>
   )
 }
