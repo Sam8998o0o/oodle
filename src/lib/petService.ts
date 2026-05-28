@@ -29,7 +29,11 @@ export async function savePet(pet: {
   pixelData: string
   coords:    PetCoords
 }): Promise<string | null> {
-  const userId = useAuthStore.getState().userId
+  let userId = useAuthStore.getState().userId
+  if (!userId) {
+    const { data: { user } } = await supabase.auth.getUser()
+    userId = user?.id ?? null
+  }
   if (!userId) return null
 
   // Check Supabase for an existing pet for this user before trusting localStorage
