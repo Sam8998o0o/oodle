@@ -3,7 +3,7 @@ import { OnnxValidator } from '../engine/OnnxValidator'
 import { drawEye } from '../engine/drawEye'
 import type { PetCoords } from '../api/aiRecognize'
 import { generatePetImage, validatePetImage } from '../lib/aiService'
-import { signInWithGoogle } from '../lib/auth'
+import { signInWithGoogle, useAuthStore } from '../lib/auth'
 import styles from './DrawScene.module.css'
 
 // ── Grid constants ─────────────────────────────────────────
@@ -578,6 +578,16 @@ export default function DrawScene({ isPremium, onSubscribeClick }: DrawSceneProp
   }, [petName, eyePos, selectedEye])
 
 
+  // ── Subscribe gate ────────────────────────────────────────
+  const handleSubscribeClick = async () => {
+    const userId = useAuthStore.getState().userId
+    if (!userId) {
+      await signInWithGoogle()
+      return
+    }
+    onSubscribeClick()
+  }
+
   // ── Render ────────────────────────────────────────────────
   return (
     <div className={styles.page}>
@@ -638,7 +648,7 @@ export default function DrawScene({ isPremium, onSubscribeClick }: DrawSceneProp
                   <>
                     <div className={styles.premiumBadge}>🔒 PRO FEATURE</div>
                     <p className={styles.aiDesc}>Import any image and turn it into your pixel pet!</p>
-                    <button className={styles.subscribeUnlockBtn} onClick={onSubscribeClick}>
+                    <button className={styles.subscribeUnlockBtn} onClick={handleSubscribeClick}>
                       UNLOCK $2.99/mo
                     </button>
                   </>
@@ -677,7 +687,7 @@ export default function DrawScene({ isPremium, onSubscribeClick }: DrawSceneProp
                     <p className={styles.aiDesc}>Let AI draw your pixel pet for you!</p>
                     <input className={styles.aiInput} placeholder="a chubby space cat..." disabled />
                     <button className={styles.generateBtn} disabled>GENERATE</button>
-                    <button className={styles.subscribeUnlockBtn} onClick={onSubscribeClick}>
+                    <button className={styles.subscribeUnlockBtn} onClick={handleSubscribeClick}>
                       SUBSCRIBE TO UNLOCK
                     </button>
                   </>
