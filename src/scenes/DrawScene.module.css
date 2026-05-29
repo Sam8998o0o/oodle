@@ -211,6 +211,7 @@
   box-shadow: 4px 4px 0 #2C2C2C;
   background: #fff;
   width: 100%;
+  max-width: 512px;
 }
 
 .drawCanvas {
