@@ -807,10 +807,10 @@ export default function DrawScene({ onPetCreated, isPremium, onSubscribeClick }:
                 <button
                   ref={btnRef}
                   className={styles.ctaBtn}
-                  onClick={handleMakeItLife}
+                  onClick={userId ? handleMakeItLife : () => useAuthStore.getState().setShowSignInModal(true)}
                   disabled={importLocked || !onnxScore || onnxScore < 0.65}
                 >
-                  ✦ MAKE IT LIFE ✦
+                  {userId ? '✦ MAKE IT LIFE ✦' : 'SIGN IN TO MAKE IT LIFE'}
                 </button>
               </>
             )}
