@@ -230,6 +230,12 @@ export default function DrawScene({ onPetCreated, isPremium, onSubscribeClick, i
   useEffect(() => { colorRef.current = color }, [color])
   useEffect(() => { brushRef.current = brushSize }, [brushSize])
 
+  // Stable grid updater
+  const updateGrid = useCallback((next: string[][]) => {
+    gridRef.current = next
+    setGridState(next)
+  }, [])
+
   // Resume at decorate step after sign-in redirect
   useEffect(() => {
     if (initialStep !== 'decorate' || !initialPixelData) return
@@ -238,12 +244,6 @@ export default function DrawScene({ onPetCreated, isPremium, onSubscribeClick, i
       setStep('decorate')
     })
   }, [initialStep, initialPixelData, updateGrid])
-
-  // Stable grid updater
-  const updateGrid = useCallback((next: string[][]) => {
-    gridRef.current = next
-    setGridState(next)
-  }, [])
 
   const importImage = useCallback((file: File) => {
     const reader = new FileReader()
