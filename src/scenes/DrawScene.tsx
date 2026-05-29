@@ -609,10 +609,10 @@ export default function DrawScene({ onPetCreated, isPremium, onSubscribeClick }:
       </div>
 
       {step === 'draw' && (
-        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'flex-start', gap: '12px', width: '100%', maxWidth: '720px', margin: '0 auto' }}>
+        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'stretch', gap: '12px', width: '100%', maxWidth: '720px', margin: '0 auto' }}>
 
           {/* ── LEFT COLUMN ── */}
-          <div style={{ width: '150px', flexShrink: 0, display: 'flex', flexDirection: 'column', gap: '8px', paddingTop: '42px' }}>
+          <div style={{ width: '150px', flexShrink: 0, display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
             <div className={styles.drawGuide}>
               <div className={styles.drawGuideTitle}>HOW TO DRAW</div>
               <div className={styles.drawGuideTips}>
@@ -818,7 +818,7 @@ export default function DrawScene({ onPetCreated, isPremium, onSubscribeClick }:
           </div>
 
           {/* ── RIGHT COLUMN ── */}
-          <div style={{ width: '110px', flexShrink: 0, display: 'flex', flexDirection: 'column', gap: '5px', paddingTop: '42px' }}>
+          <div style={{ width: '110px', flexShrink: 0, display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
             {([
               { label: 'PEN',   action: () => setTool('draw'),              active: tool === 'draw'   },
               { label: 'DEL',   action: () => setTool('erase'),             active: tool === 'erase'  },
