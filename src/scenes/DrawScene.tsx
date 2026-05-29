@@ -36,6 +36,8 @@ interface DrawSceneProps {
   onPetCreated: (pixelData: string, coords: PetCoords, name: string) => void
   isPremium: boolean
   onSubscribeClick: () => void
+  initialStep?: 'draw' | 'decorate'
+  initialPixelData?: string
 }
 
 const EYES: EyeOption[] = [
@@ -147,8 +149,43 @@ function gridToSmallCanvas(grid: string[][]): HTMLCanvasElement {
   return c
 }
 
+// ── Decode a data URL back into a grid ────────────────────
+async function dataURLToGrid(dataURL: string): Promise<string[][]> {
+  return new Promise(resolve => {
+    const img = new Image()
+    img.onload = () => {
+      const offscreen = document.createElement('canvas')
+      offscreen.width  = GRID_SIZE
+      offscreen.height = GRID_SIZE
+      const ctx = offscreen.getContext('2d')!
+      ctx.imageSmoothingEnabled = false
+      ctx.drawImage(img, 0, 0, GRID_SIZE, GRID_SIZE)
+      const imageData = ctx.getImageData(0, 0, GRID_SIZE, GRID_SIZE)
+      const newGrid = makeGrid()
+      for (let r = 0; r < GRID_SIZE; r++) {
+        for (let c = 0; c < GRID_SIZE; c++) {
+          const i = (r * GRID_SIZE + c) * 4
+          if (imageData.data[i + 3] < 128) { newGrid[r][c] = ''; continue }
+          const rr = imageData.data[i], gg = imageData.data[i + 1], bb = imageData.data[i + 2]
+          let best = PALETTE[0], bestDist = Infinity
+          for (const hex of PALETTE) {
+            const pr = parseInt(hex.slice(1, 3), 16)
+            const pg = parseInt(hex.slice(3, 5), 16)
+            const pb = parseInt(hex.slice(5, 7), 16)
+            const d  = (rr - pr) ** 2 + (gg - pg) ** 2 + (bb - pb) ** 2
+            if (d < bestDist) { bestDist = d; best = hex }
+          }
+          newGrid[r][c] = best
+        }
+      }
+      resolve(newGrid)
+    }
+    img.src = dataURL
+  })
+}
+
 // ── Component ──────────────────────────────────────────────
-export default function DrawScene({ onPetCreated, isPremium, onSubscribeClick }: DrawSceneProps) {
+export default function DrawScene({ onPetCreated, isPremium, onSubscribeClick, initialStep, initialPixelData }: DrawSceneProps) {
   const { userId } = useAuthStore()
 
   const canvasRef  = useRef<HTMLCanvasElement>(null)
@@ -192,6 +229,15 @@ export default function DrawScene({ onPetCreated, isPremium, onSubscribeClick }:
   useEffect(() => { toolRef.current  = tool  }, [tool])
   useEffect(() => { colorRef.current = color }, [color])
   useEffect(() => { brushRef.current = brushSize }, [brushSize])
+
+  // Resume at decorate step after sign-in redirect
+  useEffect(() => {
+    if (initialStep !== 'decorate' || !initialPixelData) return
+    dataURLToGrid(initialPixelData).then(newGrid => {
+      updateGrid(newGrid)
+      setStep('decorate')
+    })
+  }, [initialStep, initialPixelData, updateGrid])
 
   // Stable grid updater
   const updateGrid = useCallback((next: string[][]) => {
@@ -481,6 +527,13 @@ export default function DrawScene({ onPetCreated, isPremium, onSubscribeClick }:
     if (!onnxScore || onnxScore < 0.65) return
     setStep('decorate')
   }, [onnxScore])
+
+  // Save drawing to localStorage then open sign-in modal (unsigned path)
+  const handleMakeItLifeUnsigned = useCallback(() => {
+    const pixelData = gridToDataURL(gridRef.current)
+    localStorage.setItem('oodle_resume_draw', pixelData)
+    useAuthStore.getState().setShowSignInModal(true)
+  }, [])
 
   // ── Decorate: preview animation ───────────────────────────
   const eyePosRef      = useRef(eyePos)
@@ -807,7 +860,7 @@ export default function DrawScene({ onPetCreated, isPremium, onSubscribeClick }:
                 <button
                   ref={btnRef}
                   className={styles.ctaBtn}
-                  onClick={userId ? handleMakeItLife : () => useAuthStore.getState().setShowSignInModal(true)}
+                  onClick={userId ? handleMakeItLife : handleMakeItLifeUnsigned}
                   disabled={importLocked || !onnxScore || onnxScore < 0.65}
                 >
                   {userId ? '✦ MAKE IT LIFE ✦' : 'SIGN IN TO MAKE IT LIFE'}

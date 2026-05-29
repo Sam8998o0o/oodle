@@ -34,6 +34,7 @@ function App() {
   const [isPremium, setIsPremium]   = useState(false)
   const [petSize, setPetSize]       = useState(60)
   const [jailedUntil, setJailedUntil] = useState<Date | null>(null)
+  const [resumePixelData, setResumePixelData] = useState<string | null>(null)
 
   const { userId, showSignInModal, setShowSignInModal } = useAuthStore()
 
@@ -86,6 +87,12 @@ function App() {
       }
 
       // Case C — signed in but no alive pet → draw screen
+      // Check if user was mid-drawing before sign-in redirect
+      const resumeDraw = localStorage.getItem('oodle_resume_draw')
+      if (resumeDraw) {
+        localStorage.removeItem('oodle_resume_draw')
+        setResumePixelData(resumeDraw)
+      }
       setPetData(null)
       localStorage.removeItem(PET_STORAGE_KEY)
       localStorage.removeItem('oodle_pet_supabase_id')
@@ -156,6 +163,8 @@ function App() {
           onPetCreated={handlePetCreated}
           isPremium={isPremium}
           onSubscribeClick={() => setScene('paywall')}
+          initialStep={resumePixelData ? 'decorate' : undefined}
+          initialPixelData={resumePixelData ?? undefined}
         />
         {modal}
       </>
