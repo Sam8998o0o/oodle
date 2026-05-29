@@ -598,22 +598,7 @@ export default function DrawScene({ onPetCreated, isPremium, onSubscribeClick }:
   return (
     <div className={styles.page}>
       {!userId && (
-        <button
-          onClick={() => useAuthStore.getState().setShowSignInModal(true)}
-          style={{
-            position: 'fixed',
-            top: '16px',
-            right: '16px',
-            fontFamily: 'var(--font-pixel)',
-            fontSize: '12px',
-            padding: '8px 16px',
-            background: '#4285F4',
-            color: 'white',
-            border: '2px solid #2C2C2C',
-            cursor: 'pointer',
-            zIndex: 1000,
-          }}
-        >
+        <button className={styles.signInBtn} onClick={() => useAuthStore.getState().setShowSignInModal(true)}>
           SIGN IN
         </button>
       )}
@@ -624,37 +609,48 @@ export default function DrawScene({ onPetCreated, isPremium, onSubscribeClick }:
       </div>
 
       {step === 'draw' && (
-        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'flex-start', gap: '16px', width: '100%' }}>
+        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'flex-start', gap: '12px', width: '100%', maxWidth: '720px', margin: '0 auto' }}>
 
-          {/* LEFT: Guide boxes */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', width: '180px', flexShrink: 0, marginTop: '48px' }}>
+          {/* ── LEFT COLUMN ── */}
+          <div style={{ width: '150px', flexShrink: 0, display: 'flex', flexDirection: 'column', gap: '8px', paddingTop: '42px' }}>
             <div className={styles.drawGuide}>
               <div className={styles.drawGuideTitle}>HOW TO DRAW</div>
               <div className={styles.drawGuideTips}>
-                <div>1. DRAW AN OUTLINE</div>
-                <div>2. FILL WITH COLOURS</div>
-                <div>3. USE 3+ COLORS</div>
-                <div>4. ADD EYES / FACE</div>
-                <div>5. NEED 65% TO PASS</div>
+                <div>✦ DRAW AN OUTLINE</div>
+                <div>✦ FILL WITH COLOURS</div>
+                <div>✦ USE 3+ COLORS</div>
+                <div>✦ ADD EYES / FACE</div>
+                <div>✦ NEED 65% TO PASS</div>
               </div>
             </div>
             <div className={styles.drawGuide}>
               <div className={styles.drawGuideTitle}>HOW TO IMPORT</div>
               <div className={styles.drawGuideTips}>
-                <div>1. CLICK IMPORT TAB</div>
-                <div>2. UPLOAD ANY IMAGE</div>
-                <div>3. BACKGROUND AUTO-REMOVED</div>
-                <div>4. EDIT IF NEEDED</div>
-                <div>5. NEED 65% TO PASS</div>
+                <div>✦ CLICK IMPORT TAB</div>
+                <div>✦ UPLOAD ANY IMAGE</div>
+                <div>✦ BG AUTO-REMOVED</div>
+                <div>✦ EDIT IF NEEDED</div>
+                <div>✦ NEED 65% TO PASS</div>
               </div>
+            </div>
+            {/* Color swatches */}
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', paddingTop: '4px' }}>
+              {PALETTE.map((c, i) => (
+                <button
+                  key={c}
+                  className={`${styles.swatch} ${color === c && tool === 'draw' ? styles.swatchActive : ''}`}
+                  style={{ background: c, transform: `rotate(${(-14 + i * 1.933).toFixed(1)}deg)` }}
+                  onClick={() => { setColor(c); setTool('draw') }}
+                />
+              ))}
             </div>
           </div>
 
-          {/* RIGHT: Everything canvas-related in one 512px column */}
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '512px', flexShrink: 0 }}>
+          {/* ── CENTER COLUMN ── */}
+          <div style={{ flex: 1, maxWidth: '420px', minWidth: '200px', display: 'flex', flexDirection: 'column', gap: '6px', alignItems: 'stretch' }}>
 
             {/* Tab row */}
-            <div className={styles.tabRow} style={{ width: '512px', display: 'flex', justifyContent: 'space-between' }}>
+            <div className={styles.tabRow}>
               <button
                 className={`${styles.tab} ${tab === 'draw' ? styles.tabActive : ''}`}
                 onClick={() => setTab('draw')}
@@ -662,11 +658,13 @@ export default function DrawScene({ onPetCreated, isPremium, onSubscribeClick }:
               <button
                 className={`${styles.tab} ${tab === 'ai' ? styles.tabActive : ''}`}
                 onClick={() => setTab('ai')}
-              >AI GENERATE</button>
+                style={{ position: 'relative' }}
+              >AI GENERATE{!isPremium && <span className={styles.proBadge}>PRO</span>}</button>
               <button
                 className={`${styles.tab} ${tab === 'import' ? styles.tabActive : ''}`}
                 onClick={() => setTab('import')}
-              >IMPORT</button>
+                style={{ position: 'relative' }}
+              >IMPORT{!isPremium && <span className={styles.proBadge}>PRO</span>}</button>
             </div>
 
             {tab === 'import' ? (
@@ -805,55 +803,42 @@ export default function DrawScene({ onPetCreated, isPremium, onSubscribeClick }:
                   />
                 </div>
 
-                {/* Palette row */}
-                <div className={styles.controlRow} style={{ width: '100%' }}>
-                  <div className={styles.palette}>
-                    {PALETTE.map(c => (
-                      <button
-                        key={c}
-                        className={`${styles.swatch} ${color === c && tool === 'draw' ? styles.swatchActive : ''}`}
-                        style={{ background: c }}
-                        onClick={() => { setColor(c); setTool('draw') }}
-                      />
-                    ))}
-                  </div>
-                </div>
-
-                {/* Tools row */}
-                <div className={styles.controlRow} style={{ width: '100%' }}>
-                  <div className={styles.btnGroup}>
-                    <button className={`${styles.toolBtn} ${tool === 'draw' ? styles.toolActive : ''}`} onClick={() => setTool('draw')}>✏️ Draw</button>
-                    <button className={`${styles.toolBtn} ${tool === 'erase' ? styles.toolActive : ''}`} onClick={() => setTool('erase')}>⬜ Erase</button>
-                    <button className={`${styles.toolBtn} ${tool === 'fill' ? styles.toolActive : ''}`} onClick={() => setTool('fill')}>🪣 Fill</button>
-                  </div>
-                  <div className={styles.groupSep} />
-                  <div className={styles.btnGroup}>
-                    {([1, 2, 4] as const).map(bs => (
-                      <button key={bs} className={`${styles.toolBtn} ${brushSize === bs ? styles.toolActive : ''}`} onClick={() => setBrushSize(bs)}>{bs}px</button>
-                    ))}
-                  </div>
-                  <div className={styles.groupSep} />
-                  <div className={styles.btnGroup}>
-                    <button className={styles.toolBtn} onClick={handleUndo}>↩ Undo</button>
-                    <button className={styles.toolBtn} onClick={handleClear}>🗑 Clear</button>
-                    <button className={`${styles.toolBtn} ${showGrid ? styles.toolActive : ''}`} onClick={() => setShowGrid(g => !g)}>▦ Grid</button>
-                  </div>
-                </div>
-
                 {/* MAKE IT LIFE button */}
-                <div style={{ width: '100%', display: 'flex', justifyContent: 'center', marginTop: '8px' }}>
-                  <button
-                    ref={btnRef}
-                    className={styles.ctaBtn}
-                    onClick={handleMakeItLife}
-                    disabled={importLocked || !onnxScore || onnxScore < 0.65}
-                  >
-                    ✦ MAKE IT LIFE ✦
-                  </button>
-                </div>
+                <button
+                  ref={btnRef}
+                  className={styles.ctaBtn}
+                  onClick={handleMakeItLife}
+                  disabled={importLocked || !onnxScore || onnxScore < 0.65}
+                >
+                  ✦ MAKE IT LIFE ✦
+                </button>
               </>
             )}
 
+          </div>
+
+          {/* ── RIGHT COLUMN ── */}
+          <div style={{ width: '110px', flexShrink: 0, display: 'flex', flexDirection: 'column', gap: '5px', paddingTop: '42px' }}>
+            {([
+              { label: 'PEN',   action: () => setTool('draw'),              active: tool === 'draw'   },
+              { label: 'DEL',   action: () => setTool('erase'),             active: tool === 'erase'  },
+              { label: 'FILL',  action: () => setTool('fill'),              active: tool === 'fill'   },
+              { label: '1PX',   action: () => setBrushSize(1 as BrushSize), active: brushSize === 1   },
+              { label: '2PX',   action: () => setBrushSize(2 as BrushSize), active: brushSize === 2   },
+              { label: '4PX',   action: () => setBrushSize(4 as BrushSize), active: brushSize === 4   },
+              { label: 'UNDO',  action: handleUndo,                         active: false             },
+              { label: 'CLEAR', action: handleClear,                        active: false             },
+              { label: 'GRID',  action: () => setShowGrid(g => !g),         active: showGrid          },
+            ] as { label: string; action: () => void; active: boolean }[]).map((item, i) => (
+              <button
+                key={item.label}
+                className={`${styles.toolBtn} ${item.active ? styles.toolActive : ''}`}
+                style={{ transform: `rotate(${(-13 + i * 2.75).toFixed(1)}deg) translateX(${(i % 3) * 4}px)` }}
+                onClick={item.action}
+              >
+                {item.label}
+              </button>
+            ))}
           </div>
 
         </div>

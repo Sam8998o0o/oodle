@@ -5,51 +5,46 @@
   align-items: center;
   gap: 10px;
   padding: 24px 16px 100px;
-  background: #FDF6E3;
   min-height: 100vh;
+  background:
+    radial-gradient(ellipse 60% 40% at 20% 30%, rgba(180,160,255,0.5) 0%, transparent 70%),
+    radial-gradient(ellipse 50% 50% at 80% 20%, rgba(160,220,255,0.45) 0%, transparent 70%),
+    radial-gradient(ellipse 70% 60% at 50% 80%, rgba(255,180,220,0.4) 0%, transparent 70%),
+    linear-gradient(135deg, #ddd5f0 0%, #c8ddf5 30%, #e0c8f0 60%, #f0d5e8 100%);
+  animation: iridescentBg 8s ease-in-out infinite alternate;
 }
 
-/* ── Canvas + guide row ─────────────────────────────────── */
-.canvasRow {
-  display: flex;
-  align-items: flex-start;
-  gap: 16px;
+@keyframes iridescentBg {
+  from { filter: hue-rotate(0deg) brightness(1); }
+  to   { filter: hue-rotate(30deg) brightness(1.05); }
 }
 
-/* ── Canvas + controls column ───────────────────────────── */
-.canvasColumn {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  align-items: center;
-}
-
-/* ── Drawing guide ──────────────────────────────────────── */
-.drawGuide {
-  background: var(--color-surface);
-  border: 2px solid var(--color-border);
-  box-shadow: 3px 3px 0 var(--color-border);
-  padding: 10px 14px;
-  flex-shrink: 0;
-  align-self: center;
-}
-
-.drawGuideTitle {
+/* ── Sign In button (top-right fixed) ──────────────────── */
+.signInBtn {
+  position: fixed;
+  top: 14px;
+  right: 14px;
   font-family: var(--font-pixel);
-  font-size: 8px;
-  color: var(--color-cta);
-  margin-bottom: 8px;
+  font-size: 9px;
+  padding: 10px 16px;
+  background: #2C2C2C;
+  color: #FFE600;
+  border: 2px solid #2C2C2C;
+  cursor: pointer;
+  z-index: 200;
+  transition: none;
 }
-
-.drawGuideTips {
-  font-family: var(--font-pixel);
-  font-size: 7px;
-  color: #888;
-  line-height: 2;
-}
+.signInBtn:hover { background: #FFE600; color: #2C2C2C; }
 
 /* ── Title ──────────────────────────────────────────────── */
-.titleBlock { text-align: center; margin-bottom: 4px; width: 100%; max-width: 512px; margin-left: auto; margin-right: auto; }
+.titleBlock {
+  text-align: center;
+  margin-bottom: 4px;
+  width: 100%;
+  max-width: 700px;
+  margin-left: auto;
+  margin-right: auto;
+}
 
 .title {
   font-family: var(--font-pixel);
@@ -62,9 +57,32 @@
 .sub {
   font-family: var(--font-retro);
   font-size: 18px;
-  color: #888;
+  color: #555;
   margin: 0;
   letter-spacing: 1px;
+}
+
+/* ── Drawing guide cards ─────────────────────────────────── */
+.drawGuide {
+  background: rgba(20, 18, 50, 0.9);
+  border: 2px solid #2C2C2C;
+  box-shadow: 3px 3px 0 rgba(0,0,0,0.3);
+  padding: 12px;
+  flex-shrink: 0;
+}
+
+.drawGuideTitle {
+  font-family: var(--font-pixel);
+  font-size: 7px;
+  color: #FFB800;
+  margin-bottom: 8px;
+}
+
+.drawGuideTips {
+  font-family: var(--font-pixel);
+  font-size: 6px;
+  color: #aaa;
+  line-height: 2;
 }
 
 /* ── Tab row ─────────────────────────────────────────────── */
@@ -74,7 +92,6 @@
   border: 2px solid #2C2C2C;
   box-shadow: 3px 3px 0 #2C2C2C;
   width: 100%;
-  max-width: 512px;
 }
 
 .tab {
@@ -84,27 +101,44 @@
   background: #fff;
   color: #888;
   border: none;
+  border-right: 1px solid #2C2C2C;
   box-shadow: none;
   cursor: pointer;
   letter-spacing: 1px;
   flex: 1;
   text-align: center;
+  position: relative;
 }
+.tab:last-child { border-right: none; }
 .tab:active:not(:disabled) { transform: none; box-shadow: none; }
 .tabActive { background: #FFE600; color: #2C2C2C; }
 
-/* ── AI panel ────────────────────────────────────────────── */
+/* PRO badge on tabs */
+.proBadge {
+  position: absolute;
+  top: 2px;
+  right: 4px;
+  background: #e94560;
+  color: #fff;
+  font-family: var(--font-pixel);
+  font-size: 6px;
+  padding: 1px 3px;
+  pointer-events: none;
+  line-height: 1.4;
+}
+
+/* ── AI / Import panel ───────────────────────────────────── */
 .aiPanel {
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 10px;
   padding: 24px;
-  background: #fff;
+  background: rgba(255,255,255,0.92);
   border: 2px solid #2C2C2C;
   box-shadow: 4px 4px 0 #2C2C2C;
   width: 100%;
-  max-width: 512px;
+  box-sizing: border-box;
 }
 
 .premiumBadge {
@@ -116,7 +150,14 @@
   box-shadow: 2px 2px 0 #2C2C2C;
 }
 
-.aiDesc { font-family: var(--font-retro); font-size: 18px; color: #888; margin: 0; text-align: center; }
+.aiDesc {
+  font-family: var(--font-retro);
+  font-size: 18px;
+  color: #888;
+  margin: 0;
+  text-align: center;
+}
+
 .aiInput {
   width: 100%;
   font-family: var(--font-retro);
@@ -127,6 +168,7 @@
   border: 2px solid #2C2C2C;
   box-shadow: 2px 2px 0 #2C2C2C;
   outline: none;
+  box-sizing: border-box;
 }
 
 .generateBtn {
@@ -140,7 +182,13 @@
   cursor: not-allowed;
 }
 
-.comingSoon { font-family: var(--font-retro); font-size: 18px; color: #4CAF50; margin: 0; letter-spacing: 2px; }
+.comingSoon {
+  font-family: var(--font-retro);
+  font-size: 18px;
+  color: #4CAF50;
+  margin: 0;
+  letter-spacing: 2px;
+}
 
 .subscribeUnlockBtn {
   font-family: var(--font-pixel);
@@ -154,94 +202,7 @@
   width: 100%;
   margin-top: 4px;
 }
-
 .subscribeUnlockBtn:active { transform: translate(2px,2px); box-shadow: 2px 2px 0 #2C2C2C; }
-
-/* ── Editor layout — canvas centred, controls below ─────── */
-.editorArea { display: none; } /* kept for safety, not used */
-.sidebar    { display: none; }
-.mainArea   { display: none; }
-
-/* Controls block — same width as canvas, stacked rows */
-.controls {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  width: 512px;
-  margin: 0 auto;
-}
-
-/* MAKE IT LIFE button wrapper */
-.makeItLifeWrap {
-  width: 512px;
-  margin: 0 auto;
-  display: flex;
-  justify-content: center;
-}
-
-/* Each row inside controls */
-.controlRow {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: nowrap;
-  width: 100%;
-}
-
-/* ── Palette ─────────────────────────────────────────────── */
-.palette {
-  display: grid;
-  grid-template-columns: repeat(16, 1fr);
-  gap: 4px;
-  width: 100%;
-}
-
-.swatch {
-  width: 100%;
-  aspect-ratio: 1;
-  border: 2px solid transparent;
-  cursor: pointer;
-  padding: 0;
-  box-shadow: 1px 1px 0 #2C2C2C;
-}
-.swatch:active:not(:disabled) { transform: translate(1px,1px); }
-.swatchActive {
-  border-color: #2C2C2C;
-  box-shadow: 0 0 0 2px #fff, 0 0 0 4px #2C2C2C;
-}
-
-/* Tool / brush / action buttons */
-.btnGroup {
-  display: flex;
-  gap: 0;
-  border: 2px solid #2C2C2C;
-  box-shadow: 3px 3px 0 #2C2C2C;
-}
-
-.toolBtn {
-  font-family: var(--font-pixel);
-  font-size: 7px;
-  padding: 8px 10px;
-  background: #fff;
-  color: #2C2C2C;
-  border: none;
-  border-right: 1px solid #2C2C2C;
-  box-shadow: none;
-  cursor: pointer;
-  white-space: nowrap;
-}
-.toolBtn:last-child { border-right: none; }
-.toolBtn:active:not(:disabled) { transform: translate(1px,1px); }
-.toolActive { background: #FFE600; color: #2C2C2C; }
-
-/* Separator between button groups */
-.groupSep {
-  width: 6px;
-  flex-shrink: 0;
-}
-
-/* ── Validation label ────────────────────────────────────── */
-.validLabel { font-family: var(--font-retro); font-size: 18px; margin: 0; letter-spacing: 1px; text-align: center; color: #4CAF50; }
 
 /* ── Canvas wrapper ──────────────────────────────────────── */
 .canvasWrap {
@@ -250,39 +211,142 @@
   box-shadow: 4px 4px 0 #2C2C2C;
   background: #fff;
   width: 100%;
-  max-width: 512px;
 }
 
 .drawCanvas {
   display: block;
-  width: 512px;
-  height: 512px;
+  width: 100%;
+  height: auto;
   image-rendering: pixelated;
   cursor: crosshair;
 }
 
-/* ── CTA buttons ─────────────────────────────────────────── */
+/* ── Validation label ────────────────────────────────────── */
+.validLabel {
+  font-family: var(--font-retro);
+  font-size: 18px;
+  margin: 0;
+  letter-spacing: 1px;
+  text-align: center;
+  color: #4CAF50;
+}
+
+/* ── Color swatches ─────────────────────────────────────── */
+.swatch {
+  width: 26px;
+  height: 26px;
+  border: 2.5px solid #2C2C2C;
+  cursor: pointer;
+  padding: 0;
+  box-shadow: 1px 1px 0 rgba(0,0,0,0.25);
+  flex-shrink: 0;
+}
+.swatch:active:not(:disabled) { opacity: 0.8; }
+.swatchActive {
+  box-shadow: 0 0 0 2px #fff, 0 0 0 4px #2C2C2C;
+}
+
+/* ── Tool buttons (right column, stacked) ───────────────── */
+.toolBtn {
+  font-family: var(--font-pixel);
+  font-size: 7px;
+  padding: 8px 10px;
+  background: #fff;
+  color: #2C2C2C;
+  border: 2.5px solid #2C2C2C;
+  box-shadow: 3px 3px 0 rgba(0,0,0,0.18);
+  cursor: pointer;
+  white-space: nowrap;
+  width: 100%;
+  text-align: left;
+}
+.toolBtn:active:not(:disabled) { transform: translate(1px,1px) !important; box-shadow: 1px 1px 0 rgba(0,0,0,0.18) !important; }
+.toolActive { background: #FFE600; color: #2C2C2C; }
+
+/* Legacy grouped tool buttons — kept for any remaining callers */
+.btnGroup {
+  display: flex;
+  gap: 0;
+  border: 2px solid #2C2C2C;
+  box-shadow: 3px 3px 0 #2C2C2C;
+}
+.groupSep { width: 6px; flex-shrink: 0; }
+.controlRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: nowrap;
+  width: 100%;
+}
+.palette {
+  display: grid;
+  grid-template-columns: repeat(16, 1fr);
+  gap: 4px;
+  width: 100%;
+}
+
+/* ── CTA / MAKE IT LIFE button ───────────────────────────── */
 .ctaBtn {
   font-family: var(--font-pixel);
   font-size: 11px;
-  padding: 14px 28px;
+  padding: 16px;
   background: #FFE600;
   color: #2C2C2C;
-  border: 2px solid #2C2C2C;
-  box-shadow: 4px 4px 0 #2C2C2C;
+  border: 3px solid #2C2C2C;
+  box-shadow: 5px 5px 0 #2C2C2C;
   cursor: pointer;
   letter-spacing: 1px;
+  width: 100%;
+  position: relative;
+  overflow: hidden;
+}
+.ctaBtn:hover:not(:disabled) {
+  transform: translateX(-2px) translateY(-2px);
+  box-shadow: 7px 7px 0 #2C2C2C;
 }
 .ctaBtn:active:not(:disabled) { transform: translate(2px,2px); box-shadow: 2px 2px 0 #2C2C2C; }
 .ctaBtn:disabled { opacity: 0.4; cursor: not-allowed; }
 .ctaBtnGreen { background: #4CAF50; border-color: #2C2C2C; color: #fff; }
 
-/* ── Decorate hint ───────────────────────────────────────── */
-.decorateHint { font-family: var(--font-retro); font-size: 18px; color: #2196F3; margin: 0; letter-spacing: 1px; text-align: center; }
+/* Shimmer sweep */
+.ctaBtn::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 60%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.5), transparent);
+  animation: shimmer 2.5s infinite;
+  pointer-events: none;
+}
+.ctaBtn:disabled::after { display: none; }
 
-/* ── Section ─────────────────────────────────────────────── */
+@keyframes shimmer {
+  0%   { left: -100%; }
+  100% { left: 150%; }
+}
+
+/* ── Decorate step ───────────────────────────────────────── */
+.decorateHint {
+  font-family: var(--font-retro);
+  font-size: 18px;
+  color: #2196F3;
+  margin: 0;
+  letter-spacing: 1px;
+  text-align: center;
+}
+
+/* ── Section (eye picker / name) ─────────────────────────── */
 .section { width: 100%; max-width: 560px; }
-.sectionLabel { display: block; font-family: var(--font-pixel); font-size: 8px; color: #888; margin-bottom: 6px; letter-spacing: 1px; }
+.sectionLabel {
+  display: block;
+  font-family: var(--font-pixel);
+  font-size: 8px;
+  color: #888;
+  margin-bottom: 6px;
+  letter-spacing: 1px;
+}
 
 /* ── Eye grid ────────────────────────────────────────────── */
 .eyeGrid { display: flex; gap: 4px; flex-wrap: wrap; }
@@ -321,6 +385,7 @@
   box-shadow: 2px 2px 0 #2C2C2C;
   outline: none;
   margin-top: 4px;
+  box-sizing: border-box;
 }
 .nameInput:focus { border-color: #F5A623; box-shadow: 2px 2px 0 #F5A623; }
 
@@ -338,3 +403,12 @@
   0%   { transform: translate(-50%,-50%) rotate(0deg) translateX(0); opacity: 1; }
   100% { transform: translate(-50%,-50%) rotate(var(--angle)) translateX(var(--dist)); opacity: 0; }
 }
+
+/* ── Unused legacy layout classes (kept for safety) ──────── */
+.canvasRow   { display: flex; align-items: flex-start; gap: 16px; }
+.canvasColumn { display: flex; flex-direction: column; gap: 6px; align-items: center; }
+.editorArea  { display: none; }
+.sidebar     { display: none; }
+.mainArea    { display: none; }
+.controls    { display: flex; flex-direction: column; gap: 8px; }
+.makeItLifeWrap { display: flex; justify-content: center; }
