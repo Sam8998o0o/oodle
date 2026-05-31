@@ -144,7 +144,7 @@ export async function saveTalent(talent: string): Promise<void> {
 export async function saveTalentDrawing(drawingData: string): Promise<void> {
   const petId = localStorage.getItem('oodle_pet_supabase_id')
   if (!petId) return
-  await supabase.from('pets').update({ talent_drawing: drawingData }).eq('id', petId)
+  await supabase.from('pets').update({ talent_drawing: drawingData, talent: 'drawing' }).eq('id', petId)
 }
 
 // ── setOnlineStatus ───────────────────────────────────────

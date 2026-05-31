@@ -534,7 +534,7 @@ export default function PlazaScene({ petData, onGoToRoom, isPremium, petSize }: 
       if (talentRaw) {
         const t = JSON.parse(talentRaw) as { date: string; talent: string; drawing?: string }
         if (t.date === new Date().toDateString()) {
-          ownTalent = t.talent
+          ownTalent = t.talent || (t.drawing ? 'drawing' : undefined)
           ownTalentDrawing = t.drawing
         }
       }
@@ -552,6 +552,14 @@ export default function PlazaScene({ petData, onGoToRoom, isPremium, petSize }: 
       talent_drawing: ownTalentDrawing,
     }
     setPets([ownPet])
+
+    // Fix: ensure talent is synced to Supabase (in case saveTalentDrawing was called without saveTalent)
+    if (ownTalentDrawing && ownTalent === 'drawing') {
+      const petId = localStorage.getItem('oodle_pet_supabase_id')
+      if (petId) {
+        supabase.from('pets').update({ talent: 'drawing' }).eq('id', petId).then(() => {})
+      }
+    }
 
     const loadFromSupabase = async () => {
       const [records, likeCounts] = await Promise.all([
