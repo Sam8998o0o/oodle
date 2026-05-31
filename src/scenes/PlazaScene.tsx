@@ -1482,7 +1482,7 @@ export default function PlazaScene({ petData, onGoToRoom, isPremium, petSize }: 
             {/* Close button */}
             <button
               onClick={() => { setShowAdModal(false); setAdSubmitted(false) }}
-              style={{ position: 'absolute', top: '12px', right: '12px', fontFamily: 'var(--font-pixel)', fontSize: '14px', background: '#fff', border: '2px solid #2C2C2C', boxShadow: '2px 2px 0 #2C2C2C', width: '28px', height: '28px', cursor: 'pointer', lineHeight: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}
+              style={{ position: 'absolute', top: '12px', right: '12px', fontFamily: 'var(--font-pixel)', fontSize: '14px', background: '#2C2C2C', color: '#FFE600', border: '2px solid #2C2C2C', boxShadow: '2px 2px 0 #888', width: '28px', height: '28px', cursor: 'pointer', lineHeight: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}
             >✕</button>
 
             {/* Title */}
@@ -1531,14 +1531,14 @@ export default function PlazaScene({ petData, onGoToRoom, isPremium, petSize }: 
                   <div style={{ fontFamily: 'var(--font-pixel)', fontSize: '7px', color: '#2C2C2C', letterSpacing: '1px', marginBottom: '8px' }}>SELECT PLAN</div>
                   <div style={{ display: 'flex', gap: '8px' }}>
                     {([
-                      { value: '7days',  label: '7 DAYS',  price: 'RM 39' },
-                      { value: '14days', label: '14 DAYS', price: 'RM 69' },
-                      { value: '1month', label: '1 MONTH', price: 'RM 129' },
+                      { value: '7days',  label: '7 DAYS',  price: '$ 9.90' },
+                      { value: '14days', label: '14 DAYS', price: '$ 14.90' },
+                      { value: '1month', label: '1 MONTH', price: '$ 26.90' },
                     ] as { value: string; label: string; price: string }[]).map(p => (
                       <button
                         key={p.value}
                         onClick={() => setAdForm(prev => ({ ...prev, plan: p.value }))}
-                        style={{ flex: 1, padding: '10px 4px', border: '2px solid #2C2C2C', boxShadow: adForm.plan === p.value ? '2px 2px 0 #2C2C2C' : '2px 2px 0 #2C2C2C', background: adForm.plan === p.value ? '#FFE600' : '#fff', cursor: 'pointer', fontFamily: 'var(--font-pixel)', fontSize: '7px', lineHeight: 2, transform: adForm.plan === p.value ? 'translate(2px,2px)' : 'none', outline: adForm.plan === p.value ? '2px solid #2C2C2C' : 'none', outlineOffset: '2px' }}
+                        style={{ flex: 1, padding: '10px 4px', border: '2px solid #2C2C2C', boxShadow: '2px 2px 0 #2C2C2C', background: adForm.plan === p.value ? '#FFE600' : '#fff', color: '#2C2C2C', cursor: 'pointer', fontFamily: 'var(--font-pixel)', fontSize: '7px', lineHeight: 2, transform: adForm.plan === p.value ? 'translate(2px,2px)' : 'none', outline: adForm.plan === p.value ? '2px solid #2C2C2C' : 'none', outlineOffset: '2px' }}
                       >
                         {p.label}<br />{p.price}
                       </button>
