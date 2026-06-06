@@ -157,6 +157,17 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange, isPremiu
             }
           }
           p = { hunger, happy, energy }
+
+          // Retroactively set when hunger hit 0 during offline period
+          if (p.hunger <= 0) {
+            const existing = localStorage.getItem('oodle_hunger_zero_since')
+            if (!existing) {
+              const startHunger = (JSON.parse(s as string) as PetStats).hunger
+              const minsToZero  = startHunger / 0.16
+              const zeroAt      = Date.now() - Math.max(0, offlineMins - minsToZero) * 60 * 1000
+              localStorage.setItem('oodle_hunger_zero_since', String(zeroAt))
+            }
+          }
         }
       }
       return p
@@ -409,6 +420,13 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange, isPremiu
       .catch(() => setPetSaved(true))
 
     checkPetDead().then(dead => { if (dead) setIsPetDead(true) }).catch(() => {})
+
+    // Check if hunger has been 0 long enough to die (covers offline period)
+    const zeroSince = localStorage.getItem('oodle_hunger_zero_since')
+    if (zeroSince && Date.now() - parseInt(zeroSince, 10) >= 3 * 86400000) {
+      killPet().catch(() => {})
+      setIsPetDead(true)
+    }
   }, [petData])
 
   // ── Load like balance + poll every 10s + notify on new like ─
