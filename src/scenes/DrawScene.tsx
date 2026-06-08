@@ -220,8 +220,9 @@ export default function DrawScene({ onPetCreated, isPremium, onSubscribeClick, i
   const [aiPrompt,     setAiPrompt]     = useState('')
   const [aiLoading,    setAiLoading]    = useState(false)
   const [aiError,      setAiError]      = useState('')
-  const [isConfirming, setIsConfirming] = useState(false)
-  const [confirmError, setConfirmError] = useState<string | null>(null)
+  const [isConfirming,   setIsConfirming]   = useState(false)
+  const [confirmError,   setConfirmError]   = useState<string | null>(null)
+  const [showShareModal, setShowShareModal] = useState(false)
 
   const blinkRef = useRef({ countdown: 210, frame: 0, blinking: false, cycle: 210 })
 
@@ -661,6 +662,24 @@ export default function DrawScene({ onPetCreated, isPremium, onSubscribeClick, i
         <p className={styles.sub}>draw a pixel pet. make it life.</p>
       </div>
 
+      <button
+        onClick={() => setShowShareModal(true)}
+        style={{
+          fontFamily: 'var(--font-pixel)',
+          fontSize: '8px',
+          padding: '8px 14px',
+          background: '#FFE600',
+          color: '#2C2C2C',
+          border: '2px solid #2C2C2C',
+          boxShadow: '3px 3px 0 #2C2C2C',
+          cursor: 'pointer',
+          letterSpacing: '1px',
+          marginBottom: '4px',
+        }}
+      >
+        ✦ SHARE YOUR IP
+      </button>
+
       {step === 'draw' && (
         <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'stretch', gap: '12px', width: '100%', maxWidth: '720px', margin: '0 auto' }}>
 
@@ -965,6 +984,46 @@ export default function DrawScene({ onPetCreated, isPremium, onSubscribeClick, i
             </div>
           )}
         </>
+      )}
+
+      {/* ── SHARE TO OODLE CREATORS MODAL ──────────────── */}
+      {showShareModal && (
+        <div
+          onClick={() => setShowShareModal(false)}
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}
+        >
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{ background: '#FDF6E3', border: '3px solid #2C2C2C', boxShadow: '6px 6px 0 #2C2C2C', maxWidth: '360px', width: '100%', position: 'relative' }}
+          >
+            <div style={{ background: '#2C2C2C', color: '#FFE600', fontFamily: 'var(--font-pixel)', fontSize: '9px', textAlign: 'center', padding: '14px', letterSpacing: '2px' }}>
+              ✦ SHARE TO OODLE CREATORS
+            </div>
+            <button
+              onClick={() => setShowShareModal(false)}
+              style={{ position: 'absolute', top: '8px', right: '8px', fontFamily: 'var(--font-pixel)', fontSize: '12px', background: 'transparent', border: '2px solid #FFE600', color: '#FFE600', width: '28px', height: '28px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+            >✕</button>
+            <div style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px', alignItems: 'center' }}>
+              <p style={{ fontFamily: 'var(--font-retro)', fontSize: '19px', color: '#2C2C2C', textAlign: 'center', margin: 0, lineHeight: 1.6 }}>
+                Bring your character to the world&apos;s first IP creator community
+              </p>
+              <a
+                href={`http://localhost:3000/create?name=${encodeURIComponent(petName || 'my pet')}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{ display: 'block', width: '100%', fontFamily: 'var(--font-pixel)', fontSize: '9px', padding: '14px 16px', background: '#FFE600', color: '#2C2C2C', border: '3px solid #2C2C2C', boxShadow: '4px 4px 0 #2C2C2C', cursor: 'pointer', letterSpacing: '1px', textAlign: 'center', textDecoration: 'none', boxSizing: 'border-box' }}
+              >
+                GO TO OODLE CREATORS →
+              </a>
+              <button
+                onClick={() => setShowShareModal(false)}
+                style={{ fontFamily: 'var(--font-pixel)', fontSize: '7px', color: '#888', background: 'transparent', border: 'none', cursor: 'pointer' }}
+              >
+                DISMISS
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {particles.map(p => (
