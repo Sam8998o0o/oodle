@@ -1943,12 +1943,12 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange, isPremiu
       {/* ── SHOP MODAL ──────────────────────────────────────── */}
       {showShop && (() => {
         const shopTabs: Array<{ id: 'food' | 'hats' | 'glasses' | 'eyes' | 'room' | 'coins'; label: string }> = [
-          { id: 'food',    label: '🍖 FOOD'    },
-          { id: 'hats',    label: '🎩 HATS'    },
-          { id: 'glasses', label: '👓 GLASS'   },
-          { id: 'eyes',    label: '👁 EYES'    },
-          { id: 'room',    label: '🪴 ROOM'    },
-          { id: 'coins',   label: '🪙 COINS'   },
+          { id: 'food',    label: 'FOOD'    },
+          { id: 'hats',    label: 'HATS'    },
+          { id: 'glasses', label: 'GLASS'   },
+          { id: 'eyes',    label: 'EYES'    },
+          { id: 'room',    label: 'ROOM'    },
+          { id: 'coins',   label: 'COINS'   },
         ]
 
         return (
@@ -1961,9 +1961,8 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange, isPremiu
               <button onClick={() => setShowShop(false)} style={{ position: 'absolute', top: '8px', right: '8px', fontFamily: 'var(--font-pixel)', fontSize: '12px', background: 'transparent', border: '2px solid #FFE600', color: '#FFE600', width: '28px', height: '28px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>✕</button>
 
               {/* Balance row — likes + coins */}
-              <div style={{ fontFamily: 'var(--font-pixel)', fontSize: '11px', textAlign: 'center', padding: '10px 16px', background: '#fff8e1', borderBottom: '2px solid #2C2C2C', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '18px' }}>
+              <div style={{ fontFamily: 'var(--font-pixel)', fontSize: '11px', textAlign: 'center', padding: '10px 16px', background: '#fff8e1', borderBottom: '2px solid #2C2C2C', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '32px' }}>
                 <span style={{ color: '#cc2200' }}>❤️ {likeBalance}</span>
-                <span style={{ color: '#ccc' }}>|</span>
                 <span style={{ color: '#c87800' }}>🪙 {coins}</span>
               </div>
 
@@ -1981,8 +1980,8 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange, isPremiu
                 {shopTab === 'food' && (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                     {[
-                      { label: '🍪 SNACK',     price: 5,  onBuy: () => { if (likeBalance >= 5) { setLikeBalance((p: number) => p - 5); setSmallFood((p: number) => p + 1) } } },
-                      { label: '🍖 MEAL',      price: 10, onBuy: () => { if (likeBalance >= 10) { setLikeBalance((p: number) => p - 10); setBigFood((p: number)   => p + 1) } } },
+                      { label: 'SNACK', price: 5,  onBuy: () => { if (likeBalance >= 5) { setLikeBalance((p: number) => p - 5); setSmallFood((p: number) => p + 1) } } },
+                      { label: 'MEAL',  price: 10, onBuy: () => { if (likeBalance >= 10) { setLikeBalance((p: number) => p - 10); setBigFood((p: number)   => p + 1) } } },
                     ].map(f => (
                       <div key={f.label} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', border: '2px solid #2C2C2C', boxShadow: '2px 2px 0 #2C2C2C', padding: '12px 14px', background: '#fff' }}>
                         <span style={{ fontFamily: 'var(--font-pixel)', fontSize: '13px', color: '#2C2C2C' }}>{f.label}</span>
@@ -2083,14 +2082,6 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange, isPremiu
                 )}
               </div>
 
-              {/* Footer */}
-              {(equippedHat || equippedEye) && (
-                <div style={{ fontFamily: 'var(--font-pixel)', fontSize: '11px', color: '#555', textAlign: 'center', padding: '10px', borderTop: '2px solid #ddd', lineHeight: 2 }}>
-                  {equippedHat && `🎩 ${SHOP_HATS.find(h => h.id === equippedHat)?.label ?? ''} equipped`}
-                  {equippedHat && equippedEye && '  ·  '}
-                  {equippedEye && `👁 ${SHOP_EYES.find(e => e.id === equippedEye)?.label ?? ''} eyes`}
-                </div>
-              )}
             </div>
           </div>
         )
