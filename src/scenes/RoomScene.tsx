@@ -245,7 +245,10 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange, isPremiu
       const raw = localStorage.getItem('oodle_daily_talent')
       if (!raw) return null
       const data = JSON.parse(raw) as { date: string; talent: string; drawing?: string }
-      if (data.date !== new Date().toDateString()) return null
+      if (data.date !== new Date().toDateString()) {
+      localStorage.removeItem('oodle_learning')
+      return null
+    }
       return data
     } catch { return null }
   }
@@ -815,6 +818,13 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange, isPremiu
     if (dailyTalent) {
       showBubble('Already learned today! Come back tomorrow 📅')
       return
+    }
+
+    // Reset stale learning state from a previous day
+    if (learningStep === 6 || (learningStep > 0 && !learningTrick)) {
+      setLearningStep(0)
+      setLearningTrick(null)
+      localStorage.removeItem('oodle_learning')
     }
 
     // ── First click: begin phase 1 ───────────────────────
