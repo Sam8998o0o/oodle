@@ -51,8 +51,6 @@ const DEFAULT_COORDS: PetCoords = {
 }
 
 // ── Shop / Rewards data ───────────────────────────────────
-interface ShopItem { id: string; label: string; emoji: string; price: number; rare?: boolean }
-
 interface DailyTasks {
   feed:           number   // 0-3 feeds today
   likes:          number   // plaza likes given today
