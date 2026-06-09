@@ -1611,12 +1611,6 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange, isPremiu
           onMouseDown={handlePetMouseDown}
           style={{ cursor: isFainted ? 'not-allowed' : isDizzy ? 'not-allowed' : 'grab', userSelect: 'none' }}
         >
-          {/* Propeller hat — floats above the pet */}
-          {accessory === 'propeller' && (
-            <div style={{ position: 'absolute', top: -40, left: '50%', transform: 'translateX(-50%)', zIndex: 20, pointerEvents: 'none' }}>
-              <PropellerHat size={50} spinning={!isFainted && !isDizzy} />
-            </div>
-          )}
           {isFainted && (
             <div style={{
               position: 'absolute',
@@ -1637,12 +1631,19 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange, isPremiu
               FEED ME! 😵
             </div>
           )}
-          <canvas
-            ref={petCanvasRef}
-            width={petSize}
-            height={petSize}
-            style={{ display: 'block', background: 'transparent', border: 'none' }}
-          />
+          <div style={{ position: 'relative', display: 'inline-block' }}>
+            {accessory === 'propeller' && (
+              <div style={{ position: 'absolute', top: -28, left: '50%', transform: 'translateX(-50%)', zIndex: 20, pointerEvents: 'none' }}>
+                <PropellerHat size={50} spinning={!isFainted && !isDizzy} />
+              </div>
+            )}
+            <canvas
+              ref={petCanvasRef}
+              width={petSize}
+              height={petSize}
+              style={{ display: 'block', background: 'transparent', border: 'none' }}
+            />
+          </div>
           {showTalentPreview && (() => {
             const drawingData = localStorage.getItem('oodle_talent_drawing')
             return drawingData ? (

@@ -1393,13 +1393,6 @@ export default function PlazaScene({ petData, onGoToRoom, isPremium, petSize }: 
               }}
               onClick={() => setSelectedPet(pet)}
             >
-              {/* Propeller hat — floats above the pet */}
-              {pet.accessory === 'propeller' && (
-                <div style={{ position: 'absolute', top: -36, left: '50%', transform: 'translateX(-50%)', zIndex: 5, pointerEvents: 'none' }}>
-                  <PropellerHat size={36} spinning />
-                </div>
-              )}
-
               {/* Speech bubble */}
               {shout && (
                 <div className={styles.speechBubble}>
@@ -1434,19 +1427,26 @@ export default function PlazaScene({ petData, onGoToRoom, isPremium, petSize }: 
                 )
               })()}
 
-              <canvas
-                ref={el => {
-                  if (el) {
-                    canvasMap.current.set(pet.id, el)
-                    spawnPet(pet)
-                  } else {
-                    canvasMap.current.delete(pet.id)
-                  }
-                }}
-                width={pet.isOwn ? petSize : growthToSize(pet.growth_points)}
-                height={pet.isOwn ? petSize : growthToSize(pet.growth_points)}
-                className={styles.petCanvas}
-              />
+              <div style={{ position: 'relative', display: 'inline-block' }}>
+                {pet.accessory === 'propeller' && (
+                  <div style={{ position: 'absolute', top: -28, left: '50%', transform: 'translateX(-50%)', zIndex: 2, pointerEvents: 'none' }}>
+                    <PropellerHat size={36} spinning />
+                  </div>
+                )}
+                <canvas
+                  ref={el => {
+                    if (el) {
+                      canvasMap.current.set(pet.id, el)
+                      spawnPet(pet)
+                    } else {
+                      canvasMap.current.delete(pet.id)
+                    }
+                  }}
+                  width={pet.isOwn ? petSize : growthToSize(pet.growth_points)}
+                  height={pet.isOwn ? petSize : growthToSize(pet.growth_points)}
+                  className={styles.petCanvas}
+                />
+              </div>
             </div>
           )
         })}
