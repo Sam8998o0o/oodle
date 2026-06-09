@@ -2290,23 +2290,92 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange, isPremiu
 
       {/* ── PET DEATH OVERLAY ─────────────────────────── */}
       {isPetDead && (
-        <div style={{ position: 'fixed', inset: 0, zIndex: 999, background: 'rgba(0,0,0,0.85)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '20px', textAlign: 'center', padding: '32px' }}>
-            <div style={{ fontSize: '80px', lineHeight: 1 }}>🪦</div>
-            <div style={{ fontFamily: 'var(--font-pixel)', fontSize: '22px', color: '#e94560', letterSpacing: '4px' }}>R.I.P.</div>
-            <div style={{ fontFamily: 'var(--font-pixel)', fontSize: '13px', color: '#eaeaea' }}>{petData.name}</div>
-            <div style={{ fontFamily: 'var(--font-retro)', fontSize: '20px', color: '#888' }}>Your pet has passed away...</div>
-            <button
-              onClick={() => {
-                killPet().catch(() => {})
-                localStorage.clear()
-                location.reload()
+        <div style={{
+          position: 'fixed', inset: 0, zIndex: 9999,
+          background: 'linear-gradient(180deg, #0a0a1a 0%, #1a0a0a 100%)',
+          display: 'flex', flexDirection: 'column',
+          alignItems: 'center', justifyContent: 'center',
+          fontFamily: 'var(--font-pixel)', gap: '16px',
+        }}>
+          {/* Pet pixel art */}
+          {petData?.pixelData && (
+            <canvas
+              ref={el => {
+                if (!el || !petData.pixelData) return
+                const ctx = el.getContext('2d')
+                if (!ctx) return
+                try {
+                  const img = new Image()
+                  img.onload = () => {
+                    el.width = 128; el.height = 128
+                    ctx.imageSmoothingEnabled = false
+                    ctx.drawImage(img, 0, 0, 128, 128)
+                  }
+                  img.src = petData.pixelData
+                } catch {}
               }}
-              style={{ fontFamily: 'var(--font-pixel)', fontSize: '11px', padding: '14px 28px', background: '#4ecca3', color: '#000', border: '3px solid #eaeaea', boxShadow: '4px 4px 0 #000', cursor: 'pointer', letterSpacing: '2px', marginTop: '8px' }}
-            >
-              🌱 Start Over
-            </button>
+              style={{ width: 80, height: 80, imageRendering: 'pixelated', opacity: 0.7 }}
+            />
+          )}
+
+          {/* Tombstone with info */}
+          <div style={{
+            background: '#1a1a2e', border: '3px solid #333',
+            padding: '24px 32px', textAlign: 'center',
+            minWidth: '280px', position: 'relative',
+          }}>
+            <div style={{ fontSize: '10px', color: '#555', marginBottom: '12px', letterSpacing: '2px' }}>
+              ✦ ✦ ✦
+            </div>
+            <div style={{ fontSize: '22px', color: '#e94560', letterSpacing: '6px', marginBottom: '12px' }}>
+              R.I.P.
+            </div>
+            <div style={{ fontSize: '12px', color: '#fff', letterSpacing: '2px', marginBottom: '16px' }}>
+              {petData?.name ?? 'MY PET'}
+            </div>
+            <div style={{ fontSize: '8px', color: '#555', lineHeight: 2 }}>
+              {(() => {
+                const born = localStorage.getItem('oodle_pet_created_at')
+                const bornDate = born
+                  ? new Date(parseInt(born)).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
+                  : '???'
+                const diedDate = new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
+                return `${bornDate} — ${diedDate}`
+              })()}
+            </div>
+            <div style={{ fontSize: '7px', color: '#333', marginTop: '12px', letterSpacing: '1px' }}>
+              Forever in our hearts
+            </div>
           </div>
+
+          <div style={{ fontSize: '9px', color: '#444', letterSpacing: '2px', marginTop: '4px' }}>
+            Your pet has passed away...
+          </div>
+
+          <button
+            onClick={() => {
+              killPet().catch(() => {})
+              localStorage.removeItem('oodle_stats')
+              localStorage.removeItem('oodle_last_seen')
+              localStorage.removeItem('oodle_hunger_zero_since')
+              localStorage.removeItem('oodle_pet_data')
+              localStorage.removeItem('oodle_pet_supabase_id')
+              localStorage.removeItem('oodle_pet_created_at')
+              localStorage.removeItem('oodle_daily_talent')
+              localStorage.removeItem('oodle_learning')
+              window.location.href = '/'
+            }}
+            style={{
+              marginTop: '8px',
+              fontFamily: 'var(--font-pixel)',
+              fontSize: '10px', padding: '14px 28px',
+              background: '#e94560', color: '#fff',
+              border: '3px solid #fff',
+              cursor: 'pointer', letterSpacing: '2px',
+            }}
+          >
+            🌱 Start Over
+          </button>
         </div>
       )}
     </div>
