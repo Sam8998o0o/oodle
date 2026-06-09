@@ -10,6 +10,7 @@ import type { AdRecord } from '../lib/petService'
 import { subscribeToNewPets } from '../lib/realtimeService'
 import { useAuthStore } from '../lib/auth'
 import { supabase } from '../lib/supabase'
+import PropellerHat from '../components/PropellerHat'
 import styles from './PlazaScene.module.css'
 
 // ── Default ads (shown when no advertisers in Supabase) ───
@@ -64,11 +65,13 @@ function PixelHeart({ id, x, y }: HeartAnim) {
   )
 }
 
-const PET_SIZE   = 120
-const LEFT_BOUND = 80
-const RIGHT_PAD  = 80
-const WALK_Y_MIN = 0.68   // top of walkable ground area
-const WALK_Y_MAX = 0.88   // bottom of walkable ground area
+const PET_SIZE    = 120
+const LEFT_BOUND  = 80
+const RIGHT_PAD   = 80
+const WALK_Y_MIN  = 0.68   // top of walkable ground area
+const WALK_Y_MAX  = 0.88   // bottom of walkable ground area
+const WALK_SKY_MIN = 0.05  // top of sky zone (propeller hat pets)
+const WALK_SKY_MAX = 0.38  // bottom of sky zone (propeller hat pets)
 
 // No obstacle zones — pets walk freely across the plaza
 
@@ -100,6 +103,7 @@ interface PlazaPet {
   growth_points:  number
   talent?:        string
   talent_drawing?: string
+  accessory?:     string | null
 }
 
 // Maps growth_points (0-100) to canvas size (60-160 px)
@@ -144,6 +148,9 @@ export default function PlazaScene({ petData, onGoToRoom, isPremium, petSize }: 
 
   // Queue of pets waiting to be spawned (DOM not ready yet when pets state updates)
   const spawnQueue = useRef<PlazaPet[]>([])
+
+  // Track which pet ids have propeller hat (flying sky mode)
+  const propellerHats = useRef<Set<string>>(new Set())
 
   const [pets, setPets]               = useState<PlazaPet[]>([])
   const [ads,  setAds]                = useState<AdRecord[]>(DEFAULT_ADS)
@@ -422,14 +429,22 @@ export default function PlazaScene({ petData, onGoToRoom, isPremium, petSize }: 
     animator.start()
     animMap.current.set(pet.id, animator)
 
+    // Register / unregister propeller hat status
+    if (pet.accessory === 'propeller') propellerHats.current.add(pet.id)
+    else propellerHats.current.delete(pet.id)
+
+    const isFlying   = pet.accessory === 'propeller'
+    const yMin       = isFlying ? WALK_SKY_MIN : WALK_Y_MIN
+    const yMax       = isFlying ? WALK_SKY_MAX : WALK_Y_MAX
+
     const rightBound = rW - RIGHT_PAD - size
-    const yRatio     = WALK_Y_MIN + Math.random() * (WALK_Y_MAX - WALK_Y_MIN)
+    const yRatio     = yMin + Math.random() * (yMax - yMin)
     const y          = yRatio * rH - size
     const x          = LEFT_BOUND + Math.random() * (rightBound - LEFT_BOUND)
     const dir        = Math.random() < 0.5 ? 1 : -1
     const dirY       = Math.random() < 0.5 ? 1 : -1
-    const speed      = 0.4 + Math.random() * 0.7
-    const speedY     = 0.1 + Math.random() * 0.2   // slower vertical movement
+    const speed      = isFlying ? 0.5 + Math.random() * 0.8 : 0.4 + Math.random() * 0.7
+    const speedY     = isFlying ? 0.15 + Math.random() * 0.25 : 0.1 + Math.random() * 0.2
 
     const w: Walker = { x, y, dir, dirY, speed, speedY }
     walkerMap.current.set(pet.id, w)
@@ -472,8 +487,9 @@ export default function PlazaScene({ petData, onGoToRoom, isPremium, petSize }: 
         // Use actual canvas size for own pet bounds
         const sz         = cv.width > 0 ? cv.width : (id === 'own' ? petSizeRef.current : PET_SIZE)
         const ownRight   = rW - RIGHT_PAD - sz
-        const ownTop     = WALK_Y_MIN * rH - sz
-        const ownBottom  = WALK_Y_MAX * rH - sz
+        const isFlying   = propellerHats.current.has(id)
+        const ownTop     = (isFlying ? WALK_SKY_MIN : WALK_Y_MIN) * rH - sz
+        const ownBottom  = (isFlying ? WALK_SKY_MAX : WALK_Y_MAX) * rH - sz
 
         // X movement
         const nextX = w.x + w.speed * w.dir
@@ -541,15 +557,16 @@ export default function PlazaScene({ petData, onGoToRoom, isPremium, petSize }: 
     } catch { /* ignore */ }
 
     const ownPet: PlazaPet = {
-      id:            'own',
-      pixelData:     petData.pixelData,
-      coords:        petData.coords,
-      name:          petData.name,
-      createdAt:     new Date().toISOString(),
-      isOwn:         true,
-      growth_points: parseInt(localStorage.getItem('oodle_growth') ?? '0', 10),
-      talent:        ownTalent,
+      id:             'own',
+      pixelData:      petData.pixelData,
+      coords:         petData.coords,
+      name:           petData.name,
+      createdAt:      new Date().toISOString(),
+      isOwn:          true,
+      growth_points:  parseInt(localStorage.getItem('oodle_growth') ?? '0', 10),
+      talent:         ownTalent,
       talent_drawing: ownTalentDrawing,
+      accessory:      localStorage.getItem('oodle_accessory') ?? null,
     }
     setPets([ownPet])
 
@@ -584,6 +601,7 @@ export default function PlazaScene({ petData, onGoToRoom, isPremium, petSize }: 
           growth_points:  r.growth_points  ?? 0,
           talent:         r.talent,
           talent_drawing: r.talent_drawing,
+          accessory:      r.accessory ?? null,
         }))
       setPets(prev => mergePets(prev, [ownPet, ...others]))
       setLikes(likeCounts)
@@ -715,6 +733,7 @@ export default function PlazaScene({ petData, onGoToRoom, isPremium, petSize }: 
             growth_points:  r.growth_points  ?? 0,
             talent:         r.talent,
             talent_drawing: r.talent_drawing,
+            accessory:      r.accessory ?? null,
           }))
         const ownPet = prev.find(p => p.isOwn)
         return ownPet ? [ownPet, ...newOthers] : newOthers
@@ -744,6 +763,7 @@ export default function PlazaScene({ petData, onGoToRoom, isPremium, petSize }: 
           growth_points:  newPet.growth_points  ?? 0,
           talent:         newPet.talent,
           talent_drawing: newPet.talent_drawing,
+          accessory:      newPet.accessory ?? null,
         }]
       })
     })
@@ -1373,6 +1393,13 @@ export default function PlazaScene({ petData, onGoToRoom, isPremium, petSize }: 
               }}
               onClick={() => setSelectedPet(pet)}
             >
+              {/* Propeller hat — floats above the pet */}
+              {pet.accessory === 'propeller' && (
+                <div style={{ position: 'absolute', top: -36, left: '50%', transform: 'translateX(-50%)', zIndex: 5, pointerEvents: 'none' }}>
+                  <PropellerHat size={36} spinning />
+                </div>
+              )}
+
               {/* Speech bubble */}
               {shout && (
                 <div className={styles.speechBubble}>

@@ -2,9 +2,10 @@ import { useRef, useState, useEffect, useCallback } from 'react'
 import StatBar from '../ui/StatBar'
 import { PetAnimator } from '../engine/PetAnimator'
 import type { PetCoords } from '../api/aiRecognize'
-import { savePet, getLikeBalance, redeemLikesForFood, saveTalent, saveTalentDrawing, getPetAge, killPet, checkPetDead } from '../lib/petService'
+import { savePet, getLikeBalance, redeemLikesForFood, saveTalent, saveTalentDrawing, getPetAge, killPet, checkPetDead, saveAccessory } from '../lib/petService'
 import { supabase } from '../lib/supabase'
 import { useAuthStore } from '../lib/auth'
+import PropellerHat from '../components/PropellerHat'
 import styles from './RoomScene.module.css'
 
 interface PetStats {
@@ -314,6 +315,18 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange, isPremiu
   const [equippedEye] = useState<string>(() => {
     try { return localStorage.getItem('oodle_eye_style') ?? 'eye_round' } catch { return 'eye_round' }
   })
+
+  // ── Accessory state ────────────────────────────────────────
+  const [accessory, setAccessory] = useState<string | null>(() => {
+    try { return localStorage.getItem('oodle_accessory') } catch { return null }
+  })
+
+  const equipAccessory = useCallback((acc: string | null) => {
+    setAccessory(acc)
+    if (acc) localStorage.setItem('oodle_accessory', acc)
+    else     localStorage.removeItem('oodle_accessory')
+    saveAccessory(acc).catch(() => {})
+  }, [])
 
   const isFaintedRef = useRef(false)
   const isDizzyRef   = useRef(false)
@@ -1598,6 +1611,12 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange, isPremiu
           onMouseDown={handlePetMouseDown}
           style={{ cursor: isFainted ? 'not-allowed' : isDizzy ? 'not-allowed' : 'grab', userSelect: 'none' }}
         >
+          {/* Propeller hat — floats above the pet */}
+          {accessory === 'propeller' && (
+            <div style={{ position: 'absolute', top: -40, left: '50%', transform: 'translateX(-50%)', zIndex: 20, pointerEvents: 'none' }}>
+              <PropellerHat size={50} spinning={!isFainted && !isDizzy} />
+            </div>
+          )}
           {isFainted && (
             <div style={{
               position: 'absolute',
@@ -1935,8 +1954,29 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange, isPremiu
                 )}
 
                 {shopTab === 'hats' && (
-                  <div style={{ textAlign: 'center', fontFamily: 'var(--font-pixel)', fontSize: '10px', color: '#888', padding: '40px 20px' }}>
-                    🚧 COMING SOON
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                    {/* Propeller hat item */}
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', border: '2px solid #2C2C2C', boxShadow: '2px 2px 0 #2C2C2C', padding: '12px 14px', background: '#fff' }}>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                        <span style={{ fontFamily: 'var(--font-pixel)', fontSize: '10px', color: '#2C2C2C' }}>🚁 PROPELLER HAT</span>
+                        <span style={{ fontFamily: 'var(--font-retro)', fontSize: '14px', color: '#888' }}>Fly in the Plaza sky!</span>
+                        <PropellerHat size={44} spinning={accessory === 'propeller'} />
+                      </div>
+                      <button
+                        onClick={() => equipAccessory(accessory === 'propeller' ? null : 'propeller')}
+                        style={{
+                          fontFamily: 'var(--font-pixel)', fontSize: '9px', padding: '10px 14px',
+                          background: accessory === 'propeller' ? '#4ecca3' : '#FFE600',
+                          color: '#2C2C2C', border: '2px solid #2C2C2C',
+                          boxShadow: '2px 2px 0 #2C2C2C', cursor: 'pointer', letterSpacing: '1px',
+                        }}
+                      >
+                        {accessory === 'propeller' ? '✓ EQUIPPED' : 'EQUIP FREE'}
+                      </button>
+                    </div>
+                    <div style={{ textAlign: 'center', fontFamily: 'var(--font-pixel)', fontSize: '8px', color: '#aaa', padding: '12px 0 4px' }}>
+                      🚧 MORE HATS COMING SOON
+                    </div>
                   </div>
                 )}
 

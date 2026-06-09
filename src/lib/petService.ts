@@ -14,6 +14,7 @@ export interface PetRecord {
   growth_points:  number
   talent?:        string
   talent_drawing?: string
+  accessory?:     string | null
 }
 
 // localStorage key used to avoid re-inserting the same pet
@@ -498,4 +499,13 @@ export async function getPetAge(): Promise<number | null> {
   } catch {
     return null
   }
+}
+
+// ── saveAccessory ─────────────────────────────────────────
+// Persists the pet's equipped accessory (e.g. 'propeller') to Supabase.
+// Pass null to remove the accessory.
+export async function saveAccessory(accessory: string | null): Promise<void> {
+  const petId = localStorage.getItem('oodle_pet_supabase_id')
+  if (!petId) return
+  await supabase.from('pets').update({ accessory }).eq('id', petId)
 }
