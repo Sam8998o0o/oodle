@@ -424,7 +424,7 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange, isPremiu
 
     // Check if hunger has been 0 long enough to die (covers offline period)
     const zeroSince = localStorage.getItem('oodle_hunger_zero_since')
-    if (zeroSince && Date.now() - parseInt(zeroSince, 10) >= 3 * 86400000) {
+    if (zeroSince && Date.now() - parseInt(zeroSince, 10) >= 2 * 86400000) {
       killPet().catch(() => {})
       setIsPetDead(true)
     }
@@ -574,7 +574,7 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange, isPremiu
         const zeroSince = localStorage.getItem('oodle_hunger_zero_since')
         if (!zeroSince) {
           localStorage.setItem('oodle_hunger_zero_since', String(Date.now()))
-        } else if (Date.now() - parseInt(zeroSince, 10) >= 3 * 86400000) {
+        } else if (Date.now() - parseInt(zeroSince, 10) >= 2 * 86400000) {
           killPet().catch(() => {})
           setIsPetDead(true)
         }
