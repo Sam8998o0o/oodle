@@ -71,14 +71,14 @@ const REWARD_DAYS: Array<{ emoji: string; label: string; snacks: number; meals: 
   { emoji: '👑+🍖🍖', label: 'Crown+2 Meals', snacks: 0, meals: 2, rare: true,  claimMsg: '👑 +2 MEALS ADDED!' },
 ]
 
-const SHOP_HATS: ShopItem[]    = [
+const _SHOP_HATS: ShopItem[]    = [
   { id: 'hat_top',    label: 'Top Hat',   emoji: '🎩', price: 20 },
   { id: 'hat_straw',  label: 'Straw Hat', emoji: '👒', price: 30 },
   { id: 'hat_grad',   label: 'Grad Cap',  emoji: '🎓', price: 40 },
   { id: 'hat_wizard', label: 'Wizard',    emoji: '🪄', price: 50 },
   { id: 'hat_crown',  label: 'Crown',     emoji: '👑', price: 100, rare: true },
 ]
-const SHOP_EYES: ShopItem[]    = [
+const _SHOP_EYES: ShopItem[]    = [
   { id: 'eye_round',  label: 'Round',  emoji: '👁', price: 0  },
   { id: 'eye_happy',  label: 'Happy',  emoji: '😊', price: 0  },
   { id: 'eye_sleepy', label: 'Sleepy', emoji: '😴', price: 0  },
@@ -311,10 +311,10 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange, isPremiu
 
   // ── Shop state ─────────────────────────────────────────────
   const [shopTab, setShopTab] = useState<'food' | 'hats' | 'glasses' | 'eyes' | 'room' | 'coins'>('food')
-  const [equippedHat] = useState<string>(() => {
+  const [_equippedHat] = useState<string>(() => {
     try { return localStorage.getItem('oodle_equipped_hat') ?? '' } catch { return '' }
   })
-  const [equippedEye] = useState<string>(() => {
+  const [_equippedEye] = useState<string>(() => {
     try { return localStorage.getItem('oodle_eye_style') ?? 'eye_round' } catch { return 'eye_round' }
   })
 
