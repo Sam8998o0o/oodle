@@ -29,6 +29,37 @@ router.post('/create-checkout-session', async (req: Request, res: Response) => {
   res.json({ url: session.url })
 })
 
+// POST /api/create-coins-checkout-session
+const COIN_PACKAGES: Record<string, { amountCents: number; coins: number; name: string }> = {
+  coins_50:  { amountCents: 490,  coins: 50,  name: '50 Coins'  },
+  coins_150: { amountCents: 1290, coins: 150, name: '150 Coins' },
+  coins_350: { amountCents: 2490, coins: 350, name: '350 Coins' },
+}
+
+router.post('/create-coins-checkout-session', async (req: Request, res: Response) => {
+  const { userId, petId, package: pkg } = req.body as { userId: string; petId: string; package: string }
+  const selected = COIN_PACKAGES[pkg]
+  if (!selected) { res.status(400).json({ error: 'Invalid coin package' }); return }
+
+  const session = await stripe.checkout.sessions.create({
+    mode: 'payment',
+    line_items: [{
+      price_data: {
+        currency: 'myr',
+        unit_amount: selected.amountCents,
+        product_data: { name: `Oodle ${selected.name}` },
+      },
+      quantity: 1,
+    }],
+    success_url: process.env.CLIENT_URL + '/?coins_purchased=true',
+    cancel_url:  process.env.CLIENT_URL,
+    metadata: { userId, petId, pkg, coins: String(selected.coins) },
+    client_reference_id: userId,
+  })
+
+  res.json({ url: session.url })
+})
+
 // POST /api/create-portal-session
 router.post('/create-portal-session', async (req: Request, res: Response) => {
   const { userId } = req.body as { userId: string }
@@ -62,6 +93,18 @@ router.post('/webhook/stripe', async (req: Request, res: Response) => {
   switch (event.type) {
     case 'checkout.session.completed': {
       const session = event.data.object as Stripe.Checkout.Session
+
+      if (session.mode === 'payment') {
+        // One-time coin purchase
+        const petId      = session.metadata?.petId
+        const coinsToAdd = parseInt(session.metadata?.coins ?? '0', 10)
+        if (petId && coinsToAdd > 0) {
+          await supabase.rpc('add_coins', { p_pet_id: petId, p_amount: coinsToAdd })
+        }
+        break
+      }
+
+      // Subscription checkout
       const userId = session.metadata?.userId ?? session.client_reference_id
       if (!userId) break
 

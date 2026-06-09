@@ -2,7 +2,9 @@ import { useRef, useState, useEffect, useCallback } from 'react'
 import StatBar from '../ui/StatBar'
 import { PetAnimator } from '../engine/PetAnimator'
 import type { PetCoords } from '../api/aiRecognize'
-import { savePet, getLikeBalance, redeemLikesForFood, saveTalent, saveTalentDrawing, getPetAge, killPet, checkPetDead, saveAccessory } from '../lib/petService'
+import { savePet, getLikeBalance, redeemLikesForFood, saveTalent, saveTalentDrawing, getPetAge, killPet, checkPetDead, saveAccessory, getCoins } from '../lib/petService'
+import { createCoinsCheckoutSession } from '../lib/stripe'
+import type { CoinPackage } from '../lib/stripe'
 import { supabase } from '../lib/supabase'
 import { useAuthStore } from '../lib/auth'
 import PropellerHat from '../components/PropellerHat'
@@ -97,7 +99,7 @@ const CONFETTI = Array.from({ length: 60 }, (_, i) => ({
 }))
 
 export default function RoomScene({ petData, onGoToPlaza, onSizeChange, isPremium: _isPremium = false }: RoomSceneProps) {
-  const { isAnonymous } = useAuthStore()
+  const { isAnonymous, userId } = useAuthStore()
   const roomRef       = useRef<HTMLDivElement>(null)
   const petWrapperRef = useRef<HTMLDivElement>(null)
   const petCanvasRef  = useRef<HTMLCanvasElement>(null)
@@ -308,7 +310,7 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange, isPremiu
   const [rewardMsg, setRewardMsg] = useState('')
 
   // ── Shop state ─────────────────────────────────────────────
-  const [shopTab, setShopTab] = useState<'food' | 'hats' | 'glasses' | 'eyes' | 'room'>('food')
+  const [shopTab, setShopTab] = useState<'food' | 'hats' | 'glasses' | 'eyes' | 'room' | 'coins'>('food')
   const [equippedHat] = useState<string>(() => {
     try { return localStorage.getItem('oodle_equipped_hat') ?? '' } catch { return '' }
   })
@@ -326,6 +328,29 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange, isPremiu
     if (acc) localStorage.setItem('oodle_accessory', acc)
     else     localStorage.removeItem('oodle_accessory')
     saveAccessory(acc).catch(() => {})
+  }, [])
+
+  // Equip propeller hat — costs 30 likes via spend_likes RPC
+  const handleEquipPropeller = useCallback(async () => {
+    const { error } = await supabase.rpc('spend_likes', { p_amount: 30 })
+    if (error) return   // insufficient balance or RPC error — bail silently
+    equipAccessory('propeller')
+    setLikeBalance(prev => Math.max(0, prev - 30))
+    getLikeBalance().then(b => setLikeBalance(b)).catch(() => {})
+  }, [equipAccessory])
+
+  // ── Coins state ───────────────────────────────────────────
+  const [coins, setCoins] = useState(0)
+
+  const handleBuyCoins = useCallback(async (pkg: CoinPackage) => {
+    const uid   = useAuthStore.getState().userId
+    const petId = localStorage.getItem('oodle_pet_supabase_id')
+    if (!uid || !petId) {
+      useAuthStore.getState().setShowSignInModal(true)
+      return
+    }
+    const url = await createCoinsCheckoutSession(uid, petId, pkg)
+    if (url) window.location.href = url
   }, [])
 
   const isFaintedRef = useRef(false)
@@ -494,6 +519,18 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange, isPremiu
     return () => {
       clearInterval(timer)
       if (channel) supabase.removeChannel(channel)
+    }
+  }, [])
+
+  // ── Load coins on mount + handle Stripe coins redirect ────
+  useEffect(() => {
+    getCoins().then(c => setCoins(c)).catch(() => {})
+
+    const params = new URLSearchParams(window.location.search)
+    if (params.get('coins_purchased') === 'true') {
+      window.history.replaceState({}, '', '/')
+      // Webhook credits coins async — refresh after a short delay
+      setTimeout(() => getCoins().then(c => setCoins(c)).catch(() => {}), 2500)
     }
   }, [])
 
@@ -1905,12 +1942,13 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange, isPremiu
 
       {/* ── SHOP MODAL ──────────────────────────────────────── */}
       {showShop && (() => {
-        const shopTabs: Array<{ id: 'food' | 'hats' | 'glasses' | 'eyes' | 'room'; label: string }> = [
+        const shopTabs: Array<{ id: 'food' | 'hats' | 'glasses' | 'eyes' | 'room' | 'coins'; label: string }> = [
           { id: 'food',    label: '🍖 FOOD'    },
           { id: 'hats',    label: '🎩 HATS'    },
           { id: 'glasses', label: '👓 GLASS'   },
           { id: 'eyes',    label: '👁 EYES'    },
           { id: 'room',    label: '🪴 ROOM'    },
+          { id: 'coins',   label: '🪙 COINS'   },
         ]
 
         return (
@@ -1922,9 +1960,11 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange, isPremiu
               </div>
               <button onClick={() => setShowShop(false)} style={{ position: 'absolute', top: '8px', right: '8px', fontFamily: 'var(--font-pixel)', fontSize: '12px', background: 'transparent', border: '2px solid #FFE600', color: '#FFE600', width: '28px', height: '28px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>✕</button>
 
-              {/* Like balance */}
-              <div style={{ fontFamily: 'var(--font-pixel)', fontSize: '13px', color: '#cc2200', textAlign: 'center', padding: '10px', background: '#fff8e1', borderBottom: '2px solid #2C2C2C' }}>
-                ❤️ BALANCE: {likeBalance} LIKES
+              {/* Balance row — likes + coins */}
+              <div style={{ fontFamily: 'var(--font-pixel)', fontSize: '11px', textAlign: 'center', padding: '10px 16px', background: '#fff8e1', borderBottom: '2px solid #2C2C2C', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '18px' }}>
+                <span style={{ color: '#cc2200' }}>❤️ {likeBalance}</span>
+                <span style={{ color: '#ccc' }}>|</span>
+                <span style={{ color: '#c87800' }}>🪙 {coins}</span>
               </div>
 
               {/* Tab bar */}
@@ -1954,32 +1994,40 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange, isPremiu
                   </div>
                 )}
 
-                {shopTab === 'hats' && (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                    {/* Propeller hat item */}
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', border: '2px solid #2C2C2C', boxShadow: '2px 2px 0 #2C2C2C', padding: '12px 14px', background: '#fff' }}>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                        <span style={{ fontFamily: 'var(--font-pixel)', fontSize: '10px', color: '#2C2C2C' }}>🚁 PROPELLER HAT</span>
-                        <span style={{ fontFamily: 'var(--font-retro)', fontSize: '14px', color: '#888' }}>Fly in the Plaza sky!</span>
-                        <PropellerHat size={44} spinning={accessory === 'propeller'} />
+                {shopTab === 'hats' && (() => {
+                  const canAfford  = likeBalance >= 30
+                  const isEquipped = accessory === 'propeller'
+                  return (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', border: '2px solid #2C2C2C', boxShadow: '2px 2px 0 #2C2C2C', padding: '12px 14px', background: '#fff' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                          <span style={{ fontFamily: 'var(--font-pixel)', fontSize: '10px', color: '#2C2C2C' }}>🚁 PROPELLER HAT</span>
+                          <span style={{ fontFamily: 'var(--font-retro)', fontSize: '14px', color: '#888' }}>Fly in the Plaza sky!</span>
+                          <PropellerHat size={44} spinning={isEquipped} />
+                        </div>
+                        {isEquipped ? (
+                          <button
+                            onClick={() => equipAccessory(null)}
+                            style={{ fontFamily: 'var(--font-pixel)', fontSize: '9px', padding: '10px 12px', background: '#4ecca3', color: '#2C2C2C', border: '2px solid #2C2C2C', boxShadow: '2px 2px 0 #2C2C2C', cursor: 'pointer', letterSpacing: '1px' }}
+                          >✓ EQUIPPED</button>
+                        ) : canAfford ? (
+                          <button
+                            onClick={handleEquipPropeller}
+                            style={{ fontFamily: 'var(--font-pixel)', fontSize: '9px', padding: '10px 12px', background: '#FFE600', color: '#2C2C2C', border: '2px solid #2C2C2C', boxShadow: '2px 2px 0 #2C2C2C', cursor: 'pointer', letterSpacing: '1px' }}
+                          >EQUIP<br />30 ❤</button>
+                        ) : (
+                          <button
+                            disabled
+                            style={{ fontFamily: 'var(--font-pixel)', fontSize: '9px', padding: '10px 12px', background: '#ddd', color: '#999', border: '2px solid #ccc', cursor: 'not-allowed', letterSpacing: '1px', opacity: 0.5 }}
+                          >NEED<br />30 ❤</button>
+                        )}
                       </div>
-                      <button
-                        onClick={() => equipAccessory(accessory === 'propeller' ? null : 'propeller')}
-                        style={{
-                          fontFamily: 'var(--font-pixel)', fontSize: '9px', padding: '10px 14px',
-                          background: accessory === 'propeller' ? '#4ecca3' : '#FFE600',
-                          color: '#2C2C2C', border: '2px solid #2C2C2C',
-                          boxShadow: '2px 2px 0 #2C2C2C', cursor: 'pointer', letterSpacing: '1px',
-                        }}
-                      >
-                        {accessory === 'propeller' ? '✓ EQUIPPED' : 'EQUIP FREE'}
-                      </button>
+                      <div style={{ textAlign: 'center', fontFamily: 'var(--font-pixel)', fontSize: '8px', color: '#aaa', padding: '12px 0 4px' }}>
+                        🚧 MORE HATS COMING SOON
+                      </div>
                     </div>
-                    <div style={{ textAlign: 'center', fontFamily: 'var(--font-pixel)', fontSize: '8px', color: '#aaa', padding: '12px 0 4px' }}>
-                      🚧 MORE HATS COMING SOON
-                    </div>
-                  </div>
-                )}
+                  )
+                })()}
 
                 {shopTab === 'glasses' && (
                   <div style={{ textAlign: 'center', fontFamily: 'var(--font-pixel)', fontSize: '10px', color: '#888', padding: '40px 20px' }}>
@@ -1996,6 +2044,41 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange, isPremiu
                 {shopTab === 'room' && (
                   <div style={{ textAlign: 'center', fontFamily: 'var(--font-pixel)', fontSize: '10px', color: '#888', padding: '40px 20px' }}>
                     🚧 COMING SOON
+                  </div>
+                )}
+
+                {shopTab === 'coins' && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                    {([
+                      { pkg: 'coins_50'  as CoinPackage, label: '🪙 50 COINS',   price: 'RM 4.90'  },
+                      { pkg: 'coins_150' as CoinPackage, label: '🪙 150 COINS',  price: 'RM 12.90', best: false },
+                      { pkg: 'coins_350' as CoinPackage, label: '🪙 350 COINS',  price: 'RM 24.90', best: true  },
+                    ]).map(c => (
+                      <div
+                        key={c.pkg}
+                        style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'space-between', border: '2px solid #2C2C2C', boxShadow: '2px 2px 0 #2C2C2C', padding: '12px 14px', background: '#fff' }}
+                      >
+                        {c.best && (
+                          <div style={{ position: 'absolute', top: -9, right: 8, fontFamily: 'var(--font-pixel)', fontSize: '7px', background: '#e94560', color: '#fff', padding: '2px 6px' }}>
+                            BEST VALUE
+                          </div>
+                        )}
+                        <span style={{ fontFamily: 'var(--font-pixel)', fontSize: '11px', color: '#2C2C2C' }}>{c.label}</span>
+                        <button
+                          onClick={() => handleBuyCoins(c.pkg)}
+                          style={{ fontFamily: 'var(--font-pixel)', fontSize: '9px', padding: '8px 12px', background: '#FFE600', color: '#2C2C2C', border: '2px solid #2C2C2C', boxShadow: '2px 2px 0 #2C2C2C', cursor: 'pointer', letterSpacing: '1px', whiteSpace: 'nowrap' }}
+                        >{c.price} →</button>
+                      </div>
+                    ))}
+                    <div style={{ fontFamily: 'var(--font-retro)', fontSize: '15px', color: '#888', textAlign: 'center', padding: '8px 0 0', lineHeight: 1.9 }}>
+                      Current balance: <strong style={{ color: '#c87800' }}>🪙 {coins}</strong><br />
+                      Coins unlock future accessories &amp; items
+                    </div>
+                    {!userId && (
+                      <div style={{ fontFamily: 'var(--font-pixel)', fontSize: '8px', color: '#e94560', textAlign: 'center', lineHeight: 2 }}>
+                        ⚠ Sign in to purchase coins
+                      </div>
+                    )}
                   </div>
                 )}
               </div>

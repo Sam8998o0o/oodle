@@ -15,6 +15,7 @@ export interface PetRecord {
   talent?:        string
   talent_drawing?: string
   accessory?:     string | null
+  coins?:         number
 }
 
 // localStorage key used to avoid re-inserting the same pet
@@ -508,4 +509,21 @@ export async function saveAccessory(accessory: string | null): Promise<void> {
   const petId = localStorage.getItem('oodle_pet_supabase_id')
   if (!petId) return
   await supabase.from('pets').update({ accessory }).eq('id', petId)
+}
+
+// ── getCoins ──────────────────────────────────────────────
+// Returns the pet's current coin balance from Supabase.
+export async function getCoins(): Promise<number> {
+  const petId = localStorage.getItem('oodle_pet_supabase_id')
+  if (!petId) return 0
+  const { data } = await supabase.from('pets').select('coins').eq('id', petId).single()
+  return (data as { coins?: number } | null)?.coins ?? 0
+}
+
+// ── addCoins ──────────────────────────────────────────────
+// Credits coins to the pet via Supabase RPC.
+export async function addCoins(amount: number): Promise<void> {
+  const petId = localStorage.getItem('oodle_pet_supabase_id')
+  if (!petId) return
+  await supabase.rpc('add_coins', { p_pet_id: petId, p_amount: amount })
 }
