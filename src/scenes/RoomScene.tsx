@@ -71,21 +71,6 @@ const REWARD_DAYS: Array<{ emoji: string; label: string; snacks: number; meals: 
   { emoji: '👑+🍖🍖', label: 'Crown+2 Meals', snacks: 0, meals: 2, rare: true,  claimMsg: '👑 +2 MEALS ADDED!' },
 ]
 
-const _SHOP_HATS: ShopItem[]    = [
-  { id: 'hat_top',    label: 'Top Hat',   emoji: '🎩', price: 20 },
-  { id: 'hat_straw',  label: 'Straw Hat', emoji: '👒', price: 30 },
-  { id: 'hat_grad',   label: 'Grad Cap',  emoji: '🎓', price: 40 },
-  { id: 'hat_wizard', label: 'Wizard',    emoji: '🪄', price: 50 },
-  { id: 'hat_crown',  label: 'Crown',     emoji: '👑', price: 100, rare: true },
-]
-const _SHOP_EYES: ShopItem[]    = [
-  { id: 'eye_round',  label: 'Round',  emoji: '👁', price: 0  },
-  { id: 'eye_happy',  label: 'Happy',  emoji: '😊', price: 0  },
-  { id: 'eye_sleepy', label: 'Sleepy', emoji: '😴', price: 0  },
-  { id: 'eye_star',   label: 'Star',   emoji: '✦', price: 20 },
-  { id: 'eye_heart',  label: 'Heart',  emoji: '♥', price: 20 },
-  { id: 'eye_x',      label: 'X Eyes', emoji: '✕', price: 20 },
-]
 
 // ── Confetti data ─────────────────────────────────────────
 const CONFETTI_COLORS = ['#FFE600', '#FF4444', '#44FF88', '#4488FF', '#FF88FF', '#FF8844', '#FF4488', '#88FF44']
