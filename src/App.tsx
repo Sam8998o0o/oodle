@@ -5,6 +5,7 @@ import PlazaScene from './scenes/PlazaScene'
 import AuthButton from './components/AuthButton'
 import { initAuth, useAuthStore } from './lib/auth'
 import SignInModal from './components/SignInModal'
+import IPImportModal from './components/IPImportModal'
 import type { PetCoords } from './api/aiRecognize'
 import PaywallScene from './scenes/PaywallScene'
 import ArrestedScene from './scenes/ArrestedScene'
@@ -35,6 +36,7 @@ function App() {
   const [petSize, setPetSize]       = useState(60)
   const [jailedUntil, setJailedUntil] = useState<Date | null>(null)
   const [resumePixelData, setResumePixelData] = useState<string | null>(null)
+  const [ipImportParams, setIpImportParams] = useState<{ imageUrl: string; name: string } | null>(null)
 
   const { userId, showSignInModal, setShowSignInModal } = useAuthStore()
 
@@ -92,6 +94,19 @@ function App() {
       if (resumeDraw) {
         localStorage.removeItem('oodle_resume_draw')
         setResumePixelData(resumeDraw)
+      }
+      // Detect IP import params from Oodle Creators
+      const urlParams = new URLSearchParams(window.location.search)
+      if (urlParams.get('from') === 'oodle-creators') {
+        const imgUrl  = urlParams.get('image')
+        const petName = urlParams.get('name')
+        if (imgUrl && petName) {
+          window.history.replaceState({}, '', '/')
+          setIpImportParams({
+            imageUrl: decodeURIComponent(imgUrl),
+            name:     decodeURIComponent(petName),
+          })
+        }
       }
       setPetData(null)
       localStorage.removeItem(PET_STORAGE_KEY)
@@ -166,6 +181,17 @@ function App() {
           initialStep={resumePixelData ? 'decorate' : undefined}
           initialPixelData={resumePixelData ?? undefined}
         />
+        {ipImportParams && (
+          <IPImportModal
+            imageUrl={ipImportParams.imageUrl}
+            characterName={ipImportParams.name}
+            onDismiss={() => setIpImportParams(null)}
+            onPetCreated={(pixelData, coords, name) => {
+              setIpImportParams(null)
+              handlePetCreated(pixelData, coords, name)
+            }}
+          />
+        )}
         {modal}
       </>
     )
