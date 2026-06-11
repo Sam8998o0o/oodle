@@ -2032,9 +2032,9 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange, isPremiu
                 {shopTab === 'coins' && (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                     {([
-                      { pkg: 'coins_50'  as CoinPackage, label: '🪙 50 COINS',   price: 'RM 4.90'  },
-                      { pkg: 'coins_150' as CoinPackage, label: '🪙 150 COINS',  price: 'RM 12.90', best: false },
-                      { pkg: 'coins_350' as CoinPackage, label: '🪙 350 COINS',  price: 'RM 24.90', best: true  },
+                      { pkg: 'coins_50'  as CoinPackage, label: '🪙 50 COINS',   price: '$1.99'  },
+                      { pkg: 'coins_150' as CoinPackage, label: '🪙 150 COINS',  price: '$4.99', best: false },
+                      { pkg: 'coins_350' as CoinPackage, label: '🪙 350 COINS',  price: '$9.99', best: true  },
                     ]).map(c => (
                       <div
                         key={c.pkg}
