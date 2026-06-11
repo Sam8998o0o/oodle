@@ -3,8 +3,6 @@ import StatBar from '../ui/StatBar'
 import { PetAnimator } from '../engine/PetAnimator'
 import type { PetCoords } from '../api/aiRecognize'
 import { savePet, getLikeBalance, redeemLikesForFood, saveTalent, saveTalentDrawing, getPetAge, killPet, checkPetDead, saveAccessory, getCoins } from '../lib/petService'
-import { createCoinsCheckoutSession } from '../lib/stripe'
-import type { CoinPackage } from '../lib/stripe'
 import { supabase } from '../lib/supabase'
 import { useAuthStore } from '../lib/auth'
 import PropellerHat from '../components/PropellerHat'
@@ -325,16 +323,29 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange, isPremiu
   // ── Coins state ───────────────────────────────────────────
   const [coins, setCoins] = useState(0)
 
-  const handleBuyCoins = useCallback(async (pkg: CoinPackage) => {
-    const uid   = useAuthStore.getState().userId
-    const petId = localStorage.getItem('oodle_pet_supabase_id')
-    if (!uid || !petId) {
-      useAuthStore.getState().setShowSignInModal(true)
-      return
+  const buyCoins = async (priceId: string, coins: number) => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) { showBubble('Please sign in first!'); return }
+
+      const res = await fetch('/api/create-checkout-session', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          priceId,
+          mode: 'payment',
+          userId: user.id,
+          coins,
+          successUrl: window.location.origin + '?coins_success=1',
+          cancelUrl:  window.location.origin,
+        }),
+      })
+      const data = await res.json() as { url?: string }
+      if (data.url) window.location.href = data.url
+    } catch {
+      showBubble('Payment error, try again!')
     }
-    const url = await createCoinsCheckoutSession(uid, petId, pkg)
-    if (url) window.location.href = url
-  }, [])
+  }
 
   const isFaintedRef = useRef(false)
   const isDizzyRef   = useRef(false)
@@ -2032,12 +2043,12 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange, isPremiu
                 {shopTab === 'coins' && (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                     {([
-                      { pkg: 'coins_50'  as CoinPackage, label: '🪙 50 COINS',   price: '$1.99'  },
-                      { pkg: 'coins_150' as CoinPackage, label: '🪙 150 COINS',  price: '$4.99', best: false },
-                      { pkg: 'coins_350' as CoinPackage, label: '🪙 350 COINS',  price: '$9.99', best: true  },
+                      { priceId: 'price_1Th6ovDNcXWIlrZ47GyhMxTQ', coinAmt: 50,  label: '🪙 50 COINS',   price: '$1.99'  },
+                      { priceId: 'price_1Th6pPDNcXWIlrZ4C71nSgSN', coinAmt: 150, label: '🪙 150 COINS',  price: '$4.99', best: false },
+                      { priceId: 'price_1Th6phDNcXWIlrZ4CfbAGSk9', coinAmt: 350, label: '🪙 350 COINS',  price: '$9.99', best: true  },
                     ]).map(c => (
                       <div
-                        key={c.pkg}
+                        key={c.priceId}
                         style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'space-between', border: '2px solid #2C2C2C', boxShadow: '2px 2px 0 #2C2C2C', padding: '12px 14px', background: '#fff' }}
                       >
                         {c.best && (
@@ -2047,7 +2058,7 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange, isPremiu
                         )}
                         <span style={{ fontFamily: 'var(--font-pixel)', fontSize: '11px', color: '#2C2C2C' }}>{c.label}</span>
                         <button
-                          onClick={() => handleBuyCoins(c.pkg)}
+                          onClick={() => buyCoins(c.priceId, c.coinAmt)}
                           style={{ fontFamily: 'var(--font-pixel)', fontSize: '9px', padding: '8px 12px', background: '#FFE600', color: '#2C2C2C', border: '2px solid #2C2C2C', boxShadow: '2px 2px 0 #2C2C2C', cursor: 'pointer', letterSpacing: '1px', whiteSpace: 'nowrap' }}
                         >{c.price} →</button>
                       </div>

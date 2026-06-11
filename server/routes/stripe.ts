@@ -15,15 +15,34 @@ const supabase = createClient(
 
 // POST /api/create-checkout-session
 router.post('/create-checkout-session', async (req: Request, res: Response) => {
-  const { userId } = req.body as { userId: string }
+  const body = req.body as {
+    userId: string
+    priceId?: string
+    mode?: string
+    coins?: number
+    successUrl?: string
+    cancelUrl?: string
+  }
+
+  if (body.mode === 'payment') {
+    const session = await stripe.checkout.sessions.create({
+      mode: 'payment',
+      line_items: [{ price: body.priceId!, quantity: 1 }],
+      success_url: body.successUrl ?? process.env.CLIENT_URL + '/',
+      cancel_url:  body.cancelUrl  ?? process.env.CLIENT_URL,
+      metadata: { userId: body.userId, coins: String(body.coins ?? 0) },
+    })
+    res.json({ url: session.url })
+    return
+  }
 
   const session = await stripe.checkout.sessions.create({
     mode: 'subscription',
     line_items: [{ price: process.env.STRIPE_PRICE_ID!, quantity: 1 }],
     success_url: process.env.CLIENT_URL + '/?subscribed=true&session_id={CHECKOUT_SESSION_ID}',
     cancel_url: process.env.CLIENT_URL,
-    metadata: { userId },
-    client_reference_id: userId,
+    metadata: { userId: body.userId },
+    client_reference_id: body.userId,
   })
 
   res.json({ url: session.url })
@@ -95,11 +114,20 @@ router.post('/webhook/stripe', async (req: Request, res: Response) => {
       const session = event.data.object as Stripe.Checkout.Session
 
       if (session.mode === 'payment') {
-        // One-time coin purchase
-        const petId      = session.metadata?.petId
+        // One-time coin purchase — credit by userId (look up pet) or legacy petId
         const coinsToAdd = parseInt(session.metadata?.coins ?? '0', 10)
-        if (petId && coinsToAdd > 0) {
-          await supabase.rpc('add_coins', { p_pet_id: petId, p_amount: coinsToAdd })
+        if (coinsToAdd > 0) {
+          const petId  = session.metadata?.petId
+          const userId = session.metadata?.userId
+          if (petId) {
+            await supabase.rpc('add_coins', { p_pet_id: petId, p_amount: coinsToAdd })
+          } else if (userId) {
+            const { data: pet } = await supabase
+              .from('pets').select('id').eq('user_id', userId).eq('is_dead', false).single()
+            if (pet) {
+              await supabase.rpc('add_coins', { p_pet_id: (pet as { id: string }).id, p_amount: coinsToAdd })
+            }
+          }
         }
         break
       }
