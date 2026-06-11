@@ -2379,7 +2379,7 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange, isPremiu
                 Bring your character to the world&apos;s first IP creator community
               </p>
               <a
-                href={`http://localhost:3000/create?name=${encodeURIComponent(petData.name)}`}
+                href={`https://oodle-creators.vercel.app/create?name=${encodeURIComponent(petData.name)}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 style={{ display: 'block', width: '100%', fontFamily: 'var(--font-pixel)', fontSize: '9px', padding: '14px 16px', background: '#FFE600', color: '#2C2C2C', border: '3px solid #2C2C2C', boxShadow: '4px 4px 0 #2C2C2C', cursor: 'pointer', letterSpacing: '1px', textAlign: 'center', textDecoration: 'none', boxSizing: 'border-box' }}
