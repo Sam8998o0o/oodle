@@ -10,6 +10,7 @@ import type { PetCoords } from './api/aiRecognize'
 import PaywallScene from './scenes/PaywallScene'
 import ArrestedScene from './scenes/ArrestedScene'
 import { savePet, fetchUserPet, checkSubscription, checkJailStatus } from './lib/petService'
+import { supabase } from './lib/supabase'
 
 export interface PetData {
   pixelData: string
@@ -44,7 +45,22 @@ function App() {
 
   // Boot: restore session then route to the right scene
   useEffect(() => {
-    initAuth().then(async () => {
+    // Restore session tokens passed via URL from Oodle Creators
+    const params = new URLSearchParams(window.location.search)
+    const accessToken  = params.get('access_token')
+    const refreshToken = params.get('refresh_token')
+    const prep: Promise<void> = accessToken && refreshToken
+      ? supabase.auth.setSession({ access_token: accessToken, refresh_token: refreshToken })
+          .then(() => {
+            params.delete('access_token')
+            params.delete('refresh_token')
+            const qs = params.toString()
+            window.history.replaceState({}, '', qs ? `${window.location.pathname}?${qs}` : window.location.pathname)
+          })
+          .catch(() => {})
+      : Promise.resolve()
+
+    prep.then(() => initAuth()).then(async () => {
       const uid = useAuthStore.getState().userId
 
       // Case A — not signed in → show draw screen
