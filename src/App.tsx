@@ -13,6 +13,7 @@ import { savePet, fetchUserPet, checkSubscription, checkJailStatus } from './lib
 import { supabase } from './lib/supabase'
 
 export interface PetData {
+  id?: string
   pixelData: string
   coords: PetCoords
   name: string
@@ -26,7 +27,12 @@ function loadSavedPet(): PetData | null {
   try {
     const raw = localStorage.getItem(PET_STORAGE_KEY)
     if (!raw) return null
-    return JSON.parse(raw) as PetData
+    const data = JSON.parse(raw) as PetData
+    if (!data.id) {
+      const storedId = localStorage.getItem('oodle_pet_supabase_id')
+      if (storedId) data.id = storedId
+    }
+    return data
   } catch { return null }
 }
 
@@ -38,6 +44,10 @@ function App() {
   const [jailedUntil, setJailedUntil] = useState<Date | null>(null)
   const [resumePixelData, setResumePixelData] = useState<string | null>(null)
   const [ipImportParams, setIpImportParams] = useState<{ imageUrl: string; name: string } | null>(null)
+  const [sharedPetId] = useState<string | null>(() => {
+    const m = window.location.pathname.match(/^\/pet\/(.+)$/)
+    return m ? m[1] : null
+  })
 
   const { userId, showSignInModal, setShowSignInModal } = useAuthStore()
 
@@ -45,6 +55,9 @@ function App() {
 
   // Boot: restore session then route to the right scene
   useEffect(() => {
+    // Clean /pet/:id URL now that the id is captured in sharedPetId state
+    if (sharedPetId) window.history.replaceState({}, '', '/')
+
     // Restore session tokens passed via URL from Oodle Creators
     const params = new URLSearchParams(window.location.search)
     const accessToken  = params.get('access_token')
@@ -79,7 +92,7 @@ function App() {
           localStorage.removeItem('oodle_pending_pet')
           const id = await savePet({ name: pending.name, pixelData: pending.pixelData, coords: pending.coords })
           if (id) {
-            const data: PetData = { pixelData: pending.pixelData, coords: pending.coords, name: pending.name }
+            const data: PetData = { id, pixelData: pending.pixelData, coords: pending.coords, name: pending.name }
             setPetData(data)
             localStorage.setItem(PET_STORAGE_KEY, JSON.stringify(data))
             if (!localStorage.getItem('oodle_pet_created_at')) {
@@ -96,7 +109,7 @@ function App() {
       // Case B — signed in, fetch alive pet from Supabase → enter room
       const existing = await fetchUserPet()
       if (existing) {
-        const data: PetData = { pixelData: existing.pixelData, coords: existing.coords, name: existing.name }
+        const data: PetData = { id: existing.id, pixelData: existing.pixelData, coords: existing.coords, name: existing.name }
         setPetData(data)
         localStorage.setItem(PET_STORAGE_KEY, JSON.stringify(data))
         localStorage.setItem('oodle_pet_supabase_id', existing.id)
@@ -155,7 +168,8 @@ function App() {
   }, [petData])
 
   const handlePetCreated = (pixelData: string, coords: PetCoords, name: string) => {
-    const data: PetData = { pixelData, coords, name }
+    const id = localStorage.getItem('oodle_pet_supabase_id') ?? undefined
+    const data: PetData = { id, pixelData, coords, name }
     setPetData(data)
     localStorage.setItem(PET_STORAGE_KEY, JSON.stringify(data))
     // Record creation time for trial calculation
@@ -196,6 +210,7 @@ function App() {
           onSubscribeClick={() => setScene('paywall')}
           initialStep={resumePixelData ? 'decorate' : undefined}
           initialPixelData={resumePixelData ?? undefined}
+          sharedPetId={sharedPetId ?? undefined}
         />
         {ipImportParams && (
           <IPImportModal

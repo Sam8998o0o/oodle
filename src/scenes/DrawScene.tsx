@@ -6,6 +6,7 @@ import { generatePetImage, validatePetImage } from '../lib/aiService'
 import { useAuthStore } from '../lib/auth'
 import { savePet } from '../lib/petService'
 import styles from './DrawScene.module.css'
+import SharedPetBanner from '../components/SharedPetBanner'
 
 // ── Grid constants ─────────────────────────────────────────
 const GRID_SIZE = 64
@@ -38,6 +39,7 @@ interface DrawSceneProps {
   onSubscribeClick: () => void
   initialStep?: 'draw' | 'decorate'
   initialPixelData?: string
+  sharedPetId?: string
 }
 
 const EYES: EyeOption[] = [
@@ -185,7 +187,7 @@ async function dataURLToGrid(dataURL: string): Promise<string[][]> {
 }
 
 // ── Component ──────────────────────────────────────────────
-export default function DrawScene({ onPetCreated, isPremium, onSubscribeClick, initialStep, initialPixelData }: DrawSceneProps) {
+export default function DrawScene({ onPetCreated, isPremium, onSubscribeClick, initialStep, initialPixelData, sharedPetId }: DrawSceneProps) {
   const { userId } = useAuthStore()
 
   const canvasRef  = useRef<HTMLCanvasElement>(null)
@@ -651,6 +653,7 @@ export default function DrawScene({ onPetCreated, isPremium, onSubscribeClick, i
   // ── Render ────────────────────────────────────────────────
   return (
     <div className={styles.page}>
+      {sharedPetId && <SharedPetBanner petId={sharedPetId} />}
       {!userId && (
         <button className={styles.signInBtn} onClick={() => useAuthStore.getState().setShowSignInModal(true)}>
           SIGN IN

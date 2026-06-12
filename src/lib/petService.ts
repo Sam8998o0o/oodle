@@ -527,3 +527,16 @@ export async function addCoins(amount: number): Promise<void> {
   if (!petId) return
   await supabase.rpc('add_coins', { p_pet_id: petId, p_amount: amount })
 }
+
+// ── getPetById ────────────────────────────────────────────
+// Fetches a single pet by id, used for shared pet link banners.
+// Returns null on error or if the pet doesn't exist.
+export async function getPetById(petId: string): Promise<PetRecord | null> {
+  const { data, error } = await supabase
+    .from('pets')
+    .select('*')
+    .eq('id', petId)
+    .single()
+  if (error || !data) return null
+  return data as PetRecord
+}
