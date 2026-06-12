@@ -213,7 +213,6 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange, isPremiu
   const [isPetDead,     setIsPetDead]     = useState(false)
   const [isSleeping, setIsSleeping] = useState(false)
   const [showMore,        setShowMore]        = useState(false)
-  const [copyLinkToast,   setCopyLinkToast]   = useState(false)
   type ShareCardState = 'idle' | 'making' | 'failed' | 'done'
   const [shareCardState, setShareCardState] = useState<ShareCardState>('idle')
   const [showRewards,     setShowRewards]     = useState(false)
@@ -374,31 +373,6 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange, isPremiu
       showBubble('Payment error, try again!')
     }
   }
-
-  const handleCopyPetLink = useCallback(async () => {
-    let petId = localStorage.getItem('oodle_pet_supabase_id')
-    if (!petId) {
-      const uid = useAuthStore.getState().userId
-      if (!uid) return
-      const { data } = await supabase
-        .from('pets')
-        .select('id')
-        .eq('user_id', uid)
-        .eq('is_dead', false)
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle()
-      if (data) {
-        petId = (data as { id: string }).id
-        localStorage.setItem('oodle_pet_supabase_id', petId)
-      }
-    }
-    if (!petId) return
-    await navigator.clipboard.writeText(`${window.location.origin}/pet/${petId}`)
-    setShowMore(false)
-    setCopyLinkToast(true)
-    setTimeout(() => setCopyLinkToast(false), 2000)
-  }, [])
 
   const handleShareCard = useCallback(async () => {
     // Resolve petId — same pattern as handleCopyPetLink
@@ -1889,10 +1863,6 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange, isPremiu
               style={{ background: '#FFE600', color: '#2C2C2C' }}
               onClick={() => { setShowMore(false); setShowShareModal(true) }}
             >✦ SHARE YOUR IP</button>
-            <button
-              className={styles.morePopupItem}
-              onClick={handleCopyPetLink}
-            >{copyLinkToast ? '✓ COPIED!' : '🔗 COPY PET LINK'}</button>
             <button
               className={`${styles.morePopupItem} ${styles.morePopupItemLast}`}
               disabled={shareCardState === 'making'}
