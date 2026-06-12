@@ -5,6 +5,7 @@ import type { PetCoords } from '../api/aiRecognize'
 import { savePet, getLikeBalance, redeemLikesForFood, saveTalent, saveTalentDrawing, getPetAge, killPet, checkPetDead, saveAccessory, getCoins } from '../lib/petService'
 import { supabase } from '../lib/supabase'
 import { useAuthStore } from '../lib/auth'
+import { generateShareCard } from '../lib/shareCard'
 import PropellerHat from '../components/PropellerHat'
 import styles from './RoomScene.module.css'
 
@@ -189,6 +190,8 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange, isPremiu
   const [isSleeping, setIsSleeping] = useState(false)
   const [showMore,        setShowMore]        = useState(false)
   const [copyLinkToast,   setCopyLinkToast]   = useState(false)
+  type ShareCardState = 'idle' | 'making' | 'failed' | 'done'
+  const [shareCardState, setShareCardState] = useState<ShareCardState>('idle')
   const [showRewards,     setShowRewards]     = useState(false)
   const [showShop,        setShowShop]        = useState(false)
   const [showTasks,       setShowTasks]       = useState(false)
@@ -372,6 +375,70 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange, isPremiu
     setCopyLinkToast(true)
     setTimeout(() => setCopyLinkToast(false), 2000)
   }, [])
+
+  const handleShareCard = useCallback(async () => {
+    // Resolve petId — same pattern as handleCopyPetLink
+    let petId = localStorage.getItem('oodle_pet_supabase_id')
+    if (!petId) {
+      const uid = useAuthStore.getState().userId
+      if (!uid) return
+      const { data } = await supabase
+        .from('pets')
+        .select('id')
+        .eq('user_id', uid)
+        .eq('is_dead', false)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle()
+      if (data) {
+        petId = (data as { id: string }).id
+        localStorage.setItem('oodle_pet_supabase_id', petId)
+      }
+    }
+    if (!petId) return
+
+    setShareCardState('making')
+    setShowMore(false)
+
+    let blob: Blob
+    try {
+      blob = await generateShareCard(petData, dayCount, petId)
+    } catch {
+      setShareCardState('failed')
+      setTimeout(() => setShareCardState('idle'), 2000)
+      return
+    }
+
+    const file      = new File([blob], 'oodle-pet.png', { type: 'image/png' })
+    const shareText = `Meet ${petData.name}! Day ${dayCount} of our journey 🐾\n${window.location.origin}/pet/${petId}`
+
+    try {
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        await navigator.share({ files: [file], text: shareText })
+      } else {
+        // Desktop fallback: download PNG + copy share text
+        const url = URL.createObjectURL(blob)
+        const a   = document.createElement('a')
+        a.href     = url
+        a.download = 'oodle-pet.png'
+        a.click()
+        URL.revokeObjectURL(url)
+        await navigator.clipboard.writeText(shareText)
+        setShareCardState('done')
+        setTimeout(() => setShareCardState('idle'), 2000)
+        return
+      }
+    } catch (err) {
+      if ((err as Error).name !== 'AbortError') {
+        setShareCardState('failed')
+        setTimeout(() => setShareCardState('idle'), 2000)
+        return
+      }
+      // AbortError = user dismissed share sheet — silent fail
+    }
+
+    setShareCardState('idle')
+  }, [petData, dayCount])
 
   const isFaintedRef = useRef(false)
   const isDizzyRef   = useRef(false)
@@ -1750,9 +1817,20 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange, isPremiu
               onClick={() => { setShowMore(false); setShowShareModal(true) }}
             >✦ SHARE YOUR IP</button>
             <button
-              className={`${styles.morePopupItem} ${styles.morePopupItemLast}`}
+              className={styles.morePopupItem}
               onClick={handleCopyPetLink}
             >{copyLinkToast ? '✓ COPIED!' : '🔗 COPY PET LINK'}</button>
+            <button
+              className={`${styles.morePopupItem} ${styles.morePopupItemLast}`}
+              disabled={shareCardState === 'making'}
+              onClick={shareCardState === 'idle' ? handleShareCard : undefined}
+              style={shareCardState === 'failed' ? { color: '#e94560' } : undefined}
+            >
+              {shareCardState === 'making' ? 'MAKING...' :
+               shareCardState === 'failed'  ? 'FAILED, TRY AGAIN' :
+               shareCardState === 'done'    ? 'CARD SAVED + LINK COPIED!' :
+               '🖼️ SHARE CARD'}
+            </button>
           </div>
         )}
 
