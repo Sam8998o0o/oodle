@@ -39,6 +39,24 @@ const SMALL_HUNGER    = 10
 const BIG_HUNGER      = 20
 // DAILY_EAT_LIMIT removed — feeding is unlimited
 
+// ── Offline decay constants ─────────────────────────────────────────────────
+// Only the offline catch-up calc (oodle_last_seen retroactive logic) uses these.
+// The online 30-second decay loop is separate and NOT touched.
+const SLEEP_START_HOUR             = 22   // 10pm — sleep window opens
+const SLEEP_END_HOUR               = 8    // 8am  — sleep window closes
+const OFFLINE_SLEEP_RECOVERY_PER_H = 10   // energy +10 per sleep-window hour
+const OFFLINE_AWAKE_DRAIN_PER_H    = 2    // energy −2 per awake hour
+const OFFLINE_ENERGY_FLOOR         = 30   // final energy never drops below this
+const OFFLINE_ENERGY_CAP           = 100  // final energy never exceeds this
+const OFFLINE_HUNGER_DECAY_PER_H   = 3    // hunger −3/h (8–10 h → −24–30 pts)
+const OFFLINE_HUNGER_FLOOR         = 5    // hunger floor offline — can't faint from absence alone
+const STARVING_THRESHOLD           = 20   // hunger < 20 → halved walk speed + 🆘 bubble
+const OFFLINE_FAINT_MIN_HOURS      = 48   // 48 h neglect + hunger at floor → offline faint
+const OFFLINE_HAPPY_DECAY_PER_H    = 2    // happy −2/h offline
+const OFFLINE_HAPPY_FLOOR          = 20   // happy floor offline
+const OFFLINE_MAX_HOURS            = 96   // cap offline window at 4 days
+const RIP_THRESHOLD_HOURS          = 96   // 4-day absence → existing RIP flow
+
 type DoorPhase = 'idle' | 'appearing' | 'opening' | 'walking' | 'done'
 
 const DEFAULT_COORDS: PetCoords = {
@@ -110,52 +128,49 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange, isPremiu
     try {
       const s        = localStorage.getItem('oodle_stats')
       const lastSeen = localStorage.getItem('oodle_last_seen')
-      // Update last_seen NOW before anything else runs
       localStorage.setItem('oodle_last_seen', String(Date.now()))
       if (!s) return { hunger: 80, happy: 80, energy: 80 }
-      let p = JSON.parse(s) as PetStats
-      if (lastSeen) {
-        const offlineMs   = Date.now() - parseInt(lastSeen, 10)
-        const offlineMins = offlineMs / 1000 / 60
-        if (offlineMins > 1) {
-          const isWeekendNow = [0, 6].includes(new Date().getDay())
-          const decayMult    = isWeekendNow ? 0.5 : 1
-          // Simulate sleep cycles offline:
-          // Every 30s interval: if energy < 25 → sleep (energy recovers, hunger/happy still decay slowly)
-          // This prevents energy from hitting 0 after long offline periods
-          let { hunger, happy, energy } = p
-          const totalIntervals = Math.floor(offlineMins * 2 * decayMult)
-          let sleeping = energy <= 0
-          for (let i = 0; i < totalIntervals; i++) {
-            if (sleeping) {
-              // Sleeping: energy recovers fast, hunger/happy decay at half rate
-              energy = Math.min(100, energy + 2)
-              hunger = Math.max(0, hunger - 0.04)
-              happy  = Math.max(0, happy  - 0.03)
-              if (energy >= 100) sleeping = false
-            } else {
-              // Awake: normal decay
-              energy = Math.max(0, energy - 0.11)
-              hunger = Math.max(0, hunger - 0.08)
-              happy  = Math.max(0, happy  - 0.06)
-              if (energy <= 0) sleeping = true
-            }
-          }
-          p = { hunger, happy, energy }
+      const p = JSON.parse(s) as PetStats
+      if (!lastSeen) return p
 
-          // Retroactively set when hunger hit 0 during offline period
-          if (p.hunger <= 0) {
-            const existing = localStorage.getItem('oodle_hunger_zero_since')
-            if (!existing) {
-              const startHunger = (JSON.parse(s as string) as PetStats).hunger
-              const minsToZero  = startHunger / 0.16
-              const zeroAt      = Date.now() - Math.max(0, offlineMins - minsToZero) * 60 * 1000
-              localStorage.setItem('oodle_hunger_zero_since', String(zeroAt))
-            }
-          }
-        }
+      const offlineMs    = Date.now() - parseInt(lastSeen, 10)
+      const offlineHours = Math.min(OFFLINE_MAX_HOURS, offlineMs / 3_600_000)
+      if (offlineHours < 1 / 60) return p  // < 1 minute — skip
+
+      // Stash offline hours so the welcome-back effect can read it once
+      localStorage.setItem('oodle_offline_hours_on_return', String(offlineHours))
+
+      // ── RIP: 96 h+ absence ─────────────────────────────────
+      if (offlineHours >= RIP_THRESHOLD_HOURS) {
+        localStorage.setItem('oodle_rip_triggered', 'true')
       }
-      return p
+
+      let { hunger, happy, energy } = p
+      const startMs    = parseInt(lastSeen, 10)
+      const totalHours = Math.floor(offlineHours)
+
+      // ── ENERGY: walk through each offline hour by local clock ─
+      for (let h = 0; h < totalHours; h++) {
+        const localHour = new Date(startMs + h * 3_600_000).getHours()
+        const isSleepH  = localHour >= SLEEP_START_HOUR || localHour < SLEEP_END_HOUR
+        energy = isSleepH
+          ? Math.min(100, energy + OFFLINE_SLEEP_RECOVERY_PER_H)
+          : Math.max(0,   energy - OFFLINE_AWAKE_DRAIN_PER_H)
+      }
+      energy = Math.max(OFFLINE_ENERGY_FLOOR, Math.min(OFFLINE_ENERGY_CAP, energy))
+
+      // ── HUNGER: linear decay, floor at 5 (one night never faints the pet) ─
+      hunger = Math.max(OFFLINE_HUNGER_FLOOR, hunger - offlineHours * OFFLINE_HUNGER_DECAY_PER_H)
+
+      // ── HAPPY: slow decay, floor at 20 ─────────────────────
+      happy = Math.max(OFFLINE_HAPPY_FLOOR, happy - offlineHours * OFFLINE_HAPPY_DECAY_PER_H)
+
+      // ── Offline faint: 48 h neglect AND hunger at floor ────
+      if (offlineHours >= OFFLINE_FAINT_MIN_HOURS && hunger <= OFFLINE_HUNGER_FLOOR) {
+        localStorage.setItem('oodle_offline_faint_stage', 'down')
+      }
+
+      return { hunger, happy, energy }
     } catch { return { hunger: 80, happy: 80, energy: 80 } }
   })
   const [dayCount, setDayCount]       = useState(1)
@@ -185,7 +200,16 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange, isPremiu
   const [doorPhase, setDoorPhase] = useState<DoorPhase>('idle')
   const [petSaved,  setPetSaved]  = useState(false)
   const [isDizzy,       setIsDizzy]       = useState(false)
-  const [isFainted,     setIsFainted]     = useState(false)
+  const [isFainted,     setIsFainted]     = useState(() => {
+    const s = localStorage.getItem('oodle_offline_faint_stage')
+    return s === 'down' || s === 'sitting'
+  })
+  const [offlineFaintStage, setOfflineFaintStage] = useState<'down' | 'sitting' | 'none'>(() => {
+    const s = localStorage.getItem('oodle_offline_faint_stage')
+    if (s === 'down')    return 'down'
+    if (s === 'sitting') return 'sitting'
+    return 'none'
+  })
   const [isPetDead,     setIsPetDead]     = useState(false)
   const [isSleeping, setIsSleeping] = useState(false)
   const [showMore,        setShowMore]        = useState(false)
@@ -440,8 +464,9 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange, isPremiu
     setShareCardState('idle')
   }, [petData, dayCount])
 
-  const isFaintedRef = useRef(false)
-  const isDizzyRef   = useRef(false)
+  const isFaintedRef        = useRef(isFainted)     // init from lazy state above
+  const isDizzyRef          = useRef(false)
+  const offlineFaintStageRef = useRef(offlineFaintStage) // kept in sync via effect below
 
   // Close MORE popup on outside click
   useEffect(() => {
@@ -550,9 +575,9 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange, isPremiu
 
     checkPetDead().then(dead => { if (dead) setIsPetDead(true) }).catch(() => {})
 
-    // Check if hunger has been 0 long enough to die (covers offline period)
-    const zeroSince = localStorage.getItem('oodle_hunger_zero_since')
-    if (zeroSince && Date.now() - parseInt(zeroSince, 10) >= 2 * 86400000) {
+    // Offline RIP: triggered when pet was absent 96+ hours (set in stats initializer)
+    if (localStorage.getItem('oodle_rip_triggered') === 'true') {
+      localStorage.removeItem('oodle_rip_triggered')
       killPet().catch(() => {})
       setIsPetDead(true)
     }
@@ -858,7 +883,8 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange, isPremiu
           )
           walkDirRef.current = nearest.x > walkXRef.current ? 1 : -1
         }
-        const speed = chasing ? 3 : 0.3
+        const isStarving = statsRef.current.hunger < STARVING_THRESHOLD
+        const speed = chasing ? 3 : (isStarving ? 0.15 : 0.3)
         walkXRef.current += speed * walkDirRef.current
         if (walkXRef.current >= maxX) walkDirRef.current = -1
         if (walkXRef.current <= 0)    walkDirRef.current =  1
@@ -1195,8 +1221,8 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange, isPremiu
   useEffect(() => {
     const id = setInterval(() => {
       if (isFaintedRef.current || isSleepingRef.current) return
-      if (statsRef.current.hunger > 0 && statsRef.current.hunger <= 20) {
-        showBubble('I\'m hungry... 🍖')
+      if (statsRef.current.hunger > 0 && statsRef.current.hunger < STARVING_THRESHOLD) {
+        showBubble('🆘 STARVING!')
       } else if (statsRef.current.happy <= 20) {
         showBubble('I\'m unhappy... 😢')
       } else if (statsRef.current.energy <= 20 && !isSleepingRef.current) {
@@ -1229,6 +1255,32 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange, isPremiu
       animatorRef.current?.setState('faint')
     }
   }, [isFainted])
+
+  // Keep offlineFaintStageRef in sync with state
+  useEffect(() => { offlineFaintStageRef.current = offlineFaintStage }, [offlineFaintStage])
+
+  // ── Welcome-back greeting (offline >= 6 h, pet not fainted) ──
+  useEffect(() => {
+    const hoursStr = localStorage.getItem('oodle_offline_hours_on_return')
+    if (!hoursStr) return
+    localStorage.removeItem('oodle_offline_hours_on_return')
+    const hours = parseFloat(hoursStr)
+    if (hours < 6) return
+    // Don't show greeting if the pet returned fainted
+    const faintStage = localStorage.getItem('oodle_offline_faint_stage')
+    if (faintStage === 'down' || faintStage === 'sitting') return
+    setTimeout(() => {
+      showBubble(`${petData.name} missed you! 💤→😊`)
+      if (!isSleepingRef.current && !isFaintedRef.current) {
+        animatorRef.current?.setState('play')
+        setTimeout(() => {
+          if (!isSleepingRef.current && !isFaintedRef.current) {
+            animatorRef.current?.setState('walk')
+          }
+        }, 4000)
+      }
+    }, 1000)
+  }, [showBubble, petData.name]) // showBubble is stable; runs effectively once on mount
 
   // ── Like → food redemption ────────────────────────────────
   const handleRedeemSmall = useCallback(async () => {
@@ -1272,10 +1324,31 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange, isPremiu
       return next
     })
     showFloat('🍖')
+
+    // ── Offline-faint two-feed recovery ──────────────────────
+    if (isFaintedRef.current && offlineFaintStageRef.current === 'down') {
+      // First feed: pet sits up but still weak — needs a second feed
+      setOfflineFaintStage('sitting')
+      offlineFaintStageRef.current = 'sitting'
+      localStorage.setItem('oodle_offline_faint_stage', 'sitting')
+      animatorRef.current?.setState('idle')
+      showBubble('Still weak... feed me again 🥺')
+      return
+    }
+    if (isFaintedRef.current && offlineFaintStageRef.current === 'sitting') {
+      // Second feed: full recovery
+      setOfflineFaintStage('none')
+      offlineFaintStageRef.current = 'none'
+      localStorage.removeItem('oodle_offline_faint_stage')
+      isFaintedRef.current = false
+      setIsFainted(false)
+    }
+    // ─────────────────────────────────────────────────────────
+
     showBubble(pick(FEED_LINES))
     if (!isSleepingRef.current) animatorRef.current?.setState('eat')
 
-    // Recover from faint
+    // Recover from faint (online faint path — one feed)
     if (isFaintedRef.current) {
       isFaintedRef.current = false
       setIsFainted(false)
@@ -2575,6 +2648,9 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange, isPremiu
               localStorage.removeItem('oodle_stats')
               localStorage.removeItem('oodle_last_seen')
               localStorage.removeItem('oodle_hunger_zero_since')
+              localStorage.removeItem('oodle_offline_faint_stage')
+              localStorage.removeItem('oodle_rip_triggered')
+              localStorage.removeItem('oodle_offline_hours_on_return')
               localStorage.removeItem('oodle_pet_data')
               localStorage.removeItem('oodle_pet_supabase_id')
               localStorage.removeItem('oodle_pet_created_at')
