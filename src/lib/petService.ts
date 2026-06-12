@@ -528,6 +528,26 @@ export async function addCoins(amount: number): Promise<void> {
   await supabase.rpc('add_coins', { p_pet_id: petId, p_amount: amount })
 }
 
+// ── fetchParadePets ───────────────────────────────────────
+// Returns a random sample of recently-created pets for the Draw page parade.
+// Unlike fetchAllPets, does NOT filter by last_seen — offline pets are included.
+export async function fetchParadePets(limit = 10): Promise<PetRecord[]> {
+  const { data, error } = await supabase
+    .from('pets')
+    .select('*')
+    .order('created_at', { ascending: false })
+    .limit(30)
+
+  if (error || !data) return []
+
+  const arr = [...(data as PetRecord[])]
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1))
+    const tmp = arr[i]; arr[i] = arr[j]; arr[j] = tmp
+  }
+  return arr.slice(0, limit)
+}
+
 // ── getPetById ────────────────────────────────────────────
 // Fetches a single pet by id, used for shared pet link banners.
 // Returns null on error or if the pet doesn't exist.

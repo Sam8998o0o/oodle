@@ -7,6 +7,7 @@ import { useAuthStore } from '../lib/auth'
 import { savePet } from '../lib/petService'
 import styles from './DrawScene.module.css'
 import SharedPetBanner from '../components/SharedPetBanner'
+import PetParade from '../components/PetParade'
 
 // ── Grid constants ─────────────────────────────────────────
 const GRID_SIZE = 64
@@ -988,6 +989,8 @@ export default function DrawScene({ onPetCreated, isPremium, onSubscribeClick, i
           )}
         </>
       )}
+
+      <PetParade />
 
       {/* ── SHARE TO OODLE CREATORS MODAL ──────────────── */}
       {showShareModal && (
