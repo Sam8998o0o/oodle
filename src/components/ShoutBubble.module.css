@@ -1,0 +1,69 @@
+.speechBubble {
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-10%);
+  margin-bottom: 6px;
+  background: var(--color-surface);
+  border: 2px solid var(--color-border);
+  box-shadow: var(--shadow-pixel);
+  padding: 6px 12px;
+  max-width: 220px;
+  min-width: 60px;
+  width: max-content;
+  word-break: normal;
+  white-space: nowrap;
+  font-family: var(--font-retro);
+  font-size: 16px;
+  color: var(--color-text);
+  z-index: 8;
+  pointer-events: none;
+}
+
+/* Pixel square tail — bottom-left corner */
+.speechBubble::before {
+  content: '';
+  position: absolute;
+  bottom: -4px;
+  left: 6px;
+  width: 4px;
+  height: 4px;
+  background: var(--color-border);
+}
+
+.speechBubble::after {
+  content: '';
+  position: absolute;
+  bottom: -2px;
+  left: 7px;
+  width: 2px;
+  height: 2px;
+  background: var(--color-surface);
+}
+
+.bubbleLikeBtn {
+  pointer-events: auto;
+  font-family: var(--font-pixel);
+  font-size: 6px;
+  padding: 3px 6px;
+  margin-top: 4px;
+  background: var(--color-panel);
+  color: var(--color-danger);
+  border: 2px solid var(--color-border);
+  box-shadow: var(--shadow-pixel-sm);
+  cursor: pointer;
+  display: block;
+  width: 100%;
+}
+
+.bubbleLikeBtn:active {
+  transform: translate(1px, 1px);
+  box-shadow: none;
+}
+
+.bubbleLikeBtn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  box-shadow: none;
+  transform: none;
+}

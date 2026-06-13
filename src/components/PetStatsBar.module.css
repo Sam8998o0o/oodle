@@ -1,0 +1,9 @@
+.hud {
+  background: var(--color-surface);
+  border: 2px solid var(--color-border);
+  box-shadow: var(--shadow-pixel);
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}

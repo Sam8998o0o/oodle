@@ -1,16 +1,13 @@
 import { useRef, useState, useEffect, useCallback } from 'react'
-import { PetAnimator } from '../engine/PetAnimator'
 import type { PetCoords } from '../api/aiRecognize'
-import {
-  fetchAllPets, getAllLikeCounts, likePet, getTodayLikedPetIds,
-  postShout, getActiveShouts, countTodayShouts, likeShout, unlikePet,
-  fetchAds, updateGrowth, pingOnline,
-} from '../lib/petService'
+import { likePet, getTodayLikedPetIds, unlikePet, fetchAds } from '../lib/petService'
 import type { AdRecord } from '../lib/petService'
-import { subscribeToNewPets } from '../lib/realtimeService'
-import { useAuthStore } from '../lib/auth'
 import { supabase } from '../lib/supabase'
 import PropellerHat from '../components/PropellerHat'
+import { usePlazaPets } from '../hooks/usePlazaPets'
+import type { PlazaPet } from '../hooks/usePlazaPets'
+import { useShouts } from '../hooks/useShouts'
+import ShoutBubble from '../components/ShoutBubble'
 import styles from './PlazaScene.module.css'
 
 // ── Default ads (shown when no advertisers in Supabase) ───
@@ -65,26 +62,7 @@ function PixelHeart({ id, x, y }: HeartAnim) {
   )
 }
 
-const PET_SIZE    = 120
-const LEFT_BOUND  = 80
-const RIGHT_PAD   = 80
-const WALK_Y_MIN  = 0.68   // top of walkable ground area
-const WALK_Y_MAX  = 0.88   // bottom of walkable ground area
-const WALK_SKY_MIN = 0.05  // top of sky zone (propeller hat pets)
-const WALK_SKY_MAX = 0.38  // bottom of sky zone (propeller hat pets)
-
-// No obstacle zones — pets walk freely across the plaza
-
-const LIKE_DAILY_LIMIT  = 10
-const SHOUT_DURATION_MS = 15_000
-
-const DEFAULT_COORDS: PetCoords = {
-  eyes:     [{ x: 0.35, y: 0.28 }, { x: 0.65, y: 0.28 }],
-  legs:     [],
-  center:   { x: 0.5, y: 0.5 },
-  has_eyes: false,
-  has_legs: false,
-}
+const LIKE_DAILY_LIMIT = 10
 
 interface PlazaSceneProps {
   petData:    { pixelData: string; coords: PetCoords; name: string }
@@ -93,97 +71,55 @@ interface PlazaSceneProps {
   petSize: number
 }
 
-interface PlazaPet {
-  id:             string
-  pixelData:      string
-  coords:         PetCoords
-  name:           string
-  createdAt:      string
-  isOwn:          boolean
-  growth_points:  number
-  talent?:        string
-  talent_drawing?: string
-  accessory?:     string | null
-}
-
 // Maps growth_points (0-100) to canvas size (60-160 px)
 function growthToSize(gp: number): number {
   return Math.round(60 + (Math.min(100, Math.max(0, gp)) / 100) * 100)
-}
-
-interface Walker {
-  x: number
-  y: number
-  dir: number      // horizontal: 1 = right, -1 = left
-  dirY: number     // vertical:   1 = down,  -1 = up
-  speed: number
-  speedY: number
 }
 
 function formatDate(iso: string): string {
   try { return new Date(iso).toLocaleDateString() } catch { return '---' }
 }
 
-function mergePets(existing: PlazaPet[], incoming: PlazaPet[]): PlazaPet[] {
-  const map = new Map<string, PlazaPet>()
-  for (const p of existing) map.set(p.id, p)
-  for (const p of incoming) map.set(p.id, p)
-  return Array.from(map.values())
-}
-
 export default function PlazaScene({ petData, onGoToRoom, isPremium, petSize }: PlazaSceneProps) {
   const dailyShoutLimit = isPremium ? 30 : 10
-  const roomRef    = useRef<HTMLDivElement>(null)
+  const roomRef = useRef<HTMLDivElement>(null)
 
-  // DOM refs — keyed by pet id
-  const wrapperMap = useRef(new Map<string, HTMLDivElement>())
-  const canvasMap  = useRef(new Map<string, HTMLCanvasElement>())
+  // ── Extracted hooks ───────────────────────────────────────
+  const {
+    pets,
+    wrapperMap, canvasMap, walkerMap,
+    plazaShows, drawingPerformance,
+    ownGlowing, likes, setLikes,
+    spawnPet,
+  } = usePlazaPets(petData, petSize, roomRef)
 
-  // Pure JS state — never triggers React re-render
-  const animMap    = useRef(new Map<string, PetAnimator>())
-  const walkerMap  = useRef(new Map<string, Walker>())
-  const rafRef     = useRef(0)
-  const petSizeRef = useRef(petSize)
-  const performingPets = useRef<Set<string>>(new Set())
+  const {
+    shoutInput, setShoutInput,
+    shoutLeft,
+    activeShouts,
+    likedShouts,
+    handleShout,
+    handleLikeShout,
+  } = useShouts(dailyShoutLimit)
 
-  // Queue of pets waiting to be spawned (DOM not ready yet when pets state updates)
-  const spawnQueue = useRef<PlazaPet[]>([])
-
-  // Track which pet ids have propeller hat (flying sky mode)
-  const propellerHats = useRef<Set<string>>(new Set())
-
-  const [pets, setPets]               = useState<PlazaPet[]>([])
-  const [ads,  setAds]                = useState<AdRecord[]>(DEFAULT_ADS)
-  const [selectedPet, setSelectedPet] = useState<PlazaPet | null>(null)
-  const [likes, setLikes]             = useState<Record<string, number>>({})
-  const [likeLeft, setLikeLeft]       = useState(LIKE_DAILY_LIMIT)
+  // ── Local state ───────────────────────────────────────────
+  const [ads,          setAds]          = useState<AdRecord[]>(DEFAULT_ADS)
+  const [selectedPet,  setSelectedPet]  = useState<PlazaPet | null>(null)
+  const [likeLeft,     setLikeLeft]     = useState(LIKE_DAILY_LIMIT)
   const [todayLikedPets, setTodayLikedPets] = useState<Set<string>>(new Set())
-  const [ownGlowing, setOwnGlowing]   = useState(true)
-  const [plazaShows, setPlazaShows]   = useState<Record<string, { text: string; drawing?: string }>>({})
-  const [doorPhase, setDoorPhase]     = useState<DoorPhase>('idle')
-  const [showAdModal, setShowAdModal] = useState(false)
-  const [adForm, setAdForm]           = useState({ company: '', email: '', bannerText: '', website: '', logoUrl: '', plan: '7days' })
+  const [doorPhase,    setDoorPhase]    = useState<DoorPhase>('idle')
+  const [showAdModal,  setShowAdModal]  = useState(false)
+  const [adForm,       setAdForm]       = useState({ company: '', email: '', bannerText: '', website: '', logoUrl: '', plan: '7days' })
   const [adSubmitting, setAdSubmitting] = useState(false)
-  const [adSubmitted, setAdSubmitted]   = useState(false)
-  const [drawingPerformance, setDrawingPerformance] = useState<{
-    petId: string, petX: number, petY: number, dataURL: string
-  } | null>(null)
-  const [likeNotif, setLikeNotif] = useState<string | null>(null)
-
-  // Keep petSizeRef in sync — used by spawnPet without causing re-spawn
-  useEffect(() => { petSizeRef.current = petSize }, [petSize])
-  const [hearts, setHearts]           = useState<HeartAnim[]>([])
-
-  // ── Shout system ──────────────────────────────────────────
-  const [shoutInput,   setShoutInput]   = useState('')
-  const [shoutLeft,    setShoutLeft]    = useState(dailyShoutLimit)
-  const [activeShouts, setActiveShouts] = useState<Record<string, { message: string; shoutId: string }>>({})
-  const [likedShouts,  setLikedShouts]  = useState<Set<string>>(new Set())
-  const [unlikedPets,  setUnlikedPets]  = useState<Set<string>>(new Set())
-  const [isNight, setIsNight]           = useState(() => { const h = new Date().getHours(); return h >= 19 || h < 6 })
+  const [adSubmitted,  setAdSubmitted]  = useState(false)
+  const [likeNotif,    setLikeNotif]    = useState<string | null>(null)
+  const [hearts,       setHearts]       = useState<HeartAnim[]>([])
+  const [isNight,      setIsNight]      = useState(() => { const h = new Date().getHours(); return h >= 19 || h < 6 })
   const [shootingStar, setShootingStar] = useState(false)
-  const [weather, setWeather]           = useState<'clear' | 'rain' | 'thunder'>('clear')
+  const [weather,      setWeather]      = useState<'clear' | 'rain' | 'thunder'>('clear')
+  const [unlikedPets,  setUnlikedPets]  = useState<Set<string>>(new Set())
 
+  // ── Background image ──────────────────────────────────────
   useEffect(() => {
     document.documentElement.style.backgroundImage = "url('/plaza-bg.svg')"
     document.documentElement.style.backgroundSize = '100vw 100vh'
@@ -195,11 +131,7 @@ export default function PlazaScene({ petData, onGoToRoom, isPremium, petSize }: 
     }
   }, [])
 
-  useEffect(() => {
-    const t = setTimeout(() => setOwnGlowing(false), 8000)
-    return () => clearTimeout(t)
-  }, [])
-
+  // ── Weather ───────────────────────────────────────────────
   useEffect(() => {
     const pick = () => {
       const r = Math.random()
@@ -211,6 +143,7 @@ export default function PlazaScene({ petData, onGoToRoom, isPremium, petSize }: 
     return () => clearInterval(id)
   }, [])
 
+  // ── Ads ───────────────────────────────────────────────────
   useEffect(() => {
     fetchAds().then(data => {
       if (data.length > 0) setAds(data)
@@ -227,7 +160,7 @@ export default function PlazaScene({ petData, onGoToRoom, isPremium, petSize }: 
     return () => clearInterval(id)
   }, [])
 
-  // ── Shooting star (every 15s at night) ───────────────────
+  // ── Shooting star (every 60s at night) ───────────────────
   useEffect(() => {
     if (!isNight) return
     const id = setInterval(() => {
@@ -236,13 +169,6 @@ export default function PlazaScene({ petData, onGoToRoom, isPremium, petSize }: 
     }, 60000)
     return () => clearInterval(id)
   }, [isNight])
-
-  // ── Shout: load today's count on mount ────────────────────
-  useEffect(() => {
-    countTodayShouts()
-      .then(n => setShoutLeft(dailyShoutLimit - n))
-      .catch(() => {})
-  }, [])
 
   // ── Like: load today's liked pets on mount ────────────────
   useEffect(() => {
@@ -255,35 +181,6 @@ export default function PlazaScene({ petData, onGoToRoom, isPremium, petSize }: 
   // ── Clear stale localStorage on Plaza mount ────────────────
   useEffect(() => {
     localStorage.removeItem('oodle_pets')
-  }, [])
-
-  // ── Shout: poll active shouts every 5 s ───────────────────
-  useEffect(() => {
-    const poll = async () => {
-      const shouts = await getActiveShouts().catch(() => [])
-      const ownSupabaseId = localStorage.getItem('oodle_pet_supabase_id')
-      const byPet: Record<string, { message: string; shoutId: string }> = {}
-      for (const s of shouts) {
-        const key = s.pet_id === ownSupabaseId ? 'own' : s.pet_id
-        if (!byPet[key]) {
-          byPet[key] = { message: s.message, shoutId: s.id }
-        }
-      }
-      // Preserve local own shout if it hasn't synced to Supabase yet
-      // (local shout ids start with 'local_', Supabase ids are UUIDs)
-      setActiveShouts(prev => {
-        const ownShout = prev['own']
-        const serverHasOwn = !!byPet['own']
-        if (ownShout && !serverHasOwn && ownShout.shoutId.startsWith('local_')) {
-          // Keep local shout until server picks it up
-          return { ...byPet, ['own']: ownShout }
-        }
-        return byPet
-      })
-    }
-    poll()
-    const id = setInterval(poll, 5000)
-    return () => clearInterval(id)
   }, [])
 
   // ── Like notification (realtime) ─────────────────────────
@@ -328,14 +225,12 @@ export default function PlazaScene({ petData, onGoToRoom, isPremium, petSize }: 
       const room    = roomRef.current
       if (!wrapper || !room) { setDoorPhase('done'); return }
 
-      // *** Stop walk loop from fighting us ***
+      // Stop walk loop from fighting us
       walkerMap.current.delete('own')
 
-      // Stop pet just in front of the door (right edge of door + small gap)
       const doorRightEdge = room.offsetWidth * 0.08 + 140
       const targetX = doorRightEdge
 
-      // Face left toward door
       if (canvas) canvas.style.transform = 'scaleX(-1)'
 
       let rafId = 0
@@ -357,427 +252,13 @@ export default function PlazaScene({ petData, onGoToRoom, isPremium, petSize }: 
     if (doorPhase === 'done') {
       onGoToRoom()
     }
-  }, [doorPhase, onGoToRoom])
-
-  // ── Spawn a pet into the walk system ──────────────────────
-  const spawnPet = useCallback((pet: PlazaPet) => {
-    const alreadySpawned = animMap.current.has(pet.id)
-
-    if (alreadySpawned) {
-      if (!pet.isOwn) return  // others: skip
-
-      // Own pet: only re-spawn animator if size changed, keep position
-      const canvas = canvasMap.current.get(pet.id)
-      const newSize = petSizeRef.current
-      if (canvas && canvas.width === newSize) return  // size unchanged, skip
-
-      // Stop old animator, rebuild with new size, keep walker position intact
-      animMap.current.get(pet.id)?.stop()
-      animMap.current.delete(pet.id)
-      if (canvas) {
-        canvas.width  = newSize
-        canvas.height = newSize
-        const eyeStyle = localStorage.getItem('oodle_eye_style') ?? 'eye_round'
-        const animator = new PetAnimator(canvas, {
-          imageDataURL: pet.pixelData,
-          coords:       pet.coords,
-          size:         newSize,
-          eyeStyle,
-        })
-        animator.setState('walk')
-        animator.start()
-        animMap.current.set(pet.id, animator)
-        const wrapper = wrapperMap.current.get(pet.id)
-        if (wrapper) {
-          wrapper.style.width  = `${newSize}px`
-          wrapper.style.height = `${newSize + 20}px`
-        }
-      }
-      return
-    }
-
-    const canvas  = canvasMap.current.get(pet.id)
-    const wrapper = wrapperMap.current.get(pet.id)
-    if (!canvas || !wrapper) {
-      // DOM not ready yet — queue for later
-      spawnQueue.current.push(pet)
-      return
-    }
-
-    const room = roomRef.current!
-    const rW   = room.offsetWidth
-    const rH   = room.offsetHeight
-    if (rW === 0 || rH === 0) {
-      spawnQueue.current.push(pet)
-      return
-    }
-
-    const size = pet.isOwn ? petSizeRef.current : growthToSize(pet.growth_points)
-    canvas.width  = size
-    canvas.height = size
-    wrapper.style.width  = `${size}px`
-    wrapper.style.height = `${size + 20}px`
-
-    const eyeStyle  = localStorage.getItem('oodle_eye_style') ?? 'eye_round'
-    const animator  = new PetAnimator(canvas, {
-      imageDataURL: pet.pixelData,
-      coords:       pet.coords,
-      size,
-      eyeStyle,
-    })
-    animator.setState('walk')
-    animator.start()
-    animMap.current.set(pet.id, animator)
-
-    // Register / unregister propeller hat status
-    if (pet.accessory === 'propeller') propellerHats.current.add(pet.id)
-    else propellerHats.current.delete(pet.id)
-
-    const isFlying   = pet.accessory === 'propeller'
-    const yMin       = isFlying ? WALK_SKY_MIN : WALK_Y_MIN
-    const yMax       = isFlying ? WALK_SKY_MAX : WALK_Y_MAX
-
-    const rightBound = rW - RIGHT_PAD - size
-    const yRatio     = yMin + Math.random() * (yMax - yMin)
-    const y          = yRatio * rH - size
-    const x          = LEFT_BOUND + Math.random() * (rightBound - LEFT_BOUND)
-    const dir        = Math.random() < 0.5 ? 1 : -1
-    const dirY       = Math.random() < 0.5 ? 1 : -1
-    const speed      = isFlying ? 0.5 + Math.random() * 0.8 : 0.4 + Math.random() * 0.7
-    const speedY     = isFlying ? 0.15 + Math.random() * 0.25 : 0.1 + Math.random() * 0.2
-
-    const w: Walker = { x, y, dir, dirY, speed, speedY }
-    walkerMap.current.set(pet.id, w)
-    wrapper.style.left          = `${x}px`
-    wrapper.style.top           = `${y}px`
-    canvas.style.transform      = dir === -1 ? 'scaleX(-1)' : 'none'
-    canvas.style.imageRendering = 'pixelated'
-  }, [petSize])
-
-  // ── Walk loop — starts once on mount, never stops ─────────
-  useEffect(() => {
-    const room = roomRef.current!
-
-    const tick = () => {
-      const rW         = room.offsetWidth
-      const rH         = room.offsetHeight
-
-      // Drain spawn queue — try pets that were queued before DOM was ready
-      if (spawnQueue.current.length > 0) {
-        const remaining: PlazaPet[] = []
-        for (const pet of spawnQueue.current) {
-          const canvas  = canvasMap.current.get(pet.id)
-          const wrapper = wrapperMap.current.get(pet.id)
-          if (canvas && wrapper && rW > 0) {
-            spawnPet(pet)
-          } else {
-            remaining.push(pet)
-          }
-        }
-        spawnQueue.current = remaining
-      }
-
-      // Move all walkers
-      walkerMap.current.forEach((w, id) => {
-        if (performingPets.current.has(id)) return
-        const wr = wrapperMap.current.get(id)
-        const cv = canvasMap.current.get(id)
-        if (!wr || !cv) return
-
-        // Use actual canvas size for own pet bounds
-        const sz         = cv.width > 0 ? cv.width : (id === 'own' ? petSizeRef.current : PET_SIZE)
-        const ownRight   = rW - RIGHT_PAD - sz
-        const isFlying   = propellerHats.current.has(id)
-        const ownTop     = (isFlying ? WALK_SKY_MIN : WALK_Y_MIN) * rH - sz
-        const ownBottom  = (isFlying ? WALK_SKY_MAX : WALK_Y_MAX) * rH - sz
-
-        // X movement
-        const nextX = w.x + w.speed * w.dir
-        if (nextX >= ownRight)   { w.dir = -1 }
-        else if (nextX <= LEFT_BOUND) { w.dir = 1 }
-        else { w.x = nextX }
-
-        // Y movement
-        const nextY = w.y + w.speedY * w.dirY
-        if (nextY >= ownBottom) { w.dirY = -1 }
-        else if (nextY <= ownTop) { w.dirY = 1 }
-        else { w.y = nextY }
-
-        wr.style.left      = `${w.x}px`
-        wr.style.top       = `${w.y}px`
-        cv.style.transform = w.dir === -1 ? 'scaleX(-1)' : 'none'
-      })
-
-      rafRef.current = requestAnimationFrame(tick)
-    }
-
-    rafRef.current = requestAnimationFrame(tick)
-
-    return () => {
-      cancelAnimationFrame(rafRef.current)
-      animMap.current.forEach(a => a.stop())
-      animMap.current.clear()
-      walkerMap.current.clear()
-      spawnQueue.current = []
-    }
-  }, [spawnPet])  // spawnPet is stable (useCallback with no deps)
-
-  // ── When pets list changes, spawn new or clean up removed pets ──
-  useEffect(() => {
-    // Spawn new pets
-    for (const pet of pets) {
-      spawnPet(pet)
-    }
-    // Clean up pets that went offline (no longer in list)
-    const currentIds = new Set(pets.map(p => p.id))
-    animMap.current.forEach((anim, id) => {
-      if (!currentIds.has(id)) {
-        anim.stop()
-        animMap.current.delete(id)
-        walkerMap.current.delete(id)
-        const wrapper = wrapperMap.current.get(id)
-        if (wrapper) wrapper.style.display = 'none'
-      }
-    })
-  }, [pets, spawnPet])
-
-  // ── Load pets ─────────────────────────────────────────────
-  useEffect(() => {
-    const talentRaw = localStorage.getItem('oodle_daily_talent')
-    let ownTalent: string | undefined
-    let ownTalentDrawing: string | undefined
-    try {
-      if (talentRaw) {
-        const t = JSON.parse(talentRaw) as { date: string; talent: string; drawing?: string }
-        if (t.date === new Date().toDateString()) {
-          ownTalent = t.talent || (t.drawing ? 'drawing' : undefined)
-          ownTalentDrawing = t.drawing
-        }
-      }
-    } catch { /* ignore */ }
-
-    const ownPet: PlazaPet = {
-      id:             'own',
-      pixelData:      petData.pixelData,
-      coords:         petData.coords,
-      name:           petData.name,
-      createdAt:      new Date().toISOString(),
-      isOwn:          true,
-      growth_points:  parseInt(localStorage.getItem('oodle_growth') ?? '0', 10),
-      talent:         ownTalent,
-      talent_drawing: ownTalentDrawing,
-      accessory:      localStorage.getItem('oodle_accessory') ?? null,
-    }
-    setPets([ownPet])
-
-    // Fix: ensure talent is synced to Supabase (in case saveTalentDrawing was called without saveTalent)
-    if (ownTalentDrawing && ownTalent === 'drawing') {
-      const petId = localStorage.getItem('oodle_pet_supabase_id')
-      if (petId) {
-        supabase.from('pets').update({ talent: 'drawing' }).eq('id', petId).then(() => {})
-      }
-    }
-
-    const loadFromSupabase = async () => {
-      const [records, likeCounts] = await Promise.all([
-        fetchAllPets(),
-        getAllLikeCounts(),
-      ])
-      const ownSupabaseId = localStorage.getItem('oodle_pet_supabase_id')
-      const ownUserId = useAuthStore.getState().userId
-      const others: PlazaPet[] = records
-        .filter(r =>
-          r.id !== ownSupabaseId &&
-          r.user_id !== ownUserId &&
-          r.pixel_data !== petData.pixelData
-        )
-        .map(r => ({
-          id:             r.id,
-          pixelData:      r.pixel_data,
-          coords:         r.coords ?? DEFAULT_COORDS,
-          name:           r.name,
-          createdAt:      r.created_at,
-          isOwn:          false,
-          growth_points:  r.growth_points  ?? 0,
-          talent:         r.talent,
-          talent_drawing: r.talent_drawing,
-          accessory:      r.accessory ?? null,
-        }))
-      setPets(prev => mergePets(prev, [ownPet, ...others]))
-      setLikes(likeCounts)
-    }
-
-    loadFromSupabase()
-    updateGrowth().catch(() => {})
-  }, [petData])
-
-  // ── Online presence — heartbeat every 30s while in Plaza ────
-  useEffect(() => {
-    pingOnline()
-    const id = setInterval(pingOnline, 10_000)
-    return () => clearInterval(id)
-  }, [])
-
-  // ── Auto-performance of other pets' tricks (every 45 s) ──
-  const petsRef = useRef<PlazaPet[]>([])
-  useEffect(() => { petsRef.current = pets }, [pets])
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      const performers = petsRef.current.filter(p => p.talent || p.talent_drawing)
-      if (performers.length === 0) return
-      const pet = performers[Math.floor(Math.random() * performers.length)]
-
-      let text = ''
-      let drawing: string | undefined
-      if (pet.talent === 'sing') {
-        performingPets.current.add(pet.id)
-        setPlazaShows(prev => ({ ...prev, [pet.id]: { text: '🎵 La la la~' } }))
-        setTimeout(() => {
-          setPlazaShows(prev => { const next = { ...prev }; delete next[pet.id]; return next })
-          performingPets.current.delete(pet.id)
-        }, 10000)
-        return
-      }
-      else if (pet.talent === 'dance') {
-        text = '💃 Watch me!'
-        const anim = animMap.current.get(pet.id)
-        if (anim) anim.setState('dance')
-      }
-      else if (pet.talent === 'magic') {
-        const anim = animMap.current.get(pet.id)
-        const walker = walkerMap.current.get(pet.id)
-        if (!walker) return
-        performingPets.current.add(pet.id)
-
-        // Pet disappears
-        if (anim) anim.setState('idle')
-        const canvas = canvasMap.current.get(pet.id)
-        if (canvas) canvas.style.opacity = '0'
-
-        // After 4 seconds, reappear at random position
-        setTimeout(() => {
-          // Move to random position
-          const newX = Math.random() * (window.innerWidth - 100)
-          walker.x = newX
-          const wrapper = wrapperMap.current.get(pet.id)
-          if (wrapper) wrapper.style.left = `${newX}px`
-
-          // Reappear
-          if (canvas) canvas.style.opacity = '1'
-          if (anim) anim.setState('walk')
-
-          // Show tada bubble after reappear
-          setTimeout(() => {
-            setPlazaShows(prev => ({ ...prev, [pet.id]: { text: '✨ Ta-da Magic!' } }))
-            setTimeout(() => {
-              setPlazaShows(prev => { const next = { ...prev }; delete next[pet.id]; return next })
-              performingPets.current.delete(pet.id)
-            }, 3000)
-          }, 500)
-        }, 4000)
-      }
-      else if (pet.talent === 'drawing' && pet.talent_drawing) {
-        const walker = walkerMap.current.get(pet.id)
-        const petX = walker ? walker.x : window.innerWidth / 2
-        const petY = walker ? walker.y : window.innerHeight / 2
-        setDrawingPerformance({ petId: pet.id, petX, petY, dataURL: pet.talent_drawing })
-        setPlazaShows(prev => ({ ...prev, [pet.id]: { text: '🎨 Watch me draw!', drawing: pet.talent_drawing } }))
-        const anim = animMap.current.get(pet.id)
-        if (anim) anim.setState('draw')
-        performingPets.current.add(pet.id)
-        setTimeout(() => {
-          setDrawingPerformance(null)
-          setPlazaShows(prev => { const next = { ...prev }; delete next[pet.id]; return next })
-          const a = animMap.current.get(pet.id)
-          if (a) a.setState('walk')
-          performingPets.current.delete(pet.id)
-        }, 8000)
-        return
-      } else if (pet.talent_drawing) {
-        text    = '🎨 I made this!'
-        drawing = pet.talent_drawing
-      }
-      if (!text) return
-
-      performingPets.current.add(pet.id)
-      setPlazaShows(prev => ({ ...prev, [pet.id]: { text, drawing } }))
-      setTimeout(() => {
-        setPlazaShows(prev => {
-          const next = { ...prev }
-          delete next[pet.id]
-          return next
-        })
-        performingPets.current.delete(pet.id)
-      }, 4000)
-    }, 45000)
-    return () => clearInterval(interval)
-  }, [])
-
-  // ── Poll for new pets every 15 s ──────────────────────────
-  useEffect(() => {
-    const poll = setInterval(async () => {
-      const records = await fetchAllPets()
-      const ownSupabaseId = localStorage.getItem('oodle_pet_supabase_id')
-      const ownUserId = useAuthStore.getState().userId
-      setPets(prev => {
-        const newOthers = records
-          .filter(r => r.id !== ownSupabaseId && r.user_id !== ownUserId)
-          .map(r => ({
-            id:             r.id,
-            pixelData:      r.pixel_data,
-            coords:         r.coords ?? DEFAULT_COORDS,
-            name:           r.name,
-            createdAt:      r.created_at,
-            isOwn:          false,
-            growth_points:  r.growth_points  ?? 0,
-            talent:         r.talent,
-            talent_drawing: r.talent_drawing,
-            accessory:      r.accessory ?? null,
-          }))
-        const ownPet = prev.find(p => p.isOwn)
-        return ownPet ? [ownPet, ...newOthers] : newOthers
-      })
-      getAllLikeCounts().then(counts => setLikes(counts)).catch(() => {})
-    }, 10000)
-    return () => clearInterval(poll)
-  }, [])
-
-  // ── Realtime ──────────────────────────────────────────────
-  useEffect(() => {
-    const ownSupabaseId = localStorage.getItem('oodle_pet_supabase_id')
-    const ownUserId = useAuthStore.getState().userId
-    const unsubscribe = subscribeToNewPets(newPet => {
-      if (newPet.id === ownSupabaseId) return
-      if (newPet.user_id === ownUserId) return
-      if (newPet.pixel_data === petData.pixelData) return
-      setPets(prev => {
-        if (prev.some(p => p.id === newPet.id)) return prev
-        return [...prev, {
-          id:             newPet.id,
-          pixelData:      newPet.pixel_data,
-          coords:         newPet.coords ?? DEFAULT_COORDS,
-          name:           newPet.name,
-          createdAt:      newPet.created_at,
-          isOwn:          false,
-          growth_points:  newPet.growth_points  ?? 0,
-          talent:         newPet.talent,
-          talent_drawing: newPet.talent_drawing,
-          accessory:      newPet.accessory ?? null,
-        }]
-      })
-    })
-    return unsubscribe
-  }, [petData.pixelData])
+  }, [doorPhase, onGoToRoom, wrapperMap, canvasMap, walkerMap])
 
   // ── Like ──────────────────────────────────────────────────
   const handleLike = useCallback((petId: string) => {
-    // Already liked this pet today
     if (todayLikedPets.has(petId)) return
-    // Daily like quota exhausted
     if (likeLeft <= 0) return
 
-    // Optimistic UI update
     setLikes(prev => {
       const updated = { ...prev, [petId]: (prev[petId] ?? 0) + 1 }
       localStorage.setItem('oodle_likes', JSON.stringify(updated))
@@ -788,85 +269,20 @@ export default function PlazaScene({ petData, onGoToRoom, isPremium, petSize }: 
 
     likePet(petId).catch(() => {})
 
-    // Track daily plaza likes for the Daily Tasks system
     const todayKey  = new Date().toDateString()
     const likeData  = JSON.parse(localStorage.getItem('oodle_daily_plaza_likes') ?? '{"date":"","count":0}') as { date: string; count: number }
-    if (likeData.date === todayKey) {
-      likeData.count += 1
-    } else {
-      likeData.date  = todayKey
-      likeData.count = 1
-    }
+    if (likeData.date === todayKey) likeData.count += 1
+    else { likeData.date = todayKey; likeData.count = 1 }
     localStorage.setItem('oodle_daily_plaza_likes', JSON.stringify(likeData))
 
-    // Spawn pixel heart
     const canvas = canvasMap.current.get(petId)
     if (canvas) {
       const rect = canvas.getBoundingClientRect()
-      const heart: HeartAnim = {
-        id: Date.now(),
-        x:  rect.left + rect.width  / 2,
-        y:  rect.top,
-      }
+      const heart: HeartAnim = { id: Date.now(), x: rect.left + rect.width / 2, y: rect.top }
       setHearts(prev => [...prev, heart])
       setTimeout(() => setHearts(prev => prev.filter(h => h.id !== heart.id)), 1400)
     }
-  }, [todayLikedPets, likeLeft])
-
-  // ── Shout handlers ────────────────────────────────────────
-  const handleShout = useCallback(async () => {
-    const message = shoutInput.trim()
-    if (!message || shoutLeft <= 0) return
-
-    setShoutInput('')
-    setShoutLeft(n => n - 1)
-
-    // Show bubble locally immediately regardless of Supabase
-    const localShoutId = `local_${Date.now()}`
-    setActiveShouts(prev => ({ ...prev, ['own']: { message, shoutId: localShoutId } }))
-
-    // Auto-remove after SHOUT_DURATION_MS
-    setTimeout(() => {
-      setActiveShouts(prev => {
-        const current = prev['own']
-        if (!current || current.shoutId !== localShoutId) return prev
-        const next = { ...prev }
-        delete next['own']
-        return next
-      })
-    }, SHOUT_DURATION_MS)
-
-    // Try to persist to Supabase (best-effort)
-    const supabaseId = localStorage.getItem('oodle_pet_supabase_id')
-    if (supabaseId) {
-      const shoutId = await postShout(supabaseId, message).catch(() => null)
-      // Update shoutId to the real one so other users' polls pick it up
-      if (shoutId) {
-        setActiveShouts(prev => {
-          const current = prev['own']
-          if (!current) return prev
-          return { ...prev, ['own']: { message, shoutId } }
-        })
-      }
-    }
-  }, [shoutInput, shoutLeft])
-
-  const handleLikeShout = useCallback((shoutId: string) => {
-    if (likedShouts.has(shoutId)) return
-    setLikedShouts(prev => new Set([...prev, shoutId]))
-    likeShout(shoutId).catch(() => {})
-
-    // Track daily plaza likes for the Daily Tasks system
-    const todayKey  = new Date().toDateString()
-    const likeData  = JSON.parse(localStorage.getItem('oodle_daily_plaza_likes') ?? '{"date":"","count":0}') as { date: string; count: number }
-    if (likeData.date === todayKey) {
-      likeData.count += 1
-    } else {
-      likeData.date  = todayKey
-      likeData.count = 1
-    }
-    localStorage.setItem('oodle_daily_plaza_likes', JSON.stringify(likeData))
-  }, [likedShouts])
+  }, [todayLikedPets, likeLeft, setLikes, canvasMap])
 
   return (
     <div className={styles.page}>
@@ -879,7 +295,6 @@ export default function PlazaScene({ petData, onGoToRoom, isPremium, petSize }: 
             pointerEvents: 'none', zIndex: 6,
             overflow: 'hidden',
           }}>
-            {/* Twinkling stars */}
             {[
               {l:'8%',t:'15%',d:'1.2s'},{l:'18%',t:'8%',d:'2.1s'},{l:'28%',t:'20%',d:'1.7s'},
               {l:'38%',t:'10%',d:'2.4s'},{l:'48%',t:'18%',d:'1.5s'},{l:'58%',t:'7%',d:'2.0s'},
@@ -895,8 +310,6 @@ export default function PlazaScene({ petData, onGoToRoom, isPremium, petSize }: 
                 animationDelay: `${i * 0.15}s`,
               }} />
             ))}
-
-            {/* Shooting star */}
             {shootingStar && (
               <div style={{
                 position: 'absolute',
@@ -1280,30 +693,21 @@ export default function PlazaScene({ petData, onGoToRoom, isPremium, petSize }: 
               >
                 <>
                   <svg width="120" height="75" viewBox="0 0 80 50" xmlns="http://www.w3.org/2000/svg" style={{ imageRendering: 'pixelated', display: 'block', flexShrink: 0, transform: 'scaleX(-1)' }}>
-                    {/* Body */}
                     <rect x="10" y="18" width="50" height="14" fill="#cc2200"/>
-                    {/* Nose */}
                     <rect x="60" y="20" width="12" height="10" fill="#cc2200"/>
                     <rect x="70" y="22" width="8" height="6" fill="#aa1100"/>
-                    {/* Top wing */}
                     <rect x="20" y="6" width="36" height="8" fill="#cc2200"/>
                     <rect x="20" y="6" width="36" height="2" fill="#ff4422"/>
-                    {/* Bottom wing */}
                     <rect x="24" y="32" width="28" height="6" fill="#cc2200"/>
-                    {/* Tail */}
                     <rect x="8" y="12" width="10" height="8" fill="#cc2200"/>
                     <rect x="6" y="32" width="10" height="6" fill="#cc2200"/>
-                    {/* Cockpit */}
                     <rect x="36" y="14" width="14" height="10" fill="#88ccff"/>
                     <rect x="37" y="15" width="12" height="8" fill="#aaddff"/>
-                    {/* Propeller */}
                     <rect x="76" y="14" width="4" height="22" fill="#554433"/>
                     <rect x="74" y="22" width="8" height="6" fill="#776655"/>
-                    {/* Outlines */}
                     <rect x="10" y="18" width="50" height="14" fill="none" stroke="#2C2C2C" strokeWidth="1"/>
                     <rect x="20" y="6" width="36" height="8" fill="none" stroke="#2C2C2C" strokeWidth="1"/>
                     <rect x="24" y="32" width="28" height="6" fill="none" stroke="#2C2C2C" strokeWidth="1"/>
-                    {/* Wing struts */}
                     <rect x="28" y="14" width="2" height="18" fill="#2C2C2C"/>
                     <rect x="42" y="14" width="2" height="18" fill="#2C2C2C"/>
                   </svg>
@@ -1393,20 +797,14 @@ export default function PlazaScene({ petData, onGoToRoom, isPremium, petSize }: 
               }}
               onClick={() => setSelectedPet(pet)}
             >
-              {/* Speech bubble */}
               {shout && (
-                <div className={styles.speechBubble}>
-                  {shout.message}
-                  {!pet.isOwn && (
-                    <button
-                      className={styles.bubbleLikeBtn}
-                      disabled={likedShouts.has(shout.shoutId)}
-                      onClick={e => { e.stopPropagation(); handleLikeShout(shout.shoutId) }}
-                    >
-                      {likedShouts.has(shout.shoutId) ? '❤️ LIKED' : '❤️ LIKE'}
-                    </button>
-                  )}
-                </div>
+                <ShoutBubble
+                  message={shout.message}
+                  shoutId={shout.shoutId}
+                  isOwn={pet.isOwn}
+                  likedShouts={likedShouts}
+                  onLike={handleLikeShout}
+                />
               )}
 
               {/* Performance bubble (talent show) */}
@@ -1506,18 +904,15 @@ export default function PlazaScene({ petData, onGoToRoom, isPremium, petSize }: 
             onClick={e => e.stopPropagation()}
             style={{ background: '#FDF6E3', border: '3px solid #2C2C2C', boxShadow: '6px 6px 0 #2C2C2C', padding: '28px', maxWidth: '420px', width: '100%', position: 'relative', maxHeight: '90vh', overflowY: 'auto' }}
           >
-            {/* Close button */}
             <button
               onClick={() => { setShowAdModal(false); setAdSubmitted(false) }}
               style={{ position: 'absolute', top: '12px', right: '12px', fontFamily: 'var(--font-pixel)', fontSize: '14px', background: '#2C2C2C', color: '#FFE600', border: '2px solid #2C2C2C', boxShadow: '2px 2px 0 #888', width: '28px', height: '28px', cursor: 'pointer', lineHeight: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}
             >✕</button>
 
-            {/* Title */}
             <div style={{ background: '#2C2C2C', color: '#FFE600', fontFamily: 'var(--font-pixel)', fontSize: '11px', textAlign: 'center', padding: '12px', letterSpacing: '2px', marginBottom: '16px' }}>
               ✦ ADVERTISE HERE ✦
             </div>
 
-            {/* Description */}
             <p style={{ fontFamily: 'var(--font-retro)', fontSize: '15px', color: '#555', borderLeft: '3px solid #FFE600', paddingLeft: '10px', marginBottom: '20px', lineHeight: 1.6 }}>
               Promote your brand to Oodle players! Your banner ad flies across the plaza sky — seen by every player who visits.
             </p>
@@ -1528,7 +923,6 @@ export default function PlazaScene({ petData, onGoToRoom, isPremium, petSize }: 
               </div>
             ) : (
               <>
-                {/* Form fields */}
                 {(
                   [
                     { label: 'COMPANY NAME *',  key: 'company',    type: 'text',  hint: '' },
@@ -1553,7 +947,6 @@ export default function PlazaScene({ petData, onGoToRoom, isPremium, petSize }: 
                   </div>
                 ))}
 
-                {/* Plan selection */}
                 <div style={{ marginBottom: '20px' }}>
                   <div style={{ fontFamily: 'var(--font-pixel)', fontSize: '7px', color: '#2C2C2C', letterSpacing: '1px', marginBottom: '8px' }}>SELECT PLAN</div>
                   <div style={{ display: 'flex', gap: '8px' }}>
@@ -1573,7 +966,6 @@ export default function PlazaScene({ petData, onGoToRoom, isPremium, petSize }: 
                   </div>
                 </div>
 
-                {/* Submit */}
                 <button
                   disabled={adSubmitting || !adForm.company || !adForm.email || !adForm.bannerText || !adForm.website}
                   onClick={async () => {
@@ -1594,7 +986,6 @@ export default function PlazaScene({ petData, onGoToRoom, isPremium, petSize }: 
                       if (!res.ok) throw new Error('formspree error')
                       setAdSubmitted(true)
                     } catch {
-                      // fail silently, still show success to avoid friction
                       setAdSubmitted(true)
                     } finally {
                       setAdSubmitting(false)
@@ -1605,7 +996,6 @@ export default function PlazaScene({ petData, onGoToRoom, isPremium, petSize }: 
                   {adSubmitting ? 'SENDING...' : 'SUBMIT ENQUIRY'}
                 </button>
 
-                {/* Footer */}
                 <p style={{ fontFamily: 'var(--font-retro)', fontSize: '13px', color: '#555', textAlign: 'center', lineHeight: 1.8, margin: 0 }}>
                   We will contact you within 24 hours to arrange payment.
                 </p>
