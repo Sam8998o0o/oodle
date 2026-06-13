@@ -54,10 +54,10 @@ const REWARD_DAYS: Array<{ emoji: string; label: string; snacks: number; meals: 
   { emoji: '🍪',           label: '1 Snack',           snacks: 1, meals: 0, rare: false,                    claimMsg: '+1 SNACK ADDED!'                  },
   { emoji: '🍪🍪',         label: '2 Snacks',           snacks: 2, meals: 0, rare: false,                    claimMsg: '+2 SNACKS ADDED!'                 },
   { emoji: '🍖',           label: '1 Meal',             snacks: 0, meals: 1, rare: false,                    claimMsg: '+1 MEAL ADDED!'                   },
-  { emoji: '🍪🍪🍖',       label: '2 Snacks + 1 Meal',  snacks: 2, meals: 1, rare: false,                    claimMsg: '+2 SNACKS +1 MEAL!'               },
-  { emoji: '🍖🪴',         label: '1 Meal + Plant',     snacks: 0, meals: 1, rare: false,                    claimMsg: '+1 MEAL 🪴 COMING SOON!'          },
-  { emoji: '🍪🍪🍖🍖',     label: '2 Snacks + 2 Meals', snacks: 2, meals: 2, rare: false,                    claimMsg: '+2 SNACKS +2 MEALS!'              },
-  { emoji: '🚁🍪🍪🍖🍖',   label: 'Hat + 2S + 2M',      snacks: 2, meals: 2, rare: true, propellerHat: true, claimMsg: '🚁 HAT (24H) +2 SNACKS +2 MEALS!' },
+  { emoji: '🍪🍪🍖',       label: '2S + 1M',   snacks: 2, meals: 1, rare: false,                    claimMsg: '+2 SNACKS +1 MEAL!'               },
+  { emoji: '🍖🪴',         label: '1M+PLANT',  snacks: 0, meals: 1, rare: false,                    claimMsg: '+1 MEAL 🪴 COMING SOON!'          },
+  { emoji: '🍪🍪🍖🍖',     label: '2S + 2M',   snacks: 2, meals: 2, rare: false,                    claimMsg: '+2 SNACKS +2 MEALS!'              },
+  { emoji: '🚁🍪🍖',       label: 'HAT+2S+2M', snacks: 2, meals: 2, rare: true, propellerHat: true, claimMsg: '🚁 HAT (24H) +2 SNACKS +2 MEALS!' },
 ]
 
 
@@ -1692,12 +1692,12 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange, isPremiu
                     const isToday = n === dayInCycle && !streakClaimedToday
                     const isFuture = n > dayInCycle
                     return (
-                      <div key={n} style={{ border: `2px solid ${day.rare ? '#9B59B6' : '#2C2C2C'}`, background: isPast ? '#d4f5d4' : isToday ? '#FFE600' : '#fff', padding: '6px 2px', textAlign: 'center', opacity: isFuture ? 0.4 : 1, position: 'relative', minWidth: 0, overflow: 'hidden' }}>
-                        <div style={{ fontFamily: 'var(--font-pixel)', fontSize: '9px', fontWeight: 'normal', color: '#888', marginBottom: '3px' }}>DAY {n}</div>
-                        <div style={{ fontSize: '14px', lineHeight: 1.2 }}>{day.emoji}</div>
-                        <div style={{ fontFamily: 'var(--font-pixel)', fontSize: '12px', fontWeight: 'normal', color: day.rare ? '#9B59B6' : '#555', lineHeight: 1.4, marginTop: '2px', overflowWrap: 'break-word', wordBreak: 'break-word' }}>{day.label}</div>
+                      <div key={n} style={{ border: `2px solid ${day.rare ? '#9B59B6' : '#2C2C2C'}`, background: isPast ? '#d4f5d4' : isToday ? '#FFE600' : '#fff', padding: '6px 2px', textAlign: 'center', opacity: isFuture ? 0.4 : 1, position: 'relative', minWidth: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+                        <div style={{ fontFamily: 'var(--font-pixel)', fontSize: '8px', fontWeight: 'normal', color: '#888', marginBottom: '2px' }}>DAY {n}</div>
+                        <div style={{ fontSize: '12px', lineHeight: 1.1 }}>{day.emoji}</div>
+                        <div style={{ fontFamily: 'var(--font-pixel)', fontSize: '7px', fontWeight: 'normal', color: day.rare ? '#9B59B6' : '#555', lineHeight: 1.3, marginTop: '2px', whiteSpace: 'nowrap' }}>{day.label}</div>
                         {isPast  && <div style={{ position: 'absolute', top: 1, right: 2, fontSize: '9px', color: '#4CAF50' }}>✓</div>}
-                        {isToday && <div style={{ fontFamily: 'var(--font-pixel)', fontSize: '10px', fontWeight: 'normal', color: '#cc2200', marginTop: '2px' }}>TODAY</div>}
+                        {isToday && <div style={{ fontFamily: 'var(--font-pixel)', fontSize: '8px', fontWeight: 'normal', color: '#cc2200', marginTop: '2px', whiteSpace: 'nowrap' }}>TODAY</div>}
                       </div>
                     )
                   })}
