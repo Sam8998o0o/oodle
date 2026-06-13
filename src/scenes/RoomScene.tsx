@@ -50,14 +50,14 @@ interface DailyTasks {
   date:           string   // new Date().toDateString()
 }
 
-const REWARD_DAYS: Array<{ emoji: string; label: string; snacks: number; meals: number; rare: boolean; claimMsg: string }> = [
-  { emoji: '🍪',      label: '1 Snack',      snacks: 1, meals: 0, rare: false, claimMsg: '+1 SNACK ADDED!'    },
-  { emoji: '🍪🍪',    label: '2 Snacks',      snacks: 2, meals: 0, rare: false, claimMsg: '+2 SNACKS ADDED!'   },
-  { emoji: '🍖',      label: '1 Meal',        snacks: 0, meals: 1, rare: false, claimMsg: '+1 MEAL ADDED!'     },
-  { emoji: '🪴',      label: 'Plant Deco',    snacks: 0, meals: 0, rare: false, claimMsg: '🪴 COMING SOON!'    },
-  { emoji: '🎩',      label: 'Hat Deco',      snacks: 0, meals: 0, rare: false, claimMsg: '🎩 COMING SOON!'    },
-  { emoji: '🍖+🍪',   label: 'Meal+Snack',    snacks: 1, meals: 1, rare: false, claimMsg: '+1 MEAL +1 SNACK!' },
-  { emoji: '👑+🍖🍖', label: 'Crown+2 Meals', snacks: 0, meals: 2, rare: true,  claimMsg: '👑 +2 MEALS ADDED!' },
+const REWARD_DAYS: Array<{ emoji: string; label: string; snacks: number; meals: number; rare: boolean; propellerHat?: boolean; claimMsg: string }> = [
+  { emoji: '🍪',           label: '1 Snack',           snacks: 1, meals: 0, rare: false,                    claimMsg: '+1 SNACK ADDED!'                  },
+  { emoji: '🍪🍪',         label: '2 Snacks',           snacks: 2, meals: 0, rare: false,                    claimMsg: '+2 SNACKS ADDED!'                 },
+  { emoji: '🍖',           label: '1 Meal',             snacks: 0, meals: 1, rare: false,                    claimMsg: '+1 MEAL ADDED!'                   },
+  { emoji: '🍪🍪🍖',       label: '2 Snacks + 1 Meal',  snacks: 2, meals: 1, rare: false,                    claimMsg: '+2 SNACKS +1 MEAL!'               },
+  { emoji: '🍖🪴',         label: '1 Meal + Plant',     snacks: 0, meals: 1, rare: false,                    claimMsg: '+1 MEAL 🪴 COMING SOON!'          },
+  { emoji: '🍪🍪🍖🍖',     label: '2 Snacks + 2 Meals', snacks: 2, meals: 2, rare: false,                    claimMsg: '+2 SNACKS +2 MEALS!'              },
+  { emoji: '🚁🍪🍪🍖🍖',   label: 'Hat + 2S + 2M',      snacks: 2, meals: 2, rare: true, propellerHat: true, claimMsg: '🚁 HAT (24H) +2 SNACKS +2 MEALS!' },
 ]
 
 
@@ -226,6 +226,12 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange, isPremiu
   // ── Accessory state ────────────────────────────────────────
   const [accessory, setAccessory] = useState<string | null>(() => {
     try { return localStorage.getItem('oodle_accessory') } catch { return null }
+  })
+  const [hasTempPropeller, setHasTempPropeller] = useState<boolean>(() => {
+    try {
+      const exp = localStorage.getItem('oodle_propeller_expiry')
+      return !!exp && Date.now() < parseInt(exp, 10)
+    } catch { return false }
   })
 
   const equipAccessory = useCallback((acc: string | null) => {
@@ -1461,7 +1467,7 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange, isPremiu
             </div>
           )}
           <div style={{ position: 'relative', display: 'inline-block' }}>
-            {accessory === 'propeller' && (
+            {(accessory === 'propeller' || hasTempPropeller) && (
               <div style={{ position: 'absolute', top: -28, left: '50%', transform: 'translateX(-50%)', zIndex: 20, pointerEvents: 'none' }}>
                 <PropellerHat size={50} spinning={!isFainted && !isDizzy} />
               </div>
@@ -1652,6 +1658,11 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange, isPremiu
           const reward = REWARD_DAYS[dayIndex]
           if (reward.snacks > 0) setSmallFood((n: number) => n + reward.snacks)
           if (reward.meals  > 0) setBigFood((n: number)   => n + reward.meals)
+          if (reward.propellerHat) {
+            const expiry = Date.now() + 86400000
+            localStorage.setItem('oodle_propeller_expiry', String(expiry))
+            setHasTempPropeller(true)
+          }
           const today = new Date().toDateString()
           localStorage.setItem('oodle_streak', JSON.stringify({ streak, lastClaimDate: today }))
           setStreakClaimedToday(true)
