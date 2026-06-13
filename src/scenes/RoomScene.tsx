@@ -934,13 +934,30 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange, isPremiu
     return () => clearInterval(interval)
   }, [dailyTalent, showBubble, showFloat])
 
+  // ── STARVING warning: show for 10s, repeat every 60s ─────
+  const isStarving = stats.hunger > 0 && stats.hunger < STARVING_THRESHOLD && !isFainted
+  useEffect(() => {
+    if (!isStarving) return
+    let hideTimer: ReturnType<typeof setTimeout> | null = null
+    const showStarving = () => {
+      if (isFaintedRef.current || isSleepingRef.current) return
+      setBubble({ text: '🆘 STARVING!', id: Date.now() })
+      hideTimer = setTimeout(() => setBubble(null), 10000)
+    }
+    showStarving()
+    const intervalId = setInterval(showStarving, 60000)
+    return () => {
+      clearInterval(intervalId)
+      if (hideTimer) clearTimeout(hideTimer)
+      setBubble(b => (b?.text === '🆘 STARVING!' ? null : b))
+    }
+  }, [isStarving])
+
   // ── Warning bubbles when stats are low ───────────────────
   useEffect(() => {
     const id = setInterval(() => {
       if (isFaintedRef.current || isSleepingRef.current) return
-      if (statsRef.current.hunger > 0 && statsRef.current.hunger < STARVING_THRESHOLD) {
-        showBubble('🆘 STARVING!')
-      } else if (statsRef.current.happy <= 20) {
+      if (statsRef.current.happy <= 20) {
         showBubble('I\'m unhappy... 😢')
       } else if (statsRef.current.energy <= 20 && !isSleepingRef.current) {
         showBubble('I\'m sleepy... 😴')
