@@ -222,7 +222,8 @@ export function usePetStats({
     }
 
     fetchBalance()
-    const timer = setInterval(fetchBalance, 10000)
+    // No polling — mount fetch gets the initial balance; realtime handles
+    // incoming likes; redeem handlers decrement local state immediately.
 
     const userId = useAuthStore.getState().userId
     let channel: ReturnType<typeof supabase.channel> | null = null
@@ -247,7 +248,6 @@ export function usePetStats({
     }
 
     return () => {
-      clearInterval(timer)
       if (channel) supabase.removeChannel(channel)
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps

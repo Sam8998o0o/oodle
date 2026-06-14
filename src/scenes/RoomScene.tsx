@@ -1767,8 +1767,8 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange, isPremiu
                 {shopTab === 'food' && (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                     {[
-                      { label: 'SNACK', price: 5,  onBuy: () => { if (likeBalance >= 5) { setLikeBalance((p: number) => p - 5); setSmallFood((p: number) => p + 1) } } },
-                      { label: 'MEAL',  price: 10, onBuy: () => { if (likeBalance >= 10) { setLikeBalance((p: number) => p - 10); setBigFood((p: number)   => p + 1) } } },
+                      { label: 'SNACK', price: 5,  onBuy: () => { void handleRedeemSmall() } },
+                      { label: 'MEAL',  price: 10, onBuy: () => { void handleRedeemBig()   } },
                     ].map(f => (
                       <div key={f.label} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', border: '2px solid #2C2C2C', boxShadow: '2px 2px 0 #2C2C2C', padding: '12px 14px', background: '#fff' }}>
                         <span style={{ fontFamily: 'var(--font-pixel)', fontSize: '13px', color: '#2C2C2C' }}>{f.label}</span>
