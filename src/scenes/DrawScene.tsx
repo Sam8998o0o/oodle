@@ -8,6 +8,7 @@ import { savePet } from '../lib/petService'
 import styles from './DrawScene.module.css'
 import SharedPetBanner from '../components/SharedPetBanner'
 import PetParade from '../components/PetParade'
+import TutorialModal from '../components/TutorialModal'
 
 // ── Grid constants ─────────────────────────────────────────
 const GRID_SIZE = 64
@@ -224,7 +225,8 @@ export default function DrawScene({ onPetCreated, isPremium, initialStep, initia
   const [aiError,      setAiError]      = useState('')
   const [isConfirming,   setIsConfirming]   = useState(false)
   const [confirmError,   setConfirmError]   = useState<string | null>(null)
-  const [showShareModal, setShowShareModal] = useState(false)
+  const [showShareModal,  setShowShareModal]  = useState(false)
+  const [showTutorial,   setShowTutorial]    = useState(false)
 
   const blinkRef = useRef({ countdown: 210, frame: 0, blinking: false, cycle: 210 })
 
@@ -653,6 +655,30 @@ export default function DrawScene({ onPetCreated, isPremium, initialStep, initia
   // ── Render ────────────────────────────────────────────────
   return (
     <div className={styles.page}>
+      {/* How-to-play help button — top-left of scene wrapper */}
+      <button
+        onClick={() => setShowTutorial(true)}
+        style={{
+          position: 'absolute',
+          top: '12px',
+          left: '12px',
+          fontFamily: 'var(--font-pixel)',
+          fontSize: '10px',
+          padding: '6px 10px',
+          background: '#1a1a2e',
+          color: '#f5a623',
+          border: '2px solid #2C2C2C',
+          boxShadow: '2px 2px 0 #2C2C2C',
+          cursor: 'pointer',
+          borderRadius: 0,
+          zIndex: 10,
+        }}
+      >
+        ?
+      </button>
+
+      {showTutorial && <TutorialModal onClose={() => setShowTutorial(false)} />}
+
       {sharedPetId && <SharedPetBanner petId={sharedPetId} />}
       {!userId && (
         <button className={styles.signInBtn} onClick={() => useAuthStore.getState().setShowSignInModal(true)}>
