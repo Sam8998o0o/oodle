@@ -207,7 +207,7 @@ export function usePetStats({
     }
   }, [isFainted, animatorRef])
 
-  // ── Like balance: poll every 10s + realtime ───────────
+  // ── Like balance: realtime + 30s polling fallback ─────
   useEffect(() => {
     let prevBalance = 0
 
@@ -222,8 +222,10 @@ export function usePetStats({
     }
 
     fetchBalance()
-    // No polling — mount fetch gets the initial balance; realtime handles
-    // incoming likes; redeem handlers decrement local state immediately.
+
+    // Poll every 30s as a guaranteed fallback for environments where
+    // Supabase Realtime is unavailable or the table lacks replication.
+    const pollId = setInterval(fetchBalance, 30000)
 
     const userId = useAuthStore.getState().userId
     let channel: ReturnType<typeof supabase.channel> | null = null
@@ -231,7 +233,8 @@ export function usePetStats({
       channel = supabase
         .channel('like-balance-' + userId)
         .on('postgres_changes', {
-          event:  'UPDATE',
+          // '*' catches both INSERT (first like ever) and UPDATE (subsequent likes)
+          event:  '*',
           schema: 'public',
           table:  'like_balance',
           filter: `user_id=eq.${userId}`,
@@ -248,6 +251,7 @@ export function usePetStats({
     }
 
     return () => {
+      clearInterval(pollId)
       if (channel) supabase.removeChannel(channel)
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
