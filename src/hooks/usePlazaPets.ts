@@ -295,9 +295,11 @@ export function usePlazaPets(
     try {
       if (talentRaw) {
         const t = JSON.parse(talentRaw) as { date: string; talent: string; drawing?: string }
-        if (t.date === new Date().toDateString()) {
-          ownTalent        = t.talent || (t.drawing ? 'drawing' : undefined)
-          ownTalentDrawing = t.drawing
+        // No date restriction — pet keeps their most recently learned talent permanently
+        ownTalent = t.talent || (t.drawing ? 'drawing' : undefined)
+        if (ownTalent === 'drawing') {
+          // oodle_talent_drawing persists across days; fall back to today's inline copy
+          ownTalentDrawing = localStorage.getItem('oodle_talent_drawing') ?? t.drawing ?? undefined
         }
       }
     } catch { /* ignore */ }
@@ -316,12 +318,13 @@ export function usePlazaPets(
     }
     setPets([ownPet])
 
-    // Ensure talent synced to Supabase
-    if (ownTalentDrawing && ownTalent === 'drawing') {
-      const petId = localStorage.getItem('oodle_pet_supabase_id')
-      if (petId) {
-        supabase.from('pets').update({ talent: 'drawing' }).eq('id', petId).then(() => {})
-      }
+    // Sync latest talent to Supabase on Plaza enter so other users always see
+    // the most recent trick (guards against saveTalent failing at learn-time)
+    const syncPetId = localStorage.getItem('oodle_pet_supabase_id')
+    if (syncPetId && ownTalent) {
+      const update: Record<string, string> = { talent: ownTalent }
+      if (ownTalent === 'drawing' && ownTalentDrawing) update.talent_drawing = ownTalentDrawing
+      supabase.from('pets').update(update).eq('id', syncPetId).then(() => {})
     }
 
     const loadFromSupabase = async () => {
