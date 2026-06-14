@@ -207,7 +207,6 @@ function App() {
         <DrawScene
           onPetCreated={handlePetCreated}
           isPremium={isPremium}
-          onSubscribeClick={() => setScene('paywall')}
           initialStep={resumePixelData ? 'decorate' : undefined}
           initialPixelData={resumePixelData ?? undefined}
           sharedPetId={sharedPetId ?? undefined}

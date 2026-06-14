@@ -37,7 +37,6 @@ interface StoredPet { id: string; pixelData: string; name: string }
 interface DrawSceneProps {
   onPetCreated: (pixelData: string, coords: PetCoords, name: string) => void
   isPremium: boolean
-  onSubscribeClick: () => void
   initialStep?: 'draw' | 'decorate'
   initialPixelData?: string
   sharedPetId?: string
@@ -188,7 +187,7 @@ async function dataURLToGrid(dataURL: string): Promise<string[][]> {
 }
 
 // ── Component ──────────────────────────────────────────────
-export default function DrawScene({ onPetCreated, isPremium, onSubscribeClick, initialStep, initialPixelData, sharedPetId }: DrawSceneProps) {
+export default function DrawScene({ onPetCreated, isPremium, initialStep, initialPixelData, sharedPetId }: DrawSceneProps) {
   const { userId } = useAuthStore()
 
   const canvasRef  = useRef<HTMLCanvasElement>(null)
@@ -749,8 +748,8 @@ export default function DrawScene({ onPetCreated, isPremium, onSubscribeClick, i
                   <>
                     <div className={styles.premiumBadge}>🔒 PRO FEATURE</div>
                     <p className={styles.aiDesc}>Import any image and turn it into your pixel pet!</p>
-                    <button className={styles.subscribeUnlockBtn} onClick={userId ? onSubscribeClick : () => useAuthStore.getState().setShowSignInModal(true)}>
-                      {userId ? 'UNLOCK $2.99/mo' : 'SIGN IN TO SUBSCRIBE'}
+                    <button className={styles.subscribeUnlockBtn} disabled>
+                      COMING SOON ✨
                     </button>
                   </>
                 ) : (
@@ -788,8 +787,8 @@ export default function DrawScene({ onPetCreated, isPremium, onSubscribeClick, i
                     <p className={styles.aiDesc}>Let AI draw your pixel pet for you!</p>
                     <input className={styles.aiInput} placeholder="a chubby space cat..." disabled />
                     <button className={styles.generateBtn} disabled>GENERATE</button>
-                    <button className={styles.subscribeUnlockBtn} onClick={userId ? onSubscribeClick : () => useAuthStore.getState().setShowSignInModal(true)}>
-                      {userId ? 'SUBSCRIBE TO UNLOCK' : 'SIGN IN TO SUBSCRIBE'}
+                    <button className={styles.subscribeUnlockBtn} disabled>
+                      COMING SOON ✨
                     </button>
                   </>
                 ) : (
