@@ -267,7 +267,7 @@ export default function PlazaScene({ petData, onGoToRoom, isPremium, petSize }: 
     setTodayLikedPets(prev => new Set(prev).add(petId))
     setLikeLeft(n => n - 1)
 
-    likePet(petId).catch(() => {})
+    likePet(petId).catch((err: unknown) => { console.error('[PlazaScene] likePet failed:', err) })
 
     const todayKey  = new Date().toDateString()
     const likeData  = JSON.parse(localStorage.getItem('oodle_daily_plaza_likes') ?? '{"date":"","count":0}') as { date: string; count: number }

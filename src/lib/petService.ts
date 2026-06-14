@@ -230,19 +230,51 @@ export async function getAllLikeCounts(): Promise<Record<string, number>> {
 }
 
 // ── likePet ───────────────────────────────────────────────
-// Calls the like_pet RPC which records the like and credits
-// the pet owner's like_balance atomically.
+// Inserts a like into the likes table, then credits the pet
+// owner's like_balance by 1 (mirrors what like_shout RPC does).
 export async function likePet(petId: string): Promise<void> {
   const userId = useAuthStore.getState().userId
   if (!userId) return
 
-  const { error } = await supabase.rpc('like_pet', {
-    p_pet_id:   petId,
-    p_liker_id: userId,
-  })
+  // Insert like — UNIQUE(pet_id, user_id) prevents duplicates
+  const { error: likeError } = await supabase
+    .from('likes')
+    .insert({ pet_id: petId, user_id: userId })
 
-  if (error) {
-    console.error('[petService] likePet failed:', error.message)
+  if (likeError) {
+    console.error('[petService] likePet insert failed:', likeError.message)
+    return
+  }
+
+  // Resolve pet owner so we can credit their balance
+  const { data: pet, error: petError } = await supabase
+    .from('pets')
+    .select('user_id')
+    .eq('id', petId)
+    .single()
+
+  if (petError || !pet) {
+    console.error('[petService] likePet — pet lookup failed:', petError?.message)
+    return
+  }
+
+  const ownerId = (pet as { user_id: string }).user_id
+
+  // Read current balance (0 if no row yet), then upsert with +1
+  const { data: balRow } = await supabase
+    .from('like_balance')
+    .select('balance')
+    .eq('user_id', ownerId)
+    .maybeSingle()
+
+  const newBalance = ((balRow as { balance: number } | null)?.balance ?? 0) + 1
+
+  const { error: balError } = await supabase
+    .from('like_balance')
+    .upsert({ user_id: ownerId, balance: newBalance }, { onConflict: 'user_id' })
+
+  if (balError) {
+    console.error('[petService] likePet — balance upsert failed:', balError.message)
   }
 }
 
