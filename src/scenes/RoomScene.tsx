@@ -1027,9 +1027,10 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange, isPremiu
       let nx = parseFloat(wrapper.style.left || '80') + pvx
       let ny = parseFloat(wrapper.style.top  || String(roomH * 0.5)) + pvy
 
-      const floor = roomH * 0.70
-      if (ny + PET_W > floor) {
-        ny  = floor - PET_W
+      // GROUND_Y matches bottom: 22% — where the pet's bottom edge rests while walking
+      const GROUND_Y = roomH * 0.78
+      if (ny + petSize > GROUND_Y) {
+        ny  = GROUND_Y - petSize
         pvy = -Math.abs(pvy) * BOUNCE
         pvx *= FRICTION
         if (!isSleepingRef.current) animatorRef.current?.setState('squish')
@@ -1042,10 +1043,14 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange, isPremiu
       wrapper.style.left = `${nx}px`
       wrapper.style.top  = `${ny}px`
 
-      if (Math.abs(pvx) > 0.2 || Math.abs(pvy) > 0.2) {
+      // Only stop when both velocity is low AND pet is at ground level.
+      // Without the ground check the loop can terminate at the peak of a
+      // tiny arc, leaving the pet floating mid-air.
+      const atGround = ny + petSize >= GROUND_Y - 1
+      if (Math.abs(pvx) > 0.2 || Math.abs(pvy) > 0.2 || !atGround) {
         throwRafRef.current = requestAnimationFrame(tick)
       } else {
-        // Bounce fully settled — restore CSS bottom positioning
+        // Bounce fully settled at ground — restore CSS bottom positioning
         walkXRef.current       = nx
         wrapper.style.top      = ''
         wrapper.style.bottom   = '22%'
