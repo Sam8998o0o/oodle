@@ -1013,14 +1013,12 @@ export default function DrawScene({ onPetCreated, isPremium, onSubscribeClick, i
               <p style={{ fontFamily: 'var(--font-retro)', fontSize: '19px', color: '#2C2C2C', textAlign: 'center', margin: 0, lineHeight: 1.6 }}>
                 Bring your character to the world&apos;s first IP creator community
               </p>
-              <a
-                href={`http://localhost:3000/create?name=${encodeURIComponent(petName || 'my pet')}`}
-                target="_blank"
-                rel="noopener noreferrer"
+              <button
+                onClick={() => window.open('https://oodle-creators.vercel.app', '_blank')}
                 style={{ display: 'block', width: '100%', fontFamily: 'var(--font-pixel)', fontSize: '9px', padding: '14px 16px', background: '#FFE600', color: '#2C2C2C', border: '3px solid #2C2C2C', boxShadow: '4px 4px 0 #2C2C2C', cursor: 'pointer', letterSpacing: '1px', textAlign: 'center', textDecoration: 'none', boxSizing: 'border-box' }}
               >
                 GO TO OODLE CREATORS →
-              </a>
+              </button>
               <button
                 onClick={() => setShowShareModal(false)}
                 style={{ fontFamily: 'var(--font-pixel)', fontSize: '7px', color: '#888', background: 'transparent', border: 'none', cursor: 'pointer' }}
