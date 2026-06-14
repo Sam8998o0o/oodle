@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import type { RefObject, Dispatch, SetStateAction } from 'react'
 import { PetAnimator } from '../engine/PetAnimator'
-import { getLikeBalance, redeemLikesForFood } from '../lib/petService'
+import { getLikeBalance, redeemLikesForFood, getShoutOwner } from '../lib/petService'
 import { useAuthStore } from '../lib/auth'
 import { supabase } from '../lib/supabase'
 import type { PetStats } from './useOfflineDecay'
@@ -254,6 +254,31 @@ export function usePetStats({
       clearInterval(pollId)
       if (channel) supabase.removeChannel(channel)
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  // ── Shout-like notifications ──────────────────────────
+  useEffect(() => {
+    const userId = useAuthStore.getState().userId
+    if (!userId) return
+
+    const channel = supabase
+      .channel('shout-likes-notify-' + userId)
+      .on('postgres_changes', {
+        event:  'INSERT',
+        schema: 'public',
+        table:  'shout_likes',
+      }, (payload: { new: Record<string, unknown> }) => {
+        const row = payload.new as { shout_id: string; user_id: string }
+        // Don't notify if the current user liked their own shout
+        if (row.user_id === userId) return
+        void getShoutOwner(row.shout_id).then(owner => {
+          if (owner === userId) showBubble('Someone liked your shout! ❤️')
+        })
+      })
+      .subscribe()
+
+    return () => { supabase.removeChannel(channel) }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 

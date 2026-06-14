@@ -394,6 +394,18 @@ export async function countTodayShouts(): Promise<number> {
   return count ?? 0
 }
 
+// ── getShoutOwner ─────────────────────────────────────────
+// Returns the user_id of whoever posted the given shout, or null.
+export async function getShoutOwner(shoutId: string): Promise<string | null> {
+  const { data, error } = await supabase
+    .from('shouts')
+    .select('user_id')
+    .eq('id', shoutId)
+    .single()
+  if (error || !data) return null
+  return (data as { user_id: string }).user_id
+}
+
 // ── likeShout ─────────────────────────────────────────────
 // Calls the like_shout RPC which records the like and credits
 // the pet owner's like_balance atomically.
