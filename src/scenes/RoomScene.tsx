@@ -1022,15 +1022,25 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange, isPremiu
     const roomH    = room.offsetHeight
     const PET_W    = 160
 
+    // Compute GROUND_Y once from live DOM dimensions so it matches the actual
+    // visual floor regardless of pet size or container height at render time.
+    // GROUND_Y is the TOP-edge position of the wrapper when the pet stands on
+    // the floor (bottom: 22%).  Using clientHeight + offsetHeight avoids the
+    // stale-closure problem that occurs when petSize changes after mount.
+    const containerH   = room.clientHeight
+    const PET_H        = petWrapperRef.current?.offsetHeight ?? PET_W
+    const FLOOR_OFFSET = containerH * 0.22
+    const GROUND_Y     = containerH - PET_H - FLOOR_OFFSET
+    console.log('GROUND_Y:', GROUND_Y, 'containerH:', containerH, 'PET_H:', PET_H)
+
     const tick = () => {
       pvy += GRAVITY
       let nx = parseFloat(wrapper.style.left || '80') + pvx
       let ny = parseFloat(wrapper.style.top  || String(roomH * 0.5)) + pvy
 
-      // GROUND_Y matches bottom: 22% — where the pet's bottom edge rests while walking
-      const GROUND_Y = roomH * 0.78
-      if (ny + petSize > GROUND_Y) {
-        ny  = GROUND_Y - petSize
+      // ny is the wrapper TOP edge; floor is reached when ny >= GROUND_Y
+      if (ny > GROUND_Y) {
+        ny  = GROUND_Y
         pvy = -Math.abs(pvy) * BOUNCE
         pvx *= FRICTION
         if (!isSleepingRef.current) animatorRef.current?.setState('squish')
@@ -1043,10 +1053,10 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange, isPremiu
       wrapper.style.left = `${nx}px`
       wrapper.style.top  = `${ny}px`
 
-      // Only stop when both velocity is low AND pet is at ground level.
-      // Without the ground check the loop can terminate at the peak of a
-      // tiny arc, leaving the pet floating mid-air.
-      const atGround = ny + petSize >= GROUND_Y - 1
+      // Only stop when velocity is low AND top edge is at (or below) ground.
+      // Without the ground check the loop can stop at the peak of a tiny arc,
+      // leaving the pet floating mid-air.
+      const atGround = ny >= GROUND_Y - 1
       if (Math.abs(pvx) > 0.2 || Math.abs(pvy) > 0.2 || !atGround) {
         throwRafRef.current = requestAnimationFrame(tick)
       } else {
