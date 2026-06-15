@@ -213,17 +213,20 @@ export default function PlazaScene({ petData, onGoToRoom, isPremium, petSize }: 
       return
     }
     const petId = selectedPet.id
+    console.log('[POPUP] fetching counts for pet id:', petId)
     void (async () => {
-      const { count: likeCount } = await supabase
+      const { count: likeCount, error: likeError } = await supabase
         .from('likes')
         .select('*', { count: 'exact', head: true })
         .eq('pet_id', petId)
+      console.log('[POPUP] like count result:', likeCount, likeError)
       setPopupLikeCount(likeCount ?? 0)
 
-      const { count: unlikeCount } = await supabase
+      const { count: unlikeCount, error: unlikeError } = await supabase
         .from('pet_unlikes')
         .select('*', { count: 'exact', head: true })
         .eq('pet_id', petId)
+      console.log('[POPUP] unlike count result:', unlikeCount, unlikeError)
       setPopupUnlikeCount(unlikeCount ?? 0)
     })()
   }, [selectedPet?.id])
