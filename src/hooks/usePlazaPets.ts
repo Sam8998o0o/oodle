@@ -306,11 +306,11 @@ export function usePlazaPets(
       })
 
       // Stale-pet removal: runs every ~1 s inside the tick to catch offline pets
-      if (now - lastStaleCheckRef.current > 1000) {
-        lastStaleCheckRef.current = now
+      if (Date.now() - lastStaleCheckRef.current > 1000) {
+        lastStaleCheckRef.current = Date.now()
         const staleIds: string[] = []
         for (const pet of petsRef.current) {
-          if (!pet.isOwn && pet.last_seen && now - new Date(pet.last_seen).getTime() > 20_000) {
+          if (!pet.isOwn && pet.last_seen && Date.now() - new Date(pet.last_seen).getTime() > 20_000) {
             staleIds.push(pet.id)
           }
         }
