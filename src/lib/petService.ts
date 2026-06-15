@@ -293,16 +293,28 @@ export async function getAllLikeCounts(): Promise<Record<string, number>> {
 }
 
 // ── likePet ───────────────────────────────────────────────
-// Inserts a like into the likes table, then credits the pet
-// owner's like_balance by 1 (mirrors what like_shout RPC does).
+// One like per pet per user per day. Inserts with like_date so that
+// getTodayLikedPetIds() can filter by date, then credits the owner's balance.
 export async function likePet(petId: string): Promise<void> {
   const userId = useAuthStore.getState().userId
   if (!userId) return
 
-  // Insert like — UNIQUE(pet_id, user_id) prevents duplicates
+  const todayStr = new Date().toISOString().slice(0, 10)
+
+  // Guard: already liked this pet today → skip everything
+  const { data: existing } = await supabase
+    .from('likes')
+    .select('id')
+    .eq('pet_id', petId)
+    .eq('user_id', userId)
+    .eq('like_date', todayStr)
+    .maybeSingle()
+
+  if (existing) return
+
   const { error: likeError } = await supabase
     .from('likes')
-    .insert({ pet_id: petId, user_id: userId })
+    .insert({ pet_id: petId, user_id: userId, like_date: todayStr })
 
   if (likeError) {
     console.error('[petService] likePet insert failed:', likeError.message)
