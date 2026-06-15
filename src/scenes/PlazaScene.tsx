@@ -2,6 +2,7 @@ import { useRef, useState, useEffect, useCallback } from 'react'
 import type { PetCoords } from '../api/aiRecognize'
 import { likePet, getTodayLikedPetIds, unlikePet, fetchAds, getLikeBalance } from '../lib/petService'
 import type { AdRecord } from '../lib/petService'
+import { supabase } from '../lib/supabase'
 import PropellerHat from '../components/PropellerHat'
 import { usePlazaPets } from '../hooks/usePlazaPets'
 import type { PlazaPet } from '../hooks/usePlazaPets'
@@ -123,7 +124,8 @@ export default function PlazaScene({ petData, onGoToRoom, isPremium, petSize }: 
   }, [hasTempPropeller])
 
   const [ads,          setAds]          = useState<AdRecord[]>(DEFAULT_ADS)
-  const [selectedPet,  setSelectedPet]  = useState<PlazaPet | null>(null)
+  const [selectedPet,     setSelectedPet]     = useState<PlazaPet | null>(null)
+  const [popupLikeCount,  setPopupLikeCount]  = useState(0)
   const [likeLeft,     setLikeLeft]     = useState(LIKE_DAILY_LIMIT)
   const [todayLikedPets, setTodayLikedPets] = useState<Set<string>>(new Set())
   const [doorPhase,    setDoorPhase]    = useState<DoorPhase>('idle')
@@ -201,6 +203,17 @@ export default function PlazaScene({ petData, onGoToRoom, isPremium, petSize }: 
   useEffect(() => {
     localStorage.removeItem('oodle_pets')
   }, [])
+
+  // ── Fetch fresh like count when popup opens ───────────────
+  useEffect(() => {
+    if (!selectedPet) return
+    supabase
+      .from('likes')
+      .select('*', { count: 'exact', head: true })
+      .eq('pet_id', selectedPet.id)
+      .then(({ count }) => setPopupLikeCount(count ?? 0))
+      .catch(() => {})
+  }, [selectedPet?.id])
 
   // ── Like notification: poll balance every 8s while in Plaza ─
   useEffect(() => {
@@ -282,6 +295,8 @@ export default function PlazaScene({ petData, onGoToRoom, isPremium, petSize }: 
     setTodayLikedPets(prev => new Set(prev).add(petId))
 
     if (!result.success) return
+
+    setPopupLikeCount(n => n + 1)
 
     setLikes(prev => {
       const updated = { ...prev, [petId]: (prev[petId] ?? 0) + 1 }
@@ -888,7 +903,7 @@ export default function PlazaScene({ petData, onGoToRoom, isPremium, petSize }: 
               <div className={styles.cardRow}>Artist: {selectedPet.name}</div>
               <div className={styles.cardRow}>Joined: {formatDate(selectedPet.createdAt)}</div>
               <div className={styles.cardRow}>Day {Math.floor((Date.now() - new Date(selectedPet.createdAt).getTime()) / 86400000) + 1}</div>
-              <div className={styles.cardRow}>❤️ {likes[selectedPet.id] ?? 0} likes</div>
+              <div className={styles.cardRow}>❤️ {popupLikeCount} likes</div>
               {!selectedPet.isOwn && (
                 <>
                   <button
