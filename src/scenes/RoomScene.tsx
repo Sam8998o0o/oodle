@@ -226,6 +226,7 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange, isPremiu
         // sessionStorage wins if user already claimed this browser session
         const alreadyClaimed = claimedToday || sessionStorage.getItem('oodle_reward_shown') === 'true'
         setStreakClaimedToday(alreadyClaimed)
+        if (claimedToday) sessionStorage.setItem('oodle_reward_shown', 'true')
       })
       .catch(() => {
         // Supabase failed — fall back to sessionStorage to block double-claim
@@ -1706,7 +1707,7 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange, isPremiu
         const dayIndex   = (streak - 1) % 7           // 0-based index into REWARD_DAYS
         const dayInCycle = dayIndex + 1                // 1-based for display
 
-        const handleClaim = () => {
+        const handleClaim = async () => {
           const reward = REWARD_DAYS[dayIndex]
           if (reward.snacks > 0) setSmallFood((n: number) => n + reward.snacks)
           if (reward.meals  > 0) setBigFood((n: number)   => n + reward.meals)
@@ -1722,6 +1723,13 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange, isPremiu
           void claimDailyStreak(streak)
           setStreakClaimedToday(true)
           setRewardMsg(reward.claimMsg)
+          const myPetId = localStorage.getItem('oodle_pet_supabase_id')
+          if (myPetId) {
+            await supabase
+              .from('pets')
+              .update({ reward_claimed_date: new Date().toISOString().split('T')[0] })
+              .eq('id', myPetId)
+          }
         }
 
         return (
