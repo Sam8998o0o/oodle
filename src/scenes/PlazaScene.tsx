@@ -103,12 +103,25 @@ export default function PlazaScene({ petData, onGoToRoom, isPremium, petSize }: 
   } = useShouts(dailyShoutLimit)
 
   // ── Local state ───────────────────────────────────────────
-  const [hasTempPropeller] = useState<boolean>(() => {
+  const [hasTempPropeller, setHasTempPropeller] = useState<boolean>(() => {
     try {
       const exp = localStorage.getItem('oodle_propeller_expiry')
       return !!exp && Date.now() < parseInt(exp, 10)
     } catch { return false }
   })
+
+  // Auto-expire temp propeller when the 24h window closes
+  useEffect(() => {
+    if (!hasTempPropeller) return
+    try {
+      const exp = parseInt(localStorage.getItem('oodle_propeller_expiry') ?? '0', 10)
+      if (!exp) return
+      const ms = exp - Date.now()
+      if (ms <= 0) { setHasTempPropeller(false); return }
+      const t = setTimeout(() => setHasTempPropeller(false), ms)
+      return () => clearTimeout(t)
+    } catch { /* */ }
+  }, [hasTempPropeller])
 
   const [ads,          setAds]          = useState<AdRecord[]>(DEFAULT_ADS)
   const [selectedPet,  setSelectedPet]  = useState<PlazaPet | null>(null)

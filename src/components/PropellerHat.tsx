@@ -93,7 +93,7 @@ export default function PropellerHat({ size = 40, spinning = true }: PropellerHa
 
     if (spinning) {
       const animate = () => {
-        angleRef.current += 0.11
+        angleRef.current += 0.26
         drawFrame()
         rafRef.current = requestAnimationFrame(animate)
       }

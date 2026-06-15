@@ -98,12 +98,13 @@ export function usePlazaPets(
   const canvasMap      = useRef(new Map<string, HTMLCanvasElement>())
   const animMap        = useRef(new Map<string, PetAnimator>())
   const walkerMap      = useRef(new Map<string, Walker>())
-  const rafRef         = useRef(0)
-  const petSizeRef     = useRef(petSize)
-  const performingPets = useRef<Set<string>>(new Set())
-  const spawnQueue     = useRef<PlazaPet[]>([])
-  const propellerHats  = useRef<Set<string>>(new Set())
-  const petsRef        = useRef<PlazaPet[]>([])
+  const rafRef             = useRef(0)
+  const petSizeRef         = useRef(petSize)
+  const performingPets     = useRef<Set<string>>(new Set())
+  const spawnQueue         = useRef<PlazaPet[]>([])
+  const propellerHats      = useRef<Set<string>>(new Set())
+  const propellerExpiryRef = useRef(0)
+  const petsRef            = useRef<PlazaPet[]>([])
 
   const [pets,                setPets]                = useState<PlazaPet[]>([])
   const [likes,               setLikes]               = useState<Record<string, number>>({})
@@ -187,7 +188,18 @@ export function usePlazaPets(
     if (pet.accessory === 'propeller') propellerHats.current.add(pet.id)
     else propellerHats.current.delete(pet.id)
 
-    const isFlying   = pet.accessory === 'propeller'
+    // Also check the Day-7 temp propeller for the own pet
+    if (pet.isOwn) {
+      try {
+        const exp = parseInt(localStorage.getItem('oodle_propeller_expiry') ?? '0', 10)
+        if (exp && Date.now() < exp) {
+          propellerHats.current.add(pet.id)
+          propellerExpiryRef.current = exp
+        }
+      } catch { /* */ }
+    }
+
+    const isFlying   = propellerHats.current.has(pet.id)
     const yMin       = isFlying ? WALK_SKY_MIN : WALK_Y_MIN
     const yMax       = isFlying ? WALK_SKY_MAX : WALK_Y_MAX
     const rightBound = rW - RIGHT_PAD - size
@@ -240,6 +252,15 @@ export function usePlazaPets(
 
         const sz        = cv.width > 0 ? cv.width : (id === 'own' ? petSizeRef.current : PET_SIZE)
         const ownRight  = rW - RIGHT_PAD - sz
+        const now       = Date.now()
+
+        // Expire temp propeller for own pet when 24h window closes
+        if (id === 'own' && propellerExpiryRef.current > 0 && now > propellerExpiryRef.current) {
+          propellerHats.current.delete('own')
+          propellerExpiryRef.current = 0
+          w.y = WALK_Y_MIN * rH - sz   // snap to ground immediately
+        }
+
         const isFlying  = propellerHats.current.has(id)
         const ownTop    = (isFlying ? WALK_SKY_MIN : WALK_Y_MIN) * rH - sz
         const ownBottom = (isFlying ? WALK_SKY_MAX : WALK_Y_MAX) * rH - sz
@@ -249,10 +270,15 @@ export function usePlazaPets(
         else if (nextX <= LEFT_BOUND) w.dir = 1
         else w.x = nextX
 
-        const nextY = w.y + w.speedY * w.dirY
-        if (nextY >= ownBottom) w.dirY = -1
-        else if (nextY <= ownTop) w.dirY = 1
-        else w.y = nextY
+        if (isFlying && id === 'own') {
+          // Sinusoidal hover at 35% height — gentle float for the own flying pet
+          w.y = rH * 0.35 - sz + Math.sin(now / 600) * 8
+        } else {
+          const nextY = w.y + w.speedY * w.dirY
+          if (nextY >= ownBottom) w.dirY = -1
+          else if (nextY <= ownTop) w.dirY = 1
+          else w.y = nextY
+        }
 
         wr.style.left      = `${w.x}px`
         wr.style.top       = `${w.y}px`
