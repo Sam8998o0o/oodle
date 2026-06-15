@@ -849,7 +849,10 @@ export default function PlazaScene({ petData, onGoToRoom, isPremium, petSize }: 
                   wrapperMap.current.delete(pet.id)
                 }
               }}
-              onClick={() => setSelectedPet(pet)}
+              onClick={() => {
+                const realId = pet.isOwn ? (localStorage.getItem('oodle_pet_supabase_id') ?? pet.id) : pet.id
+                setSelectedPet({ ...pet, id: realId })
+              }}
             >
               {shout && (
                 <ShoutBubble
