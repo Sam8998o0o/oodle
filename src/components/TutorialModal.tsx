@@ -66,9 +66,9 @@ const PAGES: Page[] = [
         desc: 'Press PLAY in Room to teach a trick. Your pet performs its latest trick in the Plaza!',
       },
       {
-        icon: '💬',
-        label: 'SHOUT IN THE PLAZA',
-        desc: 'Tap any pet to send a shout bubble. 10 shouts/day. Others can like your shouts — you get notified!',
+        icon: '🚔',
+        label: 'BEHAVE IN THE PLAZA',
+        desc: 'Get unliked 3 times → jailed for 1 hour! Get unliked 5 times → jailed for 3 hours! Jailed pets cannot visit the Plaza. Keep your pet fun and creative!',
       },
       {
         icon: '🔥',
