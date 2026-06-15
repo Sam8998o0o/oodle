@@ -562,9 +562,15 @@ export async function saveAccessory(accessory: string | null): Promise<void> {
 export async function savePropellerExpiry(expiry: number): Promise<void> {
   const petId = localStorage.getItem('oodle_pet_supabase_id')
   if (!petId) return
-  try {
-    await supabase.from('pets').update({ propeller_expiry: expiry }).eq('id', petId)
-  } catch { /* column may not exist yet — fail silently */ }
+  const { error } = await supabase
+    .from('pets')
+    .update({ propeller_expiry: expiry })
+    .eq('id', petId)
+  if (error) {
+    console.error('[petService] savePropellerExpiry failed:', error.message)
+  } else {
+    console.log('propeller_expiry saved to DB:', expiry)
+  }
 }
 
 // ── getCoins ──────────────────────────────────────────────

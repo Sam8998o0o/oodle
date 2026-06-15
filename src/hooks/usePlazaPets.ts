@@ -376,12 +376,16 @@ export function usePlazaPets(
     }
     // Sync propeller expiry so other players see this pet flying
     if (syncPetId) {
-      try {
-        const exp = parseInt(localStorage.getItem('oodle_propeller_expiry') ?? '0', 10)
-        if (exp && Date.now() < exp) {
-          supabase.from('pets').update({ propeller_expiry: exp }).eq('id', syncPetId).then(() => {})
-        }
-      } catch { /* */ }
+      const exp = parseInt(localStorage.getItem('oodle_propeller_expiry') ?? '0', 10)
+      if (exp && Date.now() < exp) {
+        supabase.from('pets')
+          .update({ propeller_expiry: exp })
+          .eq('id', syncPetId)
+          .then(({ error }) => {
+            if (error) console.error('[usePlazaPets] propeller_expiry sync failed:', error.message)
+            else console.log('propeller_expiry synced to DB on Plaza mount:', exp)
+          })
+      }
     }
 
     const loadFromSupabase = async () => {
