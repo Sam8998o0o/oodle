@@ -557,21 +557,3 @@
   animation-timing-function: linear;
   animation-fill-mode: forwards;
 }
-
-/* ── eating food emoji ──────────────────────────────────────── */
-@keyframes floatFood {
-  0%   { transform: translateX(-50%) translateY(0);    }
-  100% { transform: translateX(-50%) translateY(-4px); }
-}
-
-.eatingFood {
-  position: absolute;
-  bottom: 100%;
-  left: 50%;
-  transform: translateX(-50%);
-  font-size: 32px;
-  margin-bottom: 4px;
-  pointer-events: none;
-  z-index: 10;
-  animation: floatFood 0.6s ease-in-out infinite alternate;
-}

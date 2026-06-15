@@ -89,8 +89,10 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange, isPremiu
   const dragOffsetRef    = useRef({ x: 0, y: 0 })
   const lastPosRef       = useRef({ x: 0, y: 0 })
   const velRef           = useRef({ x: 0, y: 0 })
-  const throwRafRef      = useRef(0)
-  const throwCountRef    = useRef(0)
+  const throwRafRef       = useRef(0)
+  const throwCountRef     = useRef(0)
+  const walkToFoodRafRef  = useRef(0)
+  const eatIntervalRef    = useRef<ReturnType<typeof setInterval> | null>(null)
   const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const isLongPressRef   = useRef(false)
   const isPetClickRef    = useRef(false)
@@ -112,6 +114,8 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange, isPremiu
   const [isSleeping, setIsSleeping] = useState(false)
   const [isEating,   setIsEating]   = useState(false)
   const [eatingFood, setEatingFood] = useState<'snack' | 'meal' | null>(null)
+  const [foodX,      setFoodX]      = useState(0)
+  const [foodScale,  setFoodScale]  = useState(1.0)
   const [showMore,        setShowMore]        = useState(false)
   const [shareCardState, setShareCardState] = useState<ShareCardState>('idle')
   const [showRewards,     setShowRewards]     = useState(false)
@@ -1031,20 +1035,66 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange, isPremiu
       localStorage.setItem('oodle_tasks', JSON.stringify(next))
       return next
     })
-    // Eating animation: stop walking, show food emoji for 5s
+    // Walk-to-food animation
+    if (eatIntervalRef.current) { clearInterval(eatIntervalRef.current); eatIntervalRef.current = null }
+    cancelAnimationFrame(walkToFoodRafRef.current)
+
+    const room    = roomRef.current
+    const wrapper = petWrapperRef.current
+    const canvas  = petCanvasRef.current
+    if (!room || !wrapper || !canvas) return
+
+    // Pick random floor X, centred on a spot the pet can reach
+    const fX = 80 + Math.floor(Math.random() * Math.max(1, room.offsetWidth - 160 - petSize))
+
     isBusyRef.current = true
     setIsEating(true)
     setEatingFood(size === 'small' ? 'snack' : 'meal')
-    // _handleFeed resets animator to 'walk' at 2000ms — re-assert 'eat' after that
-    setTimeout(() => {
-      if (!isSleepingRef.current && !isFaintedRef.current) animatorRef.current?.setState('eat')
-    }, 2100)
-    setTimeout(() => {
-      isBusyRef.current = false
-      setIsEating(false)
-      setEatingFood(null)
-      if (!isSleepingRef.current) animatorRef.current?.setState('walk')
-    }, 5000)
+    setFoodX(fX)
+    setFoodScale(1.0)
+
+    // Override _handleFeed's immediate 'eat' state — walk toward food first
+    if (!isSleepingRef.current) animatorRef.current?.setState('walk')
+
+    const startChomping = () => {
+      if (!isSleepingRef.current) animatorRef.current?.setState('eat')
+      let scale = 1.0
+      eatIntervalRef.current = setInterval(() => {
+        // Re-assert each bite in case _handleFeed's 2s reset fired
+        if (!isSleepingRef.current) animatorRef.current?.setState('eat')
+        scale = Math.round((scale - 0.2) * 10) / 10
+        setFoodScale(scale)
+        if (scale <= 0) {
+          clearInterval(eatIntervalRef.current!)
+          eatIntervalRef.current = null
+          isBusyRef.current = false
+          setIsEating(false)
+          setEatingFood(null)
+          setFoodScale(1.0)
+          if (!isSleepingRef.current) animatorRef.current?.setState('walk')
+        }
+      }, 1000)
+    }
+
+    const walkToFood = () => {
+      const w = petWrapperRef.current
+      const c = petCanvasRef.current
+      if (!w || !c) return
+      const dx = fX - walkXRef.current
+      if (Math.abs(dx) < 4) {
+        walkXRef.current = fX
+        w.style.left = `${fX}px`
+        cancelAnimationFrame(walkToFoodRafRef.current)
+        startChomping()
+        return
+      }
+      const step = Math.sign(dx) * Math.min(Math.abs(dx), 2)
+      walkXRef.current += step
+      w.style.left = `${walkXRef.current}px`
+      c.style.transform = dx < 0 ? 'scaleX(-1)' : 'none'
+      walkToFoodRafRef.current = requestAnimationFrame(walkToFood)
+    }
+    walkToFoodRafRef.current = requestAnimationFrame(walkToFood)
   }, [_handleFeed])
 
   // ── Pinch / drag / throw ─────────────────────────────────
@@ -1502,6 +1552,23 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange, isPremiu
           </div>
         )}
 
+        {/* Floor food item */}
+        {eatingFood && (
+          <div style={{
+            position:      'absolute',
+            bottom:        petWrapperRef.current?.style.bottom || '10%',
+            left:          `${foodX}px`,
+            fontSize:      '36px',
+            transform:     `scale(${foodScale})`,
+            transformOrigin: 'bottom center',
+            transition:    'transform 0.3s ease',
+            pointerEvents: 'none',
+            zIndex:        5,
+          }}>
+            {eatingFood === 'snack' ? '🍎' : '🍱'}
+          </div>
+        )}
+
         {/* Pet */}
         <div
           className={styles.petWrapper}
@@ -1527,11 +1594,6 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange, isPremiu
               marginBottom: '4px',
             }}>
               FEED ME! 😵
-            </div>
-          )}
-          {eatingFood && (
-            <div className={styles.eatingFood}>
-              {eatingFood === 'snack' ? '🍎' : '🍱'}
             </div>
           )}
           <div style={{ position: 'relative', display: 'inline-block' }}>
