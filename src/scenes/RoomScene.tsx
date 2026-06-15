@@ -1998,7 +1998,7 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange, isPremiu
 
         const taskRows: Array<{ label: string; emoji: string; current: number; goal: number; done: boolean }> = [
           { label: 'FEED YOUR PET',   emoji: '🍖', current: tasks.feed,               goal: 3, done: tasks.feed  >= 3 },
-          { label: 'LIKE 5 PETS',     emoji: '❤️', current: Math.min(5, tasks.likes),  goal: 5, done: tasks.likes >= 5 },
+          { label: 'LIKE 3 PETS',     emoji: '❤️', current: Math.min(3, tasks.likes),  goal: 3, done: tasks.likes >= 3 },
           { label: 'VISIT THE PLAZA', emoji: '🏙️', current: tasks.plaza ? 1 : 0,      goal: 1, done: tasks.plaza      },
         ]
 
