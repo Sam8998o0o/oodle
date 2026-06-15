@@ -207,39 +207,9 @@ export function usePetStats({
     }
   }, [isFainted, animatorRef])
 
-  // ── Like balance: initial fetch + Realtime UPDATE ────
+  // ── Like balance: initial fetch on mount ────
   useEffect(() => {
-    const petName = (() => {
-      try {
-        const raw = localStorage.getItem('oodle_pet_data')
-        if (!raw) return 'your pet'
-        return (JSON.parse(raw) as { name?: string }).name ?? 'your pet'
-      } catch { return 'your pet' }
-    })()
-
-    // One fetch on mount — no toast, just initialise the counter
     getLikeBalance().then(b => setLikeBalance(b)).catch(() => {})
-
-    const userId = useAuthStore.getState().userId
-    if (!userId) return
-
-    const channel = supabase
-      .channel('like-balance-' + userId)
-      .on('postgres_changes', {
-        event:  'UPDATE',
-        schema: 'public',
-        table:  'like_balance',
-        filter: `user_id=eq.${userId}`,
-      }, payload => {
-        const newBal = (payload.new as { balance: number }).balance
-        setLikeBalance(prev => {
-          if (newBal > prev) showBubble(`Someone liked ${petName}! ❤️ +1`)
-          return newBal
-        })
-      })
-      .subscribe()
-
-    return () => { supabase.removeChannel(channel) }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 

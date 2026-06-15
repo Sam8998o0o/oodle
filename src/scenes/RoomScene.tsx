@@ -689,6 +689,23 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange, isPremiu
     showFloat,
   })
 
+  // ── Like balance polling (10s) — shows toast when balance increases ─
+  const prevLikeBalanceRef = useRef<number>(-1)
+  useEffect(() => {
+    const petName = petData?.name ?? 'your pet'
+    const id = setInterval(async () => {
+      try {
+        const bal = await getLikeBalance()
+        if (prevLikeBalanceRef.current >= 0 && bal > prevLikeBalanceRef.current) {
+          showBubble(`❤️ Someone liked ${petName}!`)
+        }
+        prevLikeBalanceRef.current = bal
+        setLikeBalance(bal)
+      } catch { /* ignore */ }
+    }, 10_000)
+    return () => clearInterval(id)
+  }, [petData?.name, setLikeBalance, showBubble])
+
   // ── Death by starvation (usePetStats tracks localStorage, we kill here) ─
   useEffect(() => {
     if (stats.hunger <= 0) {

@@ -323,22 +323,11 @@ export async function likePet(petId: string): Promise<void> {
 
   const ownerId = (pet as { user_id: string }).user_id
 
-  // Read current balance (0 if no row yet), then upsert with +1
-  const { data: balRow } = await supabase
-    .from('like_balance')
-    .select('balance')
-    .eq('user_id', ownerId)
-    .maybeSingle()
-
-  const newBalance = ((balRow as { balance: number } | null)?.balance ?? 0) + 1
-
-  const { error: balError } = await supabase
-    .from('like_balance')
-    .upsert({ user_id: ownerId, balance: newBalance }, { onConflict: 'user_id' })
-
-  if (balError) {
-    console.error('[petService] likePet — balance upsert failed:', balError.message)
-  }
+  const { error: rpcError } = await supabase.rpc(
+    'increment_like_balance',
+    { target_user_id: ownerId }
+  )
+  if (rpcError) console.error('[petService] likePet — increment_like_balance failed:', rpcError.message)
 }
 
 // ── countTodayLikes ───────────────────────────────────────
