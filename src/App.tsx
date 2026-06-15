@@ -23,18 +23,6 @@ type Scene = 'draw' | 'room' | 'plaza' | 'paywall' | 'arrested'
 
 const PET_STORAGE_KEY = 'oodle_pet_data'
 
-function loadSavedPet(): PetData | null {
-  try {
-    const raw = localStorage.getItem(PET_STORAGE_KEY)
-    if (!raw) return null
-    const data = JSON.parse(raw) as PetData
-    if (!data.id) {
-      const storedId = localStorage.getItem('oodle_pet_supabase_id')
-      if (storedId) data.id = storedId
-    }
-    return data
-  } catch { return null }
-}
 
 function App() {
   const [isBooting, setIsBooting]   = useState(true)
