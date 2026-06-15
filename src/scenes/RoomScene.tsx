@@ -73,7 +73,7 @@ const CONFETTI = Array.from({ length: 60 }, (_, i) => ({
 }))
 
 export default function RoomScene({ petData, onGoToPlaza, onSizeChange, isPremium: _isPremium = false }: RoomSceneProps) {
-  const { isAnonymous, userId } = useAuthStore()
+  const { isAnonymous } = useAuthStore()
   const roomRef       = useRef<HTMLDivElement>(null)
   const petWrapperRef = useRef<HTMLDivElement>(null)
   const petCanvasRef  = useRef<HTMLCanvasElement>(null)
@@ -290,30 +290,6 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange, isPremiu
 
   // ── Coins state ───────────────────────────────────────────
   const [coins, setCoins] = useState(0)
-
-  const buyCoins = async (priceId: string, coins: number) => {
-    try {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) { showBubble('Please sign in first!'); return }
-
-      const res = await fetch('/api/create-checkout-session', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          priceId,
-          mode: 'payment',
-          userId: user.id,
-          coins,
-          successUrl: window.location.origin + '?coins_success=1',
-          cancelUrl:  window.location.origin,
-        }),
-      })
-      const data = await res.json() as { url?: string }
-      if (data.url) window.location.href = data.url
-    } catch {
-      showBubble('Payment error, try again!')
-    }
-  }
 
   const handleShareCard = useCallback(async () => {
     // Resolve petId — same pattern as handleCopyPetLink
