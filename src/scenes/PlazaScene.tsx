@@ -626,11 +626,12 @@ export default function PlazaScene({ petData, onGoToRoom, isPremium, petSize }: 
 
         {likeNotif && (
           <div style={{
-            position: 'absolute', top: 20, left: '50%', transform: 'translateX(-50%)',
+            position: 'fixed', top: '20px', left: '50%', transform: 'translateX(-50%)',
             background: '#1a1a2e', color: '#f5a623',
-            fontFamily: 'Press Start 2P', fontSize: '10px',
-            padding: '8px 16px', border: '2px solid #f5a623',
-            zIndex: 999, whiteSpace: 'nowrap',
+            fontFamily: '"Press Start 2P", monospace', fontSize: '10px',
+            padding: '10px 20px', border: '3px solid #f5a623',
+            boxShadow: '4px 4px 0 #000',
+            zIndex: 99999, whiteSpace: 'nowrap', pointerEvents: 'none',
           }}>{likeNotif}</div>
         )}
 
