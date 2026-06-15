@@ -10,6 +10,7 @@ export interface PetRecord {
   pixel_data:    string
   coords:        PetCoords | null
   created_at:    string
+  last_seen?:    string
   is_online:      boolean
   growth_points:  number
   talent?:        string

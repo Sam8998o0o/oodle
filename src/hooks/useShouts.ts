@@ -4,8 +4,9 @@ import { postShout, getActiveShouts, countTodayShouts, likeShout } from '../lib/
 const SHOUT_DURATION_MS = 15_000
 
 export interface ActiveShout {
-  message: string
-  shoutId: string
+  message:    string
+  shoutId:    string
+  created_at: string
 }
 
 export interface UseShoutResult {
@@ -40,7 +41,7 @@ export function useShouts(dailyShoutLimit: number): UseShoutResult {
       const byPet: Record<string, ActiveShout> = {}
       for (const s of shouts) {
         const key = s.pet_id === ownSupabaseId ? 'own' : s.pet_id
-        if (!byPet[key]) byPet[key] = { message: s.message, shoutId: s.id }
+        if (!byPet[key]) byPet[key] = { message: s.message, shoutId: s.id, created_at: s.created_at }
       }
       setActiveShouts(prev => {
         const ownShout    = prev['own']
@@ -56,6 +57,21 @@ export function useShouts(dailyShoutLimit: number): UseShoutResult {
     return () => clearInterval(id)
   }, [])
 
+  // ── Client-side 30 s expiry — runs every 1 s so bubbles vanish in real time
+  useEffect(() => {
+    const id = setInterval(() => {
+      setActiveShouts(prev => {
+        const now = Date.now()
+        const next: Record<string, ActiveShout> = {}
+        for (const [key, shout] of Object.entries(prev)) {
+          if (now - new Date(shout.created_at).getTime() < 30_000) next[key] = shout
+        }
+        return Object.keys(next).length === Object.keys(prev).length ? prev : next
+      })
+    }, 1000)
+    return () => { clearInterval(id); setActiveShouts({}) }
+  }, [])
+
   const handleShout = useCallback(async () => {
     const message = shoutInput.trim()
     if (!message || shoutLeft <= 0) return
@@ -64,7 +80,8 @@ export function useShouts(dailyShoutLimit: number): UseShoutResult {
     setShoutLeft(n => n - 1)
 
     const localShoutId = `local_${Date.now()}`
-    setActiveShouts(prev => ({ ...prev, ['own']: { message, shoutId: localShoutId } }))
+    const localCreatedAt = new Date().toISOString()
+    setActiveShouts(prev => ({ ...prev, ['own']: { message, shoutId: localShoutId, created_at: localCreatedAt } }))
 
     setTimeout(() => {
       setActiveShouts(prev => {
@@ -83,7 +100,7 @@ export function useShouts(dailyShoutLimit: number): UseShoutResult {
         setActiveShouts(prev => {
           const current = prev['own']
           if (!current) return prev
-          return { ...prev, ['own']: { message, shoutId } }
+          return { ...prev, ['own']: { message, shoutId, created_at: current.created_at } }
         })
       }
     }

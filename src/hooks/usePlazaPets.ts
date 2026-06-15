@@ -38,6 +38,7 @@ export interface PlazaPet {
   talent_drawing?:  string
   accessory?:       string | null
   propeller_expiry?: number | null
+  last_seen?:       string
 }
 
 export interface PlazaShow {
@@ -108,6 +109,7 @@ export function usePlazaPets(
   const propellerExpiryRef = useRef(0)
   const tempPropellerRef   = useRef(new Map<string, number>()) // petId → expiry ms
   const petsRef            = useRef<PlazaPet[]>([])
+  const lastStaleCheckRef  = useRef(0)
 
   const [pets,                setPets]                = useState<PlazaPet[]>([])
   const [likes,               setLikes]               = useState<Record<string, number>>({})
@@ -303,6 +305,28 @@ export function usePlazaPets(
         cv.style.transform = w.dir === -1 ? 'scaleX(-1)' : 'none'
       })
 
+      // Stale-pet removal: runs every ~1 s inside the tick to catch offline pets
+      if (now - lastStaleCheckRef.current > 1000) {
+        lastStaleCheckRef.current = now
+        const staleIds: string[] = []
+        for (const pet of petsRef.current) {
+          if (!pet.isOwn && pet.last_seen && now - new Date(pet.last_seen).getTime() > 20_000) {
+            staleIds.push(pet.id)
+          }
+        }
+        if (staleIds.length > 0) {
+          const staleSet = new Set(staleIds)
+          for (const id of staleSet) {
+            animMap.current.get(id)?.stop()
+            animMap.current.delete(id)
+            walkerMap.current.delete(id)
+            const wr2 = wrapperMap.current.get(id)
+            if (wr2) wr2.style.display = 'none'
+          }
+          setPets(prev => prev.filter(p => !staleSet.has(p.id)))
+        }
+      }
+
       rafRef.current = requestAnimationFrame(tick)
     }
     rafRef.current = requestAnimationFrame(tick)
@@ -435,6 +459,7 @@ export function usePlazaPets(
           talent_drawing:    r.talent_drawing,
           accessory:         r.accessory ?? null,
           propeller_expiry:  r.propeller_expiry ?? null,
+          last_seen:         r.last_seen,
         }))
       setPets(prev => mergePets(prev, [resolvedOwnPet, ...others]))
       setLikes(likeCounts)
@@ -448,7 +473,17 @@ export function usePlazaPets(
   useEffect(() => {
     pingOnline()
     const id = setInterval(pingOnline, 10_000)
-    return () => clearInterval(id)
+    return () => {
+      clearInterval(id)
+      // Immediately invalidate own pet so other clients remove it without waiting 20 s
+      const petId = localStorage.getItem('oodle_pet_supabase_id')
+      if (petId) {
+        supabase.from('pets')
+          .update({ last_seen: new Date(0).toISOString() })
+          .eq('id', petId)
+          .then(() => {})
+      }
+    }
   }, [])
 
   // ── Auto-performance of tricks (every 45 s) ───────────
@@ -550,6 +585,7 @@ export function usePlazaPets(
             talent_drawing:    r.talent_drawing,
             accessory:         r.accessory ?? null,
             propeller_expiry:  r.propeller_expiry ?? null,
+            last_seen:         r.last_seen,
           }))
         const ownPet = prev.find(p => p.isOwn)
         return ownPet ? [ownPet, ...newOthers] : newOthers
@@ -581,6 +617,7 @@ export function usePlazaPets(
           talent:            newPet.talent,
           talent_drawing:    newPet.talent_drawing,
           accessory:         newPet.accessory ?? null,
+          last_seen:         newPet.last_seen,
         }]
       })
     })
