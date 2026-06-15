@@ -207,17 +207,25 @@ export default function PlazaScene({ petData, onGoToRoom, isPremium, petSize }: 
 
   // ── Fetch fresh like/unlike counts when popup opens ─────────
   useEffect(() => {
-    if (!selectedPet) return
-    supabase
-      .from('likes')
-      .select('*', { count: 'exact', head: true })
-      .eq('pet_id', selectedPet.id)
-      .then(({ count }) => setPopupLikeCount(count ?? 0))
-    supabase
-      .from('pet_unlikes')
-      .select('*', { count: 'exact', head: true })
-      .eq('pet_id', selectedPet.id)
-      .then(({ count }) => setPopupUnlikeCount(count ?? 0))
+    if (!selectedPet) {
+      setPopupLikeCount(0)
+      setPopupUnlikeCount(0)
+      return
+    }
+    const petId = selectedPet.id
+    void (async () => {
+      const { count: likeCount } = await supabase
+        .from('likes')
+        .select('*', { count: 'exact', head: true })
+        .eq('pet_id', petId)
+      setPopupLikeCount(likeCount ?? 0)
+
+      const { count: unlikeCount } = await supabase
+        .from('pet_unlikes')
+        .select('*', { count: 'exact', head: true })
+        .eq('pet_id', petId)
+      setPopupUnlikeCount(unlikeCount ?? 0)
+    })()
   }, [selectedPet?.id])
 
   // ── Like notification: poll balance every 8s while in Plaza ─
