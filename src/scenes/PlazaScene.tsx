@@ -103,6 +103,13 @@ export default function PlazaScene({ petData, onGoToRoom, isPremium, petSize }: 
   } = useShouts(dailyShoutLimit)
 
   // ── Local state ───────────────────────────────────────────
+  const [hasTempPropeller] = useState<boolean>(() => {
+    try {
+      const exp = localStorage.getItem('oodle_propeller_expiry')
+      return !!exp && Date.now() < parseInt(exp, 10)
+    } catch { return false }
+  })
+
   const [ads,          setAds]          = useState<AdRecord[]>(DEFAULT_ADS)
   const [selectedPet,  setSelectedPet]  = useState<PlazaPet | null>(null)
   const [likeLeft,     setLikeLeft]     = useState(LIKE_DAILY_LIMIT)
@@ -826,11 +833,18 @@ export default function PlazaScene({ petData, onGoToRoom, isPremium, petSize }: 
               })()}
 
               <div style={{ position: 'relative', display: 'inline-block' }}>
-                {pet.accessory === 'propeller' && (
-                  <div style={{ position: 'absolute', top: -28, left: '50%', transform: 'translateX(-50%)', zIndex: 2, pointerEvents: 'none' }}>
-                    <PropellerHat size={36} spinning />
-                  </div>
-                )}
+                {(pet.accessory === 'propeller' || (pet.isOwn && hasTempPropeller)) && (() => {
+                  const hatSize    = 36
+                  const canvasSize = pet.isOwn ? petSize : growthToSize(pet.growth_points)
+                  // Own pet: use actual eye coords; others: use typical default
+                  const eyeY   = pet.isOwn ? (petData.coords?.eyes?.[0]?.y ?? 0.28) : 0.28
+                  const hatTop = Math.round((eyeY - 0.15) * canvasSize) - Math.round(hatSize * 0.9)
+                  return (
+                    <div style={{ position: 'absolute', top: hatTop, left: '50%', transform: 'translateX(-50%)', zIndex: 2, pointerEvents: 'none' }}>
+                      <PropellerHat size={hatSize} spinning />
+                    </div>
+                  )
+                })()}
                 <canvas
                   ref={el => {
                     if (el) {

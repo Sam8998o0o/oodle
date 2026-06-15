@@ -1482,11 +1482,17 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange, isPremiu
             </div>
           )}
           <div style={{ position: 'relative', display: 'inline-block' }}>
-            {(accessory === 'propeller' || hasTempPropeller) && (
-              <div style={{ position: 'absolute', top: -28, left: '50%', transform: 'translateX(-50%)', zIndex: 20, pointerEvents: 'none' }}>
-                <PropellerHat size={50} spinning={!isFainted && !isDizzy} />
-              </div>
-            )}
+            {(accessory === 'propeller' || hasTempPropeller) && (() => {
+              const hatSize = 50
+              // Place hat bottom at estimated head top (eye level minus ~15% of canvas)
+              const eyeY   = petData.coords?.eyes?.[0]?.y ?? 0.28
+              const hatTop = Math.round((eyeY - 0.15) * petSize) - Math.round(hatSize * 0.9)
+              return (
+                <div style={{ position: 'absolute', top: hatTop, left: '50%', transform: 'translateX(-50%)', zIndex: 20, pointerEvents: 'none' }}>
+                  <PropellerHat size={hatSize} spinning={!isFainted && !isDizzy} />
+                </div>
+              )
+            })()}
             <canvas
               ref={petCanvasRef}
               width={petSize}
