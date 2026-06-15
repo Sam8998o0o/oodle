@@ -110,6 +110,8 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange, isPremiu
   const [isDizzy,       setIsDizzy]       = useState(false)
   const [isPetDead,     setIsPetDead]     = useState(false)
   const [isSleeping, setIsSleeping] = useState(false)
+  const [isEating,   setIsEating]   = useState(false)
+  const [eatingFood, setEatingFood] = useState<'snack' | 'meal' | null>(null)
   const [showMore,        setShowMore]        = useState(false)
   const [shareCardState, setShareCardState] = useState<ShareCardState>('idle')
   const [showRewards,     setShowRewards]     = useState(false)
@@ -1029,6 +1031,20 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange, isPremiu
       localStorage.setItem('oodle_tasks', JSON.stringify(next))
       return next
     })
+    // Eating animation: stop walking, show food emoji for 5s
+    isBusyRef.current = true
+    setIsEating(true)
+    setEatingFood(size === 'small' ? 'snack' : 'meal')
+    // _handleFeed resets animator to 'walk' at 2000ms — re-assert 'eat' after that
+    setTimeout(() => {
+      if (!isSleepingRef.current && !isFaintedRef.current) animatorRef.current?.setState('eat')
+    }, 2100)
+    setTimeout(() => {
+      isBusyRef.current = false
+      setIsEating(false)
+      setEatingFood(null)
+      if (!isSleepingRef.current) animatorRef.current?.setState('walk')
+    }, 5000)
   }, [_handleFeed])
 
   // ── Pinch / drag / throw ─────────────────────────────────
@@ -1513,6 +1529,11 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange, isPremiu
               FEED ME! 😵
             </div>
           )}
+          {eatingFood && (
+            <div className={styles.eatingFood}>
+              {eatingFood === 'snack' ? '🍎' : '🍱'}
+            </div>
+          )}
           <div style={{ position: 'relative', display: 'inline-block' }}>
             {(accessory === 'propeller' || hasTempPropeller) && (() => {
               const hatSize = 50
@@ -1681,14 +1702,14 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange, isPremiu
           <button
             className={styles.actionBtn}
             onClick={() => handleFeed('small')}
-            disabled={smallFood <= 0 || isSleeping}
+            disabled={smallFood <= 0 || isSleeping || isEating}
           >
             🍎 FEED SNACK
           </button>
           <button
             className={styles.actionBtn}
             onClick={() => handleFeed('big')}
-            disabled={bigFood <= 0 || isSleeping}
+            disabled={bigFood <= 0 || isSleeping || isEating}
           >
             🍱 FEED MEAL
           </button>
