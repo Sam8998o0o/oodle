@@ -293,35 +293,25 @@ export async function getAllLikeCounts(): Promise<Record<string, number>> {
 }
 
 // ── likePet ───────────────────────────────────────────────
-// One like per pet per user per day. Inserts with like_date so that
-// getTodayLikedPetIds() can filter by date, then credits the owner's balance.
-export async function likePet(petId: string): Promise<void> {
+// Inserts a like (with like_date) and credits the owner's balance.
+// Relies on the DB unique constraint to block duplicates — no pre-check SELECT.
+export async function likePet(petId: string): Promise<{ success: boolean; reason?: string }> {
   const userId = useAuthStore.getState().userId
-  if (!userId) return
+  if (!userId) return { success: false, reason: 'not_logged_in' }
 
   const todayStr = new Date().toISOString().slice(0, 10)
-
-  // Guard: already liked this pet today → skip everything
-  const { data: existing } = await supabase
-    .from('likes')
-    .select('id')
-    .eq('pet_id', petId)
-    .eq('user_id', userId)
-    .eq('like_date', todayStr)
-    .maybeSingle()
-
-  if (existing) return
 
   const { error: likeError } = await supabase
     .from('likes')
     .insert({ pet_id: petId, user_id: userId, like_date: todayStr })
 
   if (likeError) {
+    if (likeError.code === '23505') return { success: false, reason: 'already_liked' }
     console.error('[petService] likePet insert failed:', likeError.message)
-    return
+    return { success: false, reason: 'error' }
   }
 
-  // Resolve pet owner so we can credit their balance
+  // Resolve pet owner and credit balance
   const { data: pet, error: petError } = await supabase
     .from('pets')
     .select('user_id')
@@ -330,16 +320,14 @@ export async function likePet(petId: string): Promise<void> {
 
   if (petError || !pet) {
     console.error('[petService] likePet — pet lookup failed:', petError?.message)
-    return
+    return { success: true }
   }
 
   const ownerId = (pet as { user_id: string }).user_id
-
-  const { error: rpcError } = await supabase.rpc(
-    'increment_like_balance',
-    { target_user_id: ownerId }
-  )
+  const { error: rpcError } = await supabase.rpc('increment_like_balance', { target_user_id: ownerId })
   if (rpcError) console.error('[petService] likePet — increment_like_balance failed:', rpcError.message)
+
+  return { success: true }
 }
 
 // ── countTodayLikes ───────────────────────────────────────
@@ -470,8 +458,8 @@ export async function getShoutOwner(shoutId: string): Promise<string | null> {
 }
 
 // ── likeShout ─────────────────────────────────────────────
-// Calls the like_shout RPC which records the like and credits
-// the pet owner's like_balance atomically.
+// Calls the like_shout RPC atomically. Silently ignores unique constraint
+// violations (23505) since the DB already enforced the limit.
 export async function likeShout(shoutId: string): Promise<void> {
   const userId = useAuthStore.getState().userId
   if (!userId) return
@@ -481,7 +469,7 @@ export async function likeShout(shoutId: string): Promise<void> {
     p_liker_id: userId,
   })
 
-  if (error) {
+  if (error && error.code !== '23505') {
     console.error('[petService] likeShout failed:', error.message)
   }
 }

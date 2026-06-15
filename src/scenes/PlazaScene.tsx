@@ -275,22 +275,26 @@ export default function PlazaScene({ petData, onGoToRoom, isPremium, petSize }: 
   }, [doorPhase, onGoToRoom, wrapperMap, canvasMap, walkerMap])
 
   // ── Like ──────────────────────────────────────────────────
-  const handleLike = useCallback((petId: string) => {
+  const handleLike = useCallback(async (petId: string) => {
     if (todayLikedPets.has(petId)) return
     if (likeLeft <= 0) return
+
+    const result = await likePet(petId).catch((): { success: false; reason: string } => ({ success: false, reason: 'error' }))
+
+    // Always mark as liked locally — success or already_liked both disable the button
+    setTodayLikedPets(prev => new Set(prev).add(petId))
+
+    if (!result.success) return
 
     setLikes(prev => {
       const updated = { ...prev, [petId]: (prev[petId] ?? 0) + 1 }
       localStorage.setItem('oodle_likes', JSON.stringify(updated))
       return updated
     })
-    setTodayLikedPets(prev => new Set(prev).add(petId))
     setLikeLeft(n => n - 1)
 
-    likePet(petId).catch((err: unknown) => { console.error('[PlazaScene] likePet failed:', err) })
-
-    const todayKey  = new Date().toDateString()
-    const likeData  = JSON.parse(localStorage.getItem('oodle_daily_plaza_likes') ?? '{"date":"","count":0}') as { date: string; count: number }
+    const todayKey = new Date().toDateString()
+    const likeData = JSON.parse(localStorage.getItem('oodle_daily_plaza_likes') ?? '{"date":"","count":0}') as { date: string; count: number }
     if (likeData.date === todayKey) likeData.count += 1
     else { likeData.date = todayKey; likeData.count = 1 }
     localStorage.setItem('oodle_daily_plaza_likes', JSON.stringify(likeData))
