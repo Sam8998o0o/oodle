@@ -133,9 +133,9 @@ export async function fetchUserPet(): Promise<{
 }
 
 // ── syncLoginStreak ───────────────────────────────────────
-// Reads streak + last_login_date from the pets table.
-// Returns { streak, claimedToday } without writing anything.
-// The computed streak is already advanced by +1 if last login was yesterday.
+// Reads streak data from the pets table (read-only).
+// Uses reward_claimed_date for claimedToday so that the DB column default
+// (last_login_date = CURRENT_DATE) does not falsely show reward as claimed.
 export async function syncLoginStreak(): Promise<{ streak: number; claimedToday: boolean }> {
   const petId = localStorage.getItem('oodle_pet_supabase_id')
   if (!petId) return { streak: 1, claimedToday: false }
@@ -145,30 +145,34 @@ export async function syncLoginStreak(): Promise<{ streak: number; claimedToday:
 
   const { data, error } = await supabase
     .from('pets')
-    .select('streak, last_login_date')
+    .select('streak, last_login_date, reward_claimed_date')
     .eq('id', petId)
     .single()
 
   if (error || !data) return { streak: 1, claimedToday: false }
 
-  const row       = data as { streak: number | null; last_login_date: string | null }
-  const dbStreak  = row.streak ?? 1
-  const lastLogin = row.last_login_date
+  const row               = data as { streak: number | null; last_login_date: string | null; reward_claimed_date: string | null }
+  const dbStreak          = row.streak ?? 1
+  const lastLogin         = row.last_login_date
+  const rewardClaimedDate = row.reward_claimed_date
 
-  if (lastLogin === today)     return { streak: dbStreak,     claimedToday: true  }
-  if (lastLogin === yesterday) return { streak: dbStreak + 1, claimedToday: false }
+  const claimedToday = rewardClaimedDate === today
+
+  if (lastLogin === today)     return { streak: dbStreak,     claimedToday }
+  if (lastLogin === yesterday) return { streak: dbStreak + 1, claimedToday }
   return { streak: 1, claimedToday: false }
 }
 
 // ── claimDailyStreak ──────────────────────────────────────
-// Writes the claimed streak value and today's date to the pets table.
+// Writes streak + both date columns. reward_claimed_date is the source of
+// truth for whether the user actually pressed CLAIM (not last_login_date).
 export async function claimDailyStreak(streak: number): Promise<void> {
   const petId = localStorage.getItem('oodle_pet_supabase_id')
   if (!petId) return
   const today = new Date().toISOString().slice(0, 10)
   const { error } = await supabase
     .from('pets')
-    .update({ streak, last_login_date: today })
+    .update({ streak, last_login_date: today, reward_claimed_date: today })
     .eq('id', petId)
   if (error) console.error('[petService] claimDailyStreak failed:', error.message)
 }
