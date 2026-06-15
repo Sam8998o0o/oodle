@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import type { MouseEvent } from 'react'
 import { PetAnimator } from '../engine/PetAnimator'
-import { fetchParadePets, likePet } from '../lib/petService'
+import { fetchParadePets, thumbsUpPet } from '../lib/petService'
 import { initAuth } from '../lib/auth'
 import { supabase } from '../lib/supabase'
 import type { PetRecord } from '../lib/petService'
@@ -127,7 +127,7 @@ export default function PetParade() {
     e.stopPropagation()
     if (bubble?.liked) return
     await initAuth()
-    await likePet(petId)
+    await thumbsUpPet(petId)
     setBubble(prev => prev ? { ...prev, liked: true, likeCount: prev.likeCount + 1 } : prev)
     if (bubbleTimerRef.current) clearTimeout(bubbleTimerRef.current)
     bubbleTimerRef.current = setTimeout(() => setBubble(null), 2000)

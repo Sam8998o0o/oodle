@@ -292,66 +292,45 @@ export async function getAllLikeCounts(): Promise<Record<string, number>> {
   return counts
 }
 
-// ── likePet ───────────────────────────────────────────────
-// Inserts a like (with like_date) and credits the owner's balance.
-// Relies on the DB unique constraint to block duplicates — no pre-check SELECT.
-export async function likePet(petId: string): Promise<{ success: boolean; reason?: string }> {
+// ── thumbsUpPet ───────────────────────────────────────────
+// Inserts a thumbs-up into pet_thumbsup (one per pet per day).
+// Relies on the DB unique constraint to block duplicates.
+// Does NOT touch like_balance — that is shout-likes only.
+export async function thumbsUpPet(petId: string): Promise<{ success: boolean; reason?: string }> {
   const userId = useAuthStore.getState().userId
   if (!userId) return { success: false, reason: 'not_logged_in' }
 
   const todayStr = new Date().toISOString().slice(0, 10)
 
-  const { error: likeError } = await supabase
-    .from('likes')
+  const { error } = await supabase
+    .from('pet_thumbsup')
     .insert({ pet_id: petId, user_id: userId, like_date: todayStr })
 
-  if (likeError) {
-    if (likeError.code === '23505') return { success: false, reason: 'already_liked' }
-    console.error('[petService] likePet insert failed:', likeError.message)
+  if (error) {
+    if (error.code === '23505') return { success: false, reason: 'already_liked' }
+    console.error('[petService] thumbsUpPet insert failed:', error.message)
     return { success: false, reason: 'error' }
   }
 
   return { success: true }
 }
 
-// ── countTodayLikes ───────────────────────────────────────
-// Returns how many distinct pets the current user has liked today.
-export async function countTodayLikes(): Promise<number> {
-  const userId = useAuthStore.getState().userId
-  if (!userId) return 0
-
-  const startOfDay = new Date()
-  startOfDay.setHours(0, 0, 0, 0)
-
-  const { count, error } = await supabase
-    .from('likes')
-    .select('*', { count: 'exact', head: true })
-    .eq('user_id', userId)
-    .gte('created_at', startOfDay.toISOString())
-
-  if (error) {
-    console.error('[petService] countTodayLikes failed:', error.message)
-    return 0
-  }
-  return count ?? 0
-}
-
-// ── getTodayLikedPetIds ───────────────────────────────────
-// Returns the set of pet ids the current user has liked today.
-export async function getTodayLikedPetIds(): Promise<Set<string>> {
+// ── getTodayThumbsUpPetIds ────────────────────────────────
+// Returns the set of pet ids the current user has thumbs-up'd today.
+export async function getTodayThumbsUpPetIds(): Promise<Set<string>> {
   const userId = useAuthStore.getState().userId
   if (!userId) return new Set()
 
-  const todayStr = new Date().toISOString().slice(0, 10) // YYYY-MM-DD
+  const todayStr = new Date().toISOString().slice(0, 10)
 
   const { data, error } = await supabase
-    .from('likes')
+    .from('pet_thumbsup')
     .select('pet_id')
     .eq('user_id', userId)
     .eq('like_date', todayStr)
 
   if (error) {
-    console.error('[petService] getTodayLikedPetIds failed:', error.message)
+    console.error('[petService] getTodayThumbsUpPetIds failed:', error.message)
     return new Set()
   }
   return new Set((data ?? []).map(r => r.pet_id as string))

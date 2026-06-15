@@ -1,6 +1,6 @@
 import { useRef, useState, useEffect, useCallback } from 'react'
 import type { PetCoords } from '../api/aiRecognize'
-import { likePet, getTodayLikedPetIds, unlikePet, fetchAds, getLikeBalance } from '../lib/petService'
+import { thumbsUpPet, getTodayThumbsUpPetIds, unlikePet, fetchAds, getLikeBalance } from '../lib/petService'
 import type { AdRecord } from '../lib/petService'
 import { supabase } from '../lib/supabase'
 import PropellerHat from '../components/PropellerHat'
@@ -194,7 +194,7 @@ export default function PlazaScene({ petData, onGoToRoom, isPremium, petSize }: 
 
   // ── Like: load today's liked pets on mount ────────────────
   useEffect(() => {
-    getTodayLikedPetIds().then(ids => {
+    getTodayThumbsUpPetIds().then(ids => {
       setTodayLikedPets(ids)
       setLikeLeft(Math.max(0, LIKE_DAILY_LIMIT - ids.size))
     }).catch(() => {})
@@ -216,10 +216,10 @@ export default function PlazaScene({ petData, onGoToRoom, isPremium, petSize }: 
     console.log('[POPUP] fetching counts for pet id:', petId)
     void (async () => {
       const { count: likeCount, error: likeError } = await supabase
-        .from('likes')
+        .from('pet_thumbsup')
         .select('*', { count: 'exact', head: true })
         .eq('pet_id', petId)
-      console.log('[POPUP] like count result:', likeCount, likeError)
+      console.log('[POPUP] thumbsup count result:', likeCount, likeError)
       setPopupLikeCount(likeCount ?? 0)
 
       const { count: unlikeCount, error: unlikeError } = await supabase
@@ -305,7 +305,7 @@ export default function PlazaScene({ petData, onGoToRoom, isPremium, petSize }: 
     if (todayLikedPets.has(petId)) return
     if (likeLeft <= 0) return
 
-    const result = await likePet(petId).catch((): { success: false; reason: string } => ({ success: false, reason: 'error' }))
+    const result = await thumbsUpPet(petId).catch((): { success: false; reason: string } => ({ success: false, reason: 'error' }))
 
     // Always mark as liked locally — success or already_liked both disable the button
     setTodayLikedPets(prev => new Set(prev).add(petId))

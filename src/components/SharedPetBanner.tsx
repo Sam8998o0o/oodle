@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { PetAnimator } from '../engine/PetAnimator'
-import { getPetById, likePet } from '../lib/petService'
+import { getPetById, thumbsUpPet } from '../lib/petService'
 import { initAuth } from '../lib/auth'
 import { supabase } from '../lib/supabase'
 import type { PetRecord } from '../lib/petService'
@@ -60,7 +60,7 @@ export default function SharedPetBanner({ petId }: SharedPetBannerProps) {
   const handleLike = async () => {
     if (liked) return
     await initAuth()
-    await likePet(petId)
+    await thumbsUpPet(petId)
     setLiked(true)
     setLikeCount(n => n + 1)
   }
