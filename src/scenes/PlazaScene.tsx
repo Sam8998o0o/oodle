@@ -1,8 +1,7 @@
 import { useRef, useState, useEffect, useCallback } from 'react'
 import type { PetCoords } from '../api/aiRecognize'
-import { likePet, getTodayLikedPetIds, unlikePet, fetchAds } from '../lib/petService'
+import { likePet, getTodayLikedPetIds, unlikePet, fetchAds, getLikeBalance } from '../lib/petService'
 import type { AdRecord } from '../lib/petService'
-import { supabase } from '../lib/supabase'
 import PropellerHat from '../components/PropellerHat'
 import { usePlazaPets } from '../hooks/usePlazaPets'
 import type { PlazaPet } from '../hooks/usePlazaPets'
@@ -203,29 +202,24 @@ export default function PlazaScene({ petData, onGoToRoom, isPremium, petSize }: 
     localStorage.removeItem('oodle_pets')
   }, [])
 
-  // ── Like notification (realtime) ─────────────────────────
+  // ── Like notification: poll balance every 8s while in Plaza ─
+  const prevBalRef = useRef(-1)
   useEffect(() => {
-    const ownPetId = localStorage.getItem('oodle_pet_supabase_id')
-    if (!ownPetId) return
-    const channel = supabase
-      .channel('plaza-likes-' + ownPetId)
-      .on('postgres_changes', {
-        event: 'INSERT', schema: 'public', table: 'likes',
-        filter: `pet_id=eq.${ownPetId}`,
-      }, () => {
-        setLikeNotif('❤️ Someone liked you!')
-        setTimeout(() => setLikeNotif(null), 3000)
-      })
-      .on('postgres_changes', {
-        event: 'INSERT', schema: 'public', table: 'pet_unlikes',
-        filter: `pet_id=eq.${ownPetId}`,
-      }, () => {
-        setLikeNotif('💔 Someone disliked you!')
-        setTimeout(() => setLikeNotif(null), 3000)
-      })
-      .subscribe()
-    return () => { supabase.removeChannel(channel) }
-  }, [])
+    const petName = petData.name
+    getLikeBalance().then(b => { prevBalRef.current = b }).catch(() => {})
+    const id = setInterval(async () => {
+      try {
+        const newBal = await getLikeBalance()
+        if (prevBalRef.current >= 0 && newBal > prevBalRef.current) {
+          const diff = newBal - prevBalRef.current
+          setLikeNotif(`❤️ +${diff} someone liked ${petName}!`)
+          setTimeout(() => setLikeNotif(null), 3000)
+        }
+        prevBalRef.current = newBal
+      } catch { /* ignore */ }
+    }, 8_000)
+    return () => clearInterval(id)
+  }, [petData.name])
 
   // ── Plaza → Room door transition ──────────────────────────
   useEffect(() => {
