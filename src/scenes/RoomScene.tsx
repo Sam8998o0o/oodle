@@ -206,6 +206,8 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange, isPremiu
     } catch { return 1 }
   })
   const [streakClaimedToday, setStreakClaimedToday] = useState<boolean>(() => {
+    // sessionStorage is the fastest reliable check within a browser session
+    if (sessionStorage.getItem('oodle_reward_shown') === 'true') return true
     try {
       const raw = localStorage.getItem('oodle_streak')
       if (!raw) return false
@@ -213,14 +215,25 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange, isPremiu
       return data.lastClaimDate === new Date().toDateString()
     } catch { return false }
   })
+  const [streakSyncing, setStreakSyncing] = useState(true)
   const [rewardMsg, setRewardMsg] = useState('')
 
   // ── Sync streak from Supabase on mount (source of truth) ──
   useEffect(() => {
-    syncLoginStreak().then(({ streak: s, claimedToday }) => {
-      setStreak(s)
-      setStreakClaimedToday(claimedToday)
-    }).catch(() => {})
+    syncLoginStreak()
+      .then(({ streak: s, claimedToday }) => {
+        setStreak(s)
+        // sessionStorage wins if user already claimed this browser session
+        const alreadyClaimed = claimedToday || sessionStorage.getItem('oodle_reward_shown') === 'true'
+        setStreakClaimedToday(alreadyClaimed)
+      })
+      .catch(() => {
+        // Supabase failed — fall back to sessionStorage to block double-claim
+        if (sessionStorage.getItem('oodle_reward_shown') === 'true') {
+          setStreakClaimedToday(true)
+        }
+      })
+      .finally(() => setStreakSyncing(false))
   }, [])
 
   // ── Shop state ─────────────────────────────────────────────
@@ -1705,6 +1718,7 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange, isPremiu
           }
           const today = new Date().toDateString()
           localStorage.setItem('oodle_streak', JSON.stringify({ streak, lastClaimDate: today }))
+          sessionStorage.setItem('oodle_reward_shown', 'true')
           void claimDailyStreak(streak)
           setStreakClaimedToday(true)
           setRewardMsg(reward.claimMsg)
@@ -1748,6 +1762,10 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange, isPremiu
                 {rewardMsg ? (
                   <div style={{ textAlign: 'center', fontFamily: 'var(--font-pixel)', fontSize: '10px', fontWeight: 'normal', color: '#4CAF50', padding: '14px', border: '2px solid #4CAF50', lineHeight: 2 }}>
                     ✅ REWARD CLAIMED!<br />{rewardMsg}
+                  </div>
+                ) : streakSyncing ? (
+                  <div style={{ textAlign: 'center', fontFamily: 'var(--font-pixel)', fontSize: '10px', fontWeight: 'normal', color: '#888', padding: '14px', border: '2px solid #ddd', lineHeight: 2 }}>
+                    CHECKING...
                   </div>
                 ) : streakClaimedToday ? (
                   <div style={{ textAlign: 'center', fontFamily: 'var(--font-pixel)', fontSize: '12px', fontWeight: 'normal', color: '#888', padding: '14px', border: '2px solid #ddd', lineHeight: 2 }}>
