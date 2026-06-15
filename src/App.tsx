@@ -37,8 +37,9 @@ function loadSavedPet(): PetData | null {
 }
 
 function App() {
-  const [petData, setPetData] = useState<PetData | null>(() => loadSavedPet())
-  const [scene, setScene]     = useState<Scene>(() => loadSavedPet() ? 'room' : 'draw')
+  const [isBooting, setIsBooting]   = useState(true)
+  const [petData, setPetData]       = useState<PetData | null>(null)
+  const [scene, setScene]           = useState<Scene>('draw')
   const [isPremium, setIsPremium]   = useState(false)
   const [petSize, setPetSize]       = useState(60)
   const [jailedUntil, setJailedUntil] = useState<Date | null>(null)
@@ -81,6 +82,7 @@ function App() {
         setPetData(null)
         localStorage.removeItem(PET_STORAGE_KEY)
         setScene('draw')
+        setIsBooting(false)
         return
       }
 
@@ -99,6 +101,7 @@ function App() {
               localStorage.setItem('oodle_pet_created_at', String(Date.now()))
             }
             setScene('room')
+            setIsBooting(false)
             return
           }
         } catch {
@@ -113,7 +116,13 @@ function App() {
         setPetData(data)
         localStorage.setItem(PET_STORAGE_KEY, JSON.stringify(data))
         localStorage.setItem('oodle_pet_supabase_id', existing.id)
+        // Cache originalCreatedAt so day count is correct on any device
+        if (existing.originalCreatedAt) {
+          localStorage.setItem('oodle_pet_original_created_at', existing.originalCreatedAt)
+          localStorage.setItem('oodle_pet_created_at', String(new Date(existing.originalCreatedAt).getTime()))
+        }
         setScene('room')
+        setIsBooting(false)
         return
       }
 
@@ -141,6 +150,7 @@ function App() {
       localStorage.removeItem(PET_STORAGE_KEY)
       localStorage.removeItem('oodle_pet_supabase_id')
       setScene('draw')
+      setIsBooting(false)
     })
   }, [])
 
@@ -182,6 +192,11 @@ function App() {
   const modal = showSignInModal
     ? <SignInModal onClose={() => setShowSignInModal(false)} />
     : null
+
+  // Wait for Supabase verification before rendering any scene
+  if (isBooting) {
+    return <div style={{ minHeight: '100vh', background: '#FDF6E3' }} />
+  }
 
   if (scene === 'paywall') {
     return (

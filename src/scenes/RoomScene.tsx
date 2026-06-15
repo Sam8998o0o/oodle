@@ -1,7 +1,7 @@
 import { useRef, useState, useEffect, useCallback } from 'react'
 import { PetAnimator } from '../engine/PetAnimator'
 import type { PetCoords } from '../api/aiRecognize'
-import { savePet, getLikeBalance, saveTalent, saveTalentDrawing, killPet, checkPetDead, saveAccessory, getCoins, savePropellerExpiry } from '../lib/petService'
+import { savePet, getLikeBalance, saveTalent, saveTalentDrawing, killPet, checkPetDead, saveAccessory, getCoins, savePropellerExpiry, syncLoginStreak, claimDailyStreak } from '../lib/petService'
 import { supabase } from '../lib/supabase'
 import { useAuthStore } from '../lib/auth'
 import { generateShareCard } from '../lib/shareCard'
@@ -192,16 +192,17 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange, isPremiu
   })
 
   // ── Rewards state ─────────────────────────────────────────
-  const [streak] = useState<number>(() => {
+  // Initial values from localStorage cache; Supabase sync corrects them below.
+  const [streak, setStreak] = useState<number>(() => {
     try {
       const raw = localStorage.getItem('oodle_streak')
       if (!raw) return 1
       const data = JSON.parse(raw) as { streak: number; lastClaimDate: string }
       const today     = new Date().toDateString()
       const yesterday = new Date(Date.now() - 86400000).toDateString()
-      if (data.lastClaimDate === today)      return data.streak          // claimed today
-      if (data.lastClaimDate === yesterday)  return data.streak + 1      // new day — advance
-      return 1                                                            // 2+ days missed — reset
+      if (data.lastClaimDate === today)      return data.streak
+      if (data.lastClaimDate === yesterday)  return data.streak + 1
+      return 1
     } catch { return 1 }
   })
   const [streakClaimedToday, setStreakClaimedToday] = useState<boolean>(() => {
@@ -213,6 +214,14 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange, isPremiu
     } catch { return false }
   })
   const [rewardMsg, setRewardMsg] = useState('')
+
+  // ── Sync streak from Supabase on mount (source of truth) ──
+  useEffect(() => {
+    syncLoginStreak().then(({ streak: s, claimedToday }) => {
+      setStreak(s)
+      setStreakClaimedToday(claimedToday)
+    }).catch(() => {})
+  }, [])
 
   // ── Shop state ─────────────────────────────────────────────
   const [shopTab, setShopTab] = useState<'food' | 'hats' | 'glasses' | 'eyes' | 'room' | 'coins'>('food')
@@ -1696,6 +1705,7 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange, isPremiu
           }
           const today = new Date().toDateString()
           localStorage.setItem('oodle_streak', JSON.stringify({ streak, lastClaimDate: today }))
+          void claimDailyStreak(streak)
           setStreakClaimedToday(true)
           setRewardMsg(reward.claimMsg)
         }

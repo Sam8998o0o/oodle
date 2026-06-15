@@ -97,7 +97,14 @@ export async function savePet(pet: {
 
 // ── fetchUserPet ─────────────────────────────────────────
 // Returns the signed-in user's current alive pet, or null if none exists.
-export async function fetchUserPet(): Promise<{ id: string; name: string; pixelData: string; coords: PetCoords } | null> {
+// Also returns originalCreatedAt so callers can cache it for cross-device day counts.
+export async function fetchUserPet(): Promise<{
+  id: string
+  name: string
+  pixelData: string
+  coords: PetCoords
+  originalCreatedAt: string | null
+} | null> {
   let userId = useAuthStore.getState().userId
   if (!userId) {
     const { data: { user } } = await supabase.auth.getUser()
@@ -107,7 +114,7 @@ export async function fetchUserPet(): Promise<{ id: string; name: string; pixelD
 
   const { data, error } = await supabase
     .from('pets')
-    .select('id, name, pixel_data, coords')
+    .select('id, name, pixel_data, coords, original_created_at')
     .eq('user_id', userId)
     .eq('is_dead', false)
     .order('created_at', { ascending: false })
@@ -115,8 +122,55 @@ export async function fetchUserPet(): Promise<{ id: string; name: string; pixelD
     .maybeSingle()
 
   if (error || !data) return null
-  const pet = data as { id: string; name: string; pixel_data: string; coords: PetCoords }
-  return { id: pet.id, name: pet.name, pixelData: pet.pixel_data, coords: pet.coords }
+  const pet = data as { id: string; name: string; pixel_data: string; coords: PetCoords; original_created_at: string | null }
+  return {
+    id:                pet.id,
+    name:              pet.name,
+    pixelData:         pet.pixel_data,
+    coords:            pet.coords,
+    originalCreatedAt: pet.original_created_at ?? null,
+  }
+}
+
+// ── syncLoginStreak ───────────────────────────────────────
+// Reads streak + last_login_date from the pets table.
+// Returns { streak, claimedToday } without writing anything.
+// The computed streak is already advanced by +1 if last login was yesterday.
+export async function syncLoginStreak(): Promise<{ streak: number; claimedToday: boolean }> {
+  const petId = localStorage.getItem('oodle_pet_supabase_id')
+  if (!petId) return { streak: 1, claimedToday: false }
+
+  const today     = new Date().toISOString().slice(0, 10)
+  const yesterday = new Date(Date.now() - 86_400_000).toISOString().slice(0, 10)
+
+  const { data, error } = await supabase
+    .from('pets')
+    .select('streak, last_login_date')
+    .eq('id', petId)
+    .single()
+
+  if (error || !data) return { streak: 1, claimedToday: false }
+
+  const row       = data as { streak: number | null; last_login_date: string | null }
+  const dbStreak  = row.streak ?? 1
+  const lastLogin = row.last_login_date
+
+  if (lastLogin === today)     return { streak: dbStreak,     claimedToday: true  }
+  if (lastLogin === yesterday) return { streak: dbStreak + 1, claimedToday: false }
+  return { streak: 1, claimedToday: false }
+}
+
+// ── claimDailyStreak ──────────────────────────────────────
+// Writes the claimed streak value and today's date to the pets table.
+export async function claimDailyStreak(streak: number): Promise<void> {
+  const petId = localStorage.getItem('oodle_pet_supabase_id')
+  if (!petId) return
+  const today = new Date().toISOString().slice(0, 10)
+  const { error } = await supabase
+    .from('pets')
+    .update({ streak, last_login_date: today })
+    .eq('id', petId)
+  if (error) console.error('[petService] claimDailyStreak failed:', error.message)
 }
 
 // ── setOnline ────────────────────────────────────────────
