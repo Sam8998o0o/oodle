@@ -311,14 +311,13 @@ export async function getTodayLikedPetIds(): Promise<Set<string>> {
   const userId = useAuthStore.getState().userId
   if (!userId) return new Set()
 
-  const startOfDay = new Date()
-  startOfDay.setHours(0, 0, 0, 0)
+  const todayStr = new Date().toISOString().slice(0, 10) // YYYY-MM-DD
 
   const { data, error } = await supabase
     .from('likes')
     .select('pet_id')
     .eq('user_id', userId)
-    .gte('created_at', startOfDay.toISOString())
+    .eq('like_date', todayStr)
 
   if (error) {
     console.error('[petService] getTodayLikedPetIds failed:', error.message)
