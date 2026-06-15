@@ -1985,36 +1985,14 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange, isPremiu
 
                 {shopTab === 'coins' && (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                    {([
-                      { priceId: 'price_1Th6ovDNcXWIlrZ47GyhMxTQ', coinAmt: 50,  label: '🪙 50 COINS',   price: '$1.99'  },
-                      { priceId: 'price_1Th6pPDNcXWIlrZ4C71nSgSN', coinAmt: 150, label: '🪙 150 COINS',  price: '$4.99', best: false },
-                      { priceId: 'price_1Th6phDNcXWIlrZ4CfbAGSk9', coinAmt: 350, label: '🪙 350 COINS',  price: '$9.99', best: true  },
-                    ]).map(c => (
-                      <div
-                        key={c.priceId}
-                        style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'space-between', border: '2px solid #2C2C2C', boxShadow: '2px 2px 0 #2C2C2C', padding: '12px 14px', background: '#fff' }}
-                      >
-                        {c.best && (
-                          <div style={{ position: 'absolute', top: -9, right: 8, fontFamily: 'var(--font-pixel)', fontSize: '7px', background: '#e94560', color: '#fff', padding: '2px 6px' }}>
-                            BEST VALUE
-                          </div>
-                        )}
-                        <span style={{ fontFamily: 'var(--font-pixel)', fontSize: '11px', color: '#2C2C2C' }}>{c.label}</span>
-                        <button
-                          onClick={() => buyCoins(c.priceId, c.coinAmt)}
-                          style={{ fontFamily: 'var(--font-pixel)', fontSize: '9px', padding: '8px 12px', background: '#FFE600', color: '#2C2C2C', border: '2px solid #2C2C2C', boxShadow: '2px 2px 0 #2C2C2C', cursor: 'pointer', letterSpacing: '1px', whiteSpace: 'nowrap' }}
-                        >{c.price} →</button>
-                      </div>
-                    ))}
+                    <button
+                      disabled
+                      style={{ fontFamily: 'var(--font-pixel)', fontSize: '11px', padding: '14px', background: '#eee', color: '#888', border: '2px solid #ccc', boxShadow: '2px 2px 0 #ccc', cursor: 'not-allowed', letterSpacing: '1px', opacity: 0.6 }}
+                    >✨ COMING SOON</button>
                     <div style={{ fontFamily: 'var(--font-retro)', fontSize: '15px', color: '#888', textAlign: 'center', padding: '8px 0 0', lineHeight: 1.9 }}>
                       Current balance: <strong style={{ color: '#c87800' }}>🪙 {coins}</strong><br />
                       Coins unlock future accessories &amp; items
                     </div>
-                    {!userId && (
-                      <div style={{ fontFamily: 'var(--font-pixel)', fontSize: '8px', color: '#e94560', textAlign: 'center', lineHeight: 2 }}>
-                        ⚠ Sign in to purchase coins
-                      </div>
-                    )}
                   </div>
                 )}
               </div>
