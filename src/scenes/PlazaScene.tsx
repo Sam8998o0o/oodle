@@ -125,7 +125,8 @@ export default function PlazaScene({ petData, onGoToRoom, isPremium, petSize }: 
 
   const [ads,          setAds]          = useState<AdRecord[]>(DEFAULT_ADS)
   const [selectedPet,     setSelectedPet]     = useState<PlazaPet | null>(null)
-  const [popupLikeCount,  setPopupLikeCount]  = useState(0)
+  const [popupLikeCount,   setPopupLikeCount]   = useState(0)
+  const [popupUnlikeCount, setPopupUnlikeCount] = useState(0)
   const [likeLeft,     setLikeLeft]     = useState(LIKE_DAILY_LIMIT)
   const [todayLikedPets, setTodayLikedPets] = useState<Set<string>>(new Set())
   const [doorPhase,    setDoorPhase]    = useState<DoorPhase>('idle')
@@ -204,7 +205,7 @@ export default function PlazaScene({ petData, onGoToRoom, isPremium, petSize }: 
     localStorage.removeItem('oodle_pets')
   }, [])
 
-  // ── Fetch fresh like count when popup opens ───────────────
+  // ── Fetch fresh like/unlike counts when popup opens ─────────
   useEffect(() => {
     if (!selectedPet) return
     supabase
@@ -212,6 +213,11 @@ export default function PlazaScene({ petData, onGoToRoom, isPremium, petSize }: 
       .select('*', { count: 'exact', head: true })
       .eq('pet_id', selectedPet.id)
       .then(({ count }) => setPopupLikeCount(count ?? 0))
+    supabase
+      .from('pet_unlikes')
+      .select('*', { count: 'exact', head: true })
+      .eq('pet_id', selectedPet.id)
+      .then(({ count }) => setPopupUnlikeCount(count ?? 0))
   }, [selectedPet?.id])
 
   // ── Like notification: poll balance every 8s while in Plaza ─
@@ -903,6 +909,7 @@ export default function PlazaScene({ petData, onGoToRoom, isPremium, petSize }: 
               <div className={styles.cardRow}>Joined: {formatDate(selectedPet.createdAt)}</div>
               <div className={styles.cardRow}>Day {Math.floor((Date.now() - new Date(selectedPet.createdAt).getTime()) / 86400000) + 1}</div>
               <div className={styles.cardRow}>❤️ {popupLikeCount} likes</div>
+              <div className={styles.cardRow}>👎 {popupUnlikeCount} unlikes</div>
               {!selectedPet.isOwn && (
                 <>
                   <button
