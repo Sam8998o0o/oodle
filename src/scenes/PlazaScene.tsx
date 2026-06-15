@@ -883,7 +883,8 @@ export default function PlazaScene({ petData, onGoToRoom, isPremium, petSize }: 
               <button className={styles.closeBtn} onClick={() => setSelectedPet(null)}>✕</button>
               <div className={styles.cardName}>{selectedPet.name}</div>
               <div className={styles.cardRow}>Artist: {selectedPet.name}</div>
-              <div className={styles.cardRow}>Joined: {formatDate(selectedPet.createdAt)}</div>
+              <div className={styles.cardRow}>Joined: {formatDate(selectedPet.originalCreatedAt ?? selectedPet.createdAt)}</div>
+              <div className={styles.cardRow}>Day {Math.floor((Date.now() - new Date(selectedPet.originalCreatedAt ?? selectedPet.createdAt).getTime()) / 86400000) + 1}</div>
               <div className={styles.cardRow}>❤️ {likes[selectedPet.id] ?? 0} likes</div>
               {!selectedPet.isOwn && (
                 <>

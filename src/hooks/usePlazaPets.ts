@@ -26,12 +26,13 @@ const DEFAULT_COORDS: PetCoords = {
 }
 
 export interface PlazaPet {
-  id:             string
-  pixelData:      string
-  coords:         PetCoords
-  name:           string
-  createdAt:      string
-  isOwn:          boolean
+  id:               string
+  pixelData:        string
+  coords:           PetCoords
+  name:             string
+  createdAt:        string
+  originalCreatedAt?: string
+  isOwn:            boolean
   growth_points:    number
   talent?:          string
   talent_drawing?:  string
@@ -347,13 +348,19 @@ export function usePlazaPets(
       }
     } catch { /* ignore */ }
 
+    const ownOriginalCreatedAt =
+      localStorage.getItem('oodle_pet_original_created_at') ??
+      localStorage.getItem('oodle_pet_created_at_iso') ??
+      undefined
+
     const ownPet: PlazaPet = {
-      id:             'own',
-      pixelData:      petData.pixelData,
-      coords:         petData.coords,
-      name:           petData.name,
-      createdAt:      new Date().toISOString(),
-      isOwn:          true,
+      id:               'own',
+      pixelData:        petData.pixelData,
+      coords:           petData.coords,
+      name:             petData.name,
+      createdAt:        ownOriginalCreatedAt ?? new Date().toISOString(),
+      originalCreatedAt: ownOriginalCreatedAt,
+      isOwn:            true,
       growth_points:  parseInt(localStorage.getItem('oodle_growth') ?? '0', 10),
       talent:           ownTalent,
       talent_drawing:   ownTalentDrawing,
@@ -395,6 +402,19 @@ export function usePlazaPets(
       ])
       const ownSupabaseId = localStorage.getItem('oodle_pet_supabase_id')
       const ownUserId     = useAuthStore.getState().userId
+
+      // Pick up own pet's true original_created_at from DB and cache it locally
+      const ownRecord = records.find(r => r.id === ownSupabaseId || r.user_id === ownUserId)
+      let resolvedOwnPet = ownPet
+      if (ownRecord?.original_created_at) {
+        localStorage.setItem('oodle_pet_original_created_at', ownRecord.original_created_at)
+        resolvedOwnPet = {
+          ...ownPet,
+          createdAt:        ownRecord.original_created_at,
+          originalCreatedAt: ownRecord.original_created_at,
+        }
+      }
+
       const others: PlazaPet[] = records
         .filter(r =>
           r.id !== ownSupabaseId &&
@@ -402,19 +422,20 @@ export function usePlazaPets(
           r.pixel_data !== petData.pixelData
         )
         .map(r => ({
-          id:               r.id,
-          pixelData:        r.pixel_data,
-          coords:           r.coords ?? DEFAULT_COORDS,
-          name:             r.name,
-          createdAt:        r.created_at,
-          isOwn:            false,
-          growth_points:    r.growth_points ?? 0,
-          talent:           r.talent,
-          talent_drawing:   r.talent_drawing,
-          accessory:        r.accessory ?? null,
-          propeller_expiry: r.propeller_expiry ?? null,
+          id:                r.id,
+          pixelData:         r.pixel_data,
+          coords:            r.coords ?? DEFAULT_COORDS,
+          name:              r.name,
+          createdAt:         r.original_created_at ?? r.created_at,
+          originalCreatedAt: r.original_created_at ?? undefined,
+          isOwn:             false,
+          growth_points:     r.growth_points ?? 0,
+          talent:            r.talent,
+          talent_drawing:    r.talent_drawing,
+          accessory:         r.accessory ?? null,
+          propeller_expiry:  r.propeller_expiry ?? null,
         }))
-      setPets(prev => mergePets(prev, [ownPet, ...others]))
+      setPets(prev => mergePets(prev, [resolvedOwnPet, ...others]))
       setLikes(likeCounts)
     }
 
@@ -516,17 +537,18 @@ export function usePlazaPets(
         const newOthers = records
           .filter(r => r.id !== ownSupabaseId && r.user_id !== ownUserId)
           .map(r => ({
-            id:               r.id,
-            pixelData:        r.pixel_data,
-            coords:           r.coords ?? DEFAULT_COORDS,
-            name:             r.name,
-            createdAt:        r.created_at,
-            isOwn:            false,
-            growth_points:    r.growth_points ?? 0,
-            talent:           r.talent,
-            talent_drawing:   r.talent_drawing,
-            accessory:        r.accessory ?? null,
-            propeller_expiry: r.propeller_expiry ?? null,
+            id:                r.id,
+            pixelData:         r.pixel_data,
+            coords:            r.coords ?? DEFAULT_COORDS,
+            name:              r.name,
+            createdAt:         r.original_created_at ?? r.created_at,
+            originalCreatedAt: r.original_created_at ?? undefined,
+            isOwn:             false,
+            growth_points:     r.growth_points ?? 0,
+            talent:            r.talent,
+            talent_drawing:    r.talent_drawing,
+            accessory:         r.accessory ?? null,
+            propeller_expiry:  r.propeller_expiry ?? null,
           }))
         const ownPet = prev.find(p => p.isOwn)
         return ownPet ? [ownPet, ...newOthers] : newOthers
@@ -547,16 +569,17 @@ export function usePlazaPets(
       setPets(prev => {
         if (prev.some(p => p.id === newPet.id)) return prev
         return [...prev, {
-          id:             newPet.id,
-          pixelData:      newPet.pixel_data,
-          coords:         newPet.coords ?? DEFAULT_COORDS,
-          name:           newPet.name,
-          createdAt:      newPet.created_at,
-          isOwn:          false,
-          growth_points:  newPet.growth_points ?? 0,
-          talent:         newPet.talent,
-          talent_drawing: newPet.talent_drawing,
-          accessory:      newPet.accessory ?? null,
+          id:                newPet.id,
+          pixelData:         newPet.pixel_data,
+          coords:            newPet.coords ?? DEFAULT_COORDS,
+          name:              newPet.name,
+          createdAt:         newPet.original_created_at ?? newPet.created_at,
+          originalCreatedAt: newPet.original_created_at ?? undefined,
+          isOwn:             false,
+          growth_points:     newPet.growth_points ?? 0,
+          talent:            newPet.talent,
+          talent_drawing:    newPet.talent_drawing,
+          accessory:         newPet.accessory ?? null,
         }]
       })
     })

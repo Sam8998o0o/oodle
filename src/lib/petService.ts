@@ -14,9 +14,10 @@ export interface PetRecord {
   growth_points:  number
   talent?:        string
   talent_drawing?: string
-  accessory?:        string | null
-  propeller_expiry?: number | null
-  coins?:            number
+  accessory?:            string | null
+  propeller_expiry?:     number | null
+  original_created_at?:  string | null
+  coins?:                number
 }
 
 // localStorage key used to avoid re-inserting the same pet
@@ -64,16 +65,18 @@ export async function savePet(pet: {
   const cached = localStorage.getItem(LOCAL_PET_ID_KEY)
   if (cached) return cached
 
+  const now = new Date().toISOString()
   const { data, error } = await supabase
     .from('pets')
     .insert({
-      user_id:       userId,
-      name:          pet.name,
-      pixel_data:    pet.pixelData,
-      coords:        pet.coords,
-      growth_points: parseInt(localStorage.getItem('oodle_growth') ?? '0', 10),
-      last_seen:     new Date().toISOString(),
-      is_online:     true,
+      user_id:              userId,
+      name:                 pet.name,
+      pixel_data:           pet.pixelData,
+      coords:               pet.coords,
+      growth_points:        parseInt(localStorage.getItem('oodle_growth') ?? '0', 10),
+      last_seen:            now,
+      is_online:            true,
+      original_created_at:  now,
     })
     .select('id')
     .single()
@@ -87,6 +90,7 @@ export async function savePet(pet: {
   if (id) {
     localStorage.setItem(LOCAL_PET_ID_KEY, id)
     localStorage.setItem('oodle_pet_created_at', String(Date.now()))
+    localStorage.setItem('oodle_pet_original_created_at', now)
   }
   return id
 }
