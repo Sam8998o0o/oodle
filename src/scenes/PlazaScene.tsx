@@ -89,7 +89,7 @@ export default function PlazaScene({ petData, onGoToRoom, isPremium, petSize }: 
     pets,
     wrapperMap, canvasMap, walkerMap,
     plazaShows, drawingPerformance,
-    ownGlowing, likes, setLikes,
+    ownGlowing, setLikes,
     spawnPet,
   } = usePlazaPets(petData, petSize, roomRef)
 
@@ -212,7 +212,6 @@ export default function PlazaScene({ petData, onGoToRoom, isPremium, petSize }: 
       .select('*', { count: 'exact', head: true })
       .eq('pet_id', selectedPet.id)
       .then(({ count }) => setPopupLikeCount(count ?? 0))
-      .catch(() => {})
   }, [selectedPet?.id])
 
   // ── Like notification: poll balance every 8s while in Plaza ─
