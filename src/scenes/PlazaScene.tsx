@@ -203,28 +203,26 @@ export default function PlazaScene({ petData, onGoToRoom, isPremium, petSize }: 
   }, [])
 
   // ── Like notification: poll balance every 8s while in Plaza ─
-  const prevBalRef = useRef(-1)
   useEffect(() => {
-    const petName = petData.name
-    getLikeBalance().then(b => {
-      prevBalRef.current = b
-      console.log('[LIKE POLL] started, initial balance:', prevBalRef.current)
-    }).catch(() => {})
-    const id = setInterval(async () => {
-      try {
-        const newBal = await getLikeBalance()
-        console.log('[LIKE POLL] tick — newBal:', newBal, 'prev:', prevBalRef.current)
-        if (prevBalRef.current >= 0 && newBal > prevBalRef.current) {
-          const diff = newBal - prevBalRef.current
-          console.log('[LIKE POLL] LIKED! showing notification, diff:', diff)
-          setLikeNotif(`❤️ +${diff} someone liked ${petName}!`)
-          setTimeout(() => setLikeNotif(null), 3000)
-        }
-        prevBalRef.current = newBal
-      } catch { /* ignore */ }
-    }, 8_000)
-    return () => clearInterval(id)
-  }, [petData.name])
+    let prevBal: number | null = null
+
+    const poll = async () => {
+      const newBal = await getLikeBalance()
+      console.log('[LIKE POLL] tick — newBal:', newBal, 'prev:', prevBal)
+      if (prevBal !== null && newBal > prevBal) {
+        const diff = newBal - prevBal
+        console.log('[LIKE POLL] LIKED! diff:', diff)
+        setLikeNotif(`❤️ +${diff} someone liked ${petData.name}!`)
+        setTimeout(() => setLikeNotif(null), 3000)
+      }
+      prevBal = newBal
+    }
+
+    void poll()
+    console.log('[LIKE POLL] started')
+    const interval = setInterval(poll, 8000)
+    return () => clearInterval(interval)
+  }, [])
 
   // ── Plaza → Room door transition ──────────────────────────
   useEffect(() => {
@@ -629,9 +627,10 @@ export default function PlazaScene({ petData, onGoToRoom, isPremium, petSize }: 
         {likeNotif && (
           <div style={{
             position: 'absolute', top: 20, left: '50%', transform: 'translateX(-50%)',
-            background: '#e94560', color: 'white', padding: '8px 20px',
-            fontFamily: 'var(--font-pixel)', fontSize: '14px',
-            border: '2px solid #2C2C2C', zIndex: 999,
+            background: '#1a1a2e', color: '#f5a623',
+            fontFamily: 'Press Start 2P', fontSize: '10px',
+            padding: '8px 16px', border: '2px solid #f5a623',
+            zIndex: 999, whiteSpace: 'nowrap',
           }}>{likeNotif}</div>
         )}
 
