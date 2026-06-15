@@ -919,34 +919,36 @@ export default function PlazaScene({ petData, onGoToRoom, isPremium, petSize }: 
               <div className={styles.cardRow}>Artist: {selectedPet.name}</div>
               <div className={styles.cardRow}>Joined: {formatDate(selectedPet.createdAt)}</div>
               <div className={styles.cardRow}>Day {Math.floor((Date.now() - new Date(selectedPet.createdAt).getTime()) / 86400000) + 1}</div>
-              <div className={styles.cardRow}>❤️ {popupLikeCount} likes</div>
-              <div className={styles.cardRow}>👎 {popupUnlikeCount} unlikes</div>
+              <div className={styles.cardRow}>👍 {popupLikeCount}  👎 {popupUnlikeCount}</div>
               {!selectedPet.isOwn && (
                 <>
-                  <button
-                    className={styles.likeBtn}
-                    onClick={() => handleLike(selectedPet.id)}
-                    disabled={todayLikedPets.has(selectedPet.id) || likeLeft <= 0}
-                  >
-                    {todayLikedPets.has(selectedPet.id) ? '✓ LIKED' : '❤️ LIKE'}
-                  </button>
+                  <div style={{ display: 'flex', gap: '8px', marginTop: '6px' }}>
+                    <button
+                      className={styles.likeBtn}
+                      style={{ flex: 1 }}
+                      onClick={() => handleLike(selectedPet.id)}
+                      disabled={todayLikedPets.has(selectedPet.id) || likeLeft <= 0}
+                    >
+                      {todayLikedPets.has(selectedPet.id) ? '✓' : '👍'}
+                    </button>
+                    <button
+                      className={styles.likeBtn}
+                      style={{ flex: 1, background: unlikedPets.has(selectedPet.id) ? '#ccc' : '#e94560', color: '#fff' }}
+                      onClick={async () => {
+                        if (unlikedPets.has(selectedPet.id)) return
+                        await unlikePet(selectedPet.id)
+                        setUnlikedPets(prev => new Set([...prev, selectedPet.id]))
+                      }}
+                      disabled={unlikedPets.has(selectedPet.id)}
+                    >
+                      {unlikedPets.has(selectedPet.id) ? '✓' : '👎'}
+                    </button>
+                  </div>
                   <div className={styles.likeQuota}>
                     {likeLeft > 0
-                      ? `${likeLeft}/${LIKE_DAILY_LIMIT} likes left today`
+                      ? `${likeLeft}/${LIKE_DAILY_LIMIT} left today`
                       : 'Come back tomorrow!'}
                   </div>
-                  <button
-                    className={styles.likeBtn}
-                    style={{ background: unlikedPets.has(selectedPet.id) ? '#ccc' : '#e94560', color: '#fff', marginTop: '6px' }}
-                    onClick={async () => {
-                      if (unlikedPets.has(selectedPet.id)) return
-                      await unlikePet(selectedPet.id)
-                      setUnlikedPets(prev => new Set([...prev, selectedPet.id]))
-                    }}
-                    disabled={unlikedPets.has(selectedPet.id)}
-                  >
-                    {unlikedPets.has(selectedPet.id) ? '👎 REPORTED' : '👎 REPORT'}
-                  </button>
                 </>
               )}
             </div>

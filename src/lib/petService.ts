@@ -311,22 +311,6 @@ export async function likePet(petId: string): Promise<{ success: boolean; reason
     return { success: false, reason: 'error' }
   }
 
-  // Resolve pet owner and credit balance
-  const { data: pet, error: petError } = await supabase
-    .from('pets')
-    .select('user_id')
-    .eq('id', petId)
-    .single()
-
-  if (petError || !pet) {
-    console.error('[petService] likePet — pet lookup failed:', petError?.message)
-    return { success: true }
-  }
-
-  const ownerId = (pet as { user_id: string }).user_id
-  const { error: rpcError } = await supabase.rpc('increment_like_balance', { target_user_id: ownerId })
-  if (rpcError) console.error('[petService] likePet — increment_like_balance failed:', rpcError.message)
-
   return { success: true }
 }
 
