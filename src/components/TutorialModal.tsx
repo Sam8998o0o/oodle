@@ -41,19 +41,19 @@ const PAGES: Page[] = [
     heading: '❤️ LIKES & FOOD',
     items: [
       {
+        icon: '💬',
+        label: 'SHOUT IN THE PLAZA',
+        desc: 'Go to Plaza and type a shout bubble. Other players can like your shout!',
+      },
+      {
         icon: '❤️',
-        label: 'GET LIKES IN THE PLAZA',
-        desc: 'Visit the Plaza — other players can like your pet. Each like adds to your balance.',
+        label: 'SHOUT LIKES = FOOD',
+        desc: 'When someone likes your shout, it adds to your like balance. 5 ❤️ → 🍪 Snack, 10 ❤️ → 🍱 Meal',
       },
       {
         icon: '🛒',
-        label: 'SPEND LIKES ON FOOD',
-        desc: 'In the LIKES panel (bottom-right of Room): 5 ❤️ → 🍪 Snack, 10 ❤️ → 🍱 Meal.',
-      },
-      {
-        icon: '🏙️',
-        label: 'LIKE OTHERS TOO',
-        desc: 'Like up to 10 pets/day in the Plaza. One like per pet per day.',
+        label: 'REDEEM IN ROOM',
+        desc: 'Go back to your Room. Open the LIKES panel (bottom-right). Spend your likes on food for your pet!',
       },
     ],
   },
