@@ -10,8 +10,11 @@ export default function AuthButton() {
   useEffect(() => {
     if (!userId) return
     supabase.auth.getUser().then(({ data: { user } }) => {
-      const name = user?.email?.split('@')[0] ?? ''
-      if (name) setDisplayName(name.length > 8 ? name.slice(0, 8) : name)
+      const name = user?.user_metadata?.full_name
+        ?? user?.user_metadata?.name
+        ?? user?.email?.split('@')[0]
+        ?? 'G'
+      setDisplayName(name.length > 10 ? name.slice(0, 10) : name)
     }).catch(() => {})
   }, [userId])
 
