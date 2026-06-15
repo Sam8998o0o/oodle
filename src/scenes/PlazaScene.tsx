@@ -846,7 +846,7 @@ export default function PlazaScene({ petData, onGoToRoom, isPremium, petSize }: 
               })()}
 
               <div style={{ position: 'relative', display: 'inline-block' }}>
-                {(pet.accessory === 'propeller' || (pet.isOwn && hasTempPropeller)) && (() => {
+                {(pet.accessory === 'propeller' || (pet.isOwn && hasTempPropeller) || (pet.propeller_expiry != null && Date.now() < pet.propeller_expiry)) && (() => {
                   const hatSize    = 36
                   const canvasSize = pet.isOwn ? petSize : growthToSize(pet.growth_points)
                   // Own pet: use actual eye coords; others: use typical default

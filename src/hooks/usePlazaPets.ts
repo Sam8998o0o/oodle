@@ -32,10 +32,11 @@ export interface PlazaPet {
   name:           string
   createdAt:      string
   isOwn:          boolean
-  growth_points:  number
-  talent?:        string
-  talent_drawing?: string
-  accessory?:     string | null
+  growth_points:    number
+  talent?:          string
+  talent_drawing?:  string
+  accessory?:       string | null
+  propeller_expiry?: number | null
 }
 
 export interface PlazaShow {
@@ -104,6 +105,7 @@ export function usePlazaPets(
   const spawnQueue         = useRef<PlazaPet[]>([])
   const propellerHats      = useRef<Set<string>>(new Set())
   const propellerExpiryRef = useRef(0)
+  const tempPropellerRef   = useRef(new Map<string, number>()) // petId → expiry ms
   const petsRef            = useRef<PlazaPet[]>([])
 
   const [pets,                setPets]                = useState<PlazaPet[]>([])
@@ -185,15 +187,27 @@ export function usePlazaPets(
     animator.start()
     animMap.current.set(pet.id, animator)
 
-    if (pet.accessory === 'propeller') propellerHats.current.add(pet.id)
-    else propellerHats.current.delete(pet.id)
+    // Check temp propeller from Supabase record (applies to ALL pets)
+    const tempExp    = pet.propeller_expiry
+    const tempActive = tempExp != null && Date.now() < tempExp
+    if (tempActive) {
+      propellerHats.current.add(pet.id)
+      tempPropellerRef.current.set(pet.id, tempExp)
+    } else if (pet.accessory === 'propeller') {
+      propellerHats.current.add(pet.id)
+      tempPropellerRef.current.delete(pet.id)
+    } else {
+      propellerHats.current.delete(pet.id)
+      tempPropellerRef.current.delete(pet.id)
+    }
 
-    // Also check the Day-7 temp propeller for the own pet
+    // Own pet: also check localStorage for instant local response
     if (pet.isOwn) {
       try {
         const exp = parseInt(localStorage.getItem('oodle_propeller_expiry') ?? '0', 10)
         if (exp && Date.now() < exp) {
           propellerHats.current.add(pet.id)
+          tempPropellerRef.current.set(pet.id, exp)
           propellerExpiryRef.current = exp
         }
       } catch { /* */ }
@@ -254,14 +268,17 @@ export function usePlazaPets(
         const ownRight  = rW - RIGHT_PAD - sz
         const now       = Date.now()
 
-        // Expire temp propeller for own pet when 24h window closes
-        if (id === 'own' && propellerExpiryRef.current > 0 && now > propellerExpiryRef.current) {
-          propellerHats.current.delete('own')
-          propellerExpiryRef.current = 0
+        // Expire temp propeller for ANY pet when its 24h window closes
+        const tempExp = tempPropellerRef.current.get(id)
+        if (tempExp && now > tempExp) {
+          tempPropellerRef.current.delete(id)
+          propellerHats.current.delete(id)
+          if (id === 'own') propellerExpiryRef.current = 0
           w.y = WALK_Y_MIN * rH - sz   // snap to ground immediately
         }
 
         const isFlying  = propellerHats.current.has(id)
+        const isTemp    = tempPropellerRef.current.has(id)
         const ownTop    = (isFlying ? WALK_SKY_MIN : WALK_Y_MIN) * rH - sz
         const ownBottom = (isFlying ? WALK_SKY_MAX : WALK_Y_MAX) * rH - sz
 
@@ -270,8 +287,8 @@ export function usePlazaPets(
         else if (nextX <= LEFT_BOUND) w.dir = 1
         else w.x = nextX
 
-        if (isFlying && id === 'own') {
-          // Sinusoidal hover at 35% height — gentle float for the own flying pet
+        if (isFlying && isTemp) {
+          // Sinusoidal hover at 35% height for any pet with an active temp propeller
           w.y = rH * 0.35 - sz + Math.sin(now / 600) * 8
         } else {
           const nextY = w.y + w.speedY * w.dirY
@@ -338,19 +355,33 @@ export function usePlazaPets(
       createdAt:      new Date().toISOString(),
       isOwn:          true,
       growth_points:  parseInt(localStorage.getItem('oodle_growth') ?? '0', 10),
-      talent:         ownTalent,
-      talent_drawing: ownTalentDrawing,
-      accessory:      localStorage.getItem('oodle_accessory') ?? null,
+      talent:           ownTalent,
+      talent_drawing:   ownTalentDrawing,
+      accessory:        localStorage.getItem('oodle_accessory') ?? null,
+      propeller_expiry: (() => {
+        try {
+          const exp = parseInt(localStorage.getItem('oodle_propeller_expiry') ?? '0', 10)
+          return exp || null
+        } catch { return null }
+      })(),
     }
     setPets([ownPet])
 
-    // Sync latest talent to Supabase on Plaza enter so other users always see
-    // the most recent trick (guards against saveTalent failing at learn-time)
+    // Sync latest talent + temp propeller expiry to Supabase on Plaza enter
     const syncPetId = localStorage.getItem('oodle_pet_supabase_id')
     if (syncPetId && ownTalent) {
       const update: Record<string, string> = { talent: ownTalent }
       if (ownTalent === 'drawing' && ownTalentDrawing) update.talent_drawing = ownTalentDrawing
       supabase.from('pets').update(update).eq('id', syncPetId).then(() => {})
+    }
+    // Sync propeller expiry so other players see this pet flying
+    if (syncPetId) {
+      try {
+        const exp = parseInt(localStorage.getItem('oodle_propeller_expiry') ?? '0', 10)
+        if (exp && Date.now() < exp) {
+          supabase.from('pets').update({ propeller_expiry: exp }).eq('id', syncPetId).then(() => {})
+        }
+      } catch { /* */ }
     }
 
     const loadFromSupabase = async () => {
@@ -367,16 +398,17 @@ export function usePlazaPets(
           r.pixel_data !== petData.pixelData
         )
         .map(r => ({
-          id:             r.id,
-          pixelData:      r.pixel_data,
-          coords:         r.coords ?? DEFAULT_COORDS,
-          name:           r.name,
-          createdAt:      r.created_at,
-          isOwn:          false,
-          growth_points:  r.growth_points ?? 0,
-          talent:         r.talent,
-          talent_drawing: r.talent_drawing,
-          accessory:      r.accessory ?? null,
+          id:               r.id,
+          pixelData:        r.pixel_data,
+          coords:           r.coords ?? DEFAULT_COORDS,
+          name:             r.name,
+          createdAt:        r.created_at,
+          isOwn:            false,
+          growth_points:    r.growth_points ?? 0,
+          talent:           r.talent,
+          talent_drawing:   r.talent_drawing,
+          accessory:        r.accessory ?? null,
+          propeller_expiry: r.propeller_expiry ?? null,
         }))
       setPets(prev => mergePets(prev, [ownPet, ...others]))
       setLikes(likeCounts)
@@ -480,16 +512,17 @@ export function usePlazaPets(
         const newOthers = records
           .filter(r => r.id !== ownSupabaseId && r.user_id !== ownUserId)
           .map(r => ({
-            id:             r.id,
-            pixelData:      r.pixel_data,
-            coords:         r.coords ?? DEFAULT_COORDS,
-            name:           r.name,
-            createdAt:      r.created_at,
-            isOwn:          false,
-            growth_points:  r.growth_points ?? 0,
-            talent:         r.talent,
-            talent_drawing: r.talent_drawing,
-            accessory:      r.accessory ?? null,
+            id:               r.id,
+            pixelData:        r.pixel_data,
+            coords:           r.coords ?? DEFAULT_COORDS,
+            name:             r.name,
+            createdAt:        r.created_at,
+            isOwn:            false,
+            growth_points:    r.growth_points ?? 0,
+            talent:           r.talent,
+            talent_drawing:   r.talent_drawing,
+            accessory:        r.accessory ?? null,
+            propeller_expiry: r.propeller_expiry ?? null,
           }))
         const ownPet = prev.find(p => p.isOwn)
         return ownPet ? [ownPet, ...newOthers] : newOthers

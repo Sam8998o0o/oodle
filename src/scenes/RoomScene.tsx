@@ -1,7 +1,7 @@
 import { useRef, useState, useEffect, useCallback } from 'react'
 import { PetAnimator } from '../engine/PetAnimator'
 import type { PetCoords } from '../api/aiRecognize'
-import { savePet, getLikeBalance, saveTalent, saveTalentDrawing, killPet, checkPetDead, saveAccessory, getCoins } from '../lib/petService'
+import { savePet, getLikeBalance, saveTalent, saveTalentDrawing, killPet, checkPetDead, saveAccessory, getCoins, savePropellerExpiry } from '../lib/petService'
 import { supabase } from '../lib/supabase'
 import { useAuthStore } from '../lib/auth'
 import { generateShareCard } from '../lib/shareCard'
@@ -233,6 +233,15 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange, isPremiu
       return !!exp && Date.now() < parseInt(exp, 10)
     } catch { return false }
   })
+
+  // On mount: push any active temp-propeller expiry to Supabase so Plaza
+  // visitors on other devices see this pet flying immediately.
+  useEffect(() => {
+    try {
+      const exp = parseInt(localStorage.getItem('oodle_propeller_expiry') ?? '0', 10)
+      if (exp && Date.now() < exp) void savePropellerExpiry(exp)
+    } catch { /* */ }
+  }, [])
 
   const equipAccessory = useCallback((acc: string | null) => {
     setAccessory(acc)
@@ -1683,6 +1692,7 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange, isPremiu
             const expiry = Date.now() + 86400000
             localStorage.setItem('oodle_propeller_expiry', String(expiry))
             setHasTempPropeller(true)
+            void savePropellerExpiry(expiry)
           }
           const today = new Date().toDateString()
           localStorage.setItem('oodle_streak', JSON.stringify({ streak, lastClaimDate: today }))

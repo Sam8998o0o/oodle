@@ -14,8 +14,9 @@ export interface PetRecord {
   growth_points:  number
   talent?:        string
   talent_drawing?: string
-  accessory?:     string | null
-  coins?:         number
+  accessory?:        string | null
+  propeller_expiry?: number | null
+  coins?:            number
 }
 
 // localStorage key used to avoid re-inserting the same pet
@@ -553,6 +554,17 @@ export async function saveAccessory(accessory: string | null): Promise<void> {
   const petId = localStorage.getItem('oodle_pet_supabase_id')
   if (!petId) return
   await supabase.from('pets').update({ accessory }).eq('id', petId)
+}
+
+// ── savePropellerExpiry ────────────────────────────────────
+// Writes the temp-propeller expiry timestamp to Supabase so other
+// players' browsers can see this pet is flying.
+export async function savePropellerExpiry(expiry: number): Promise<void> {
+  const petId = localStorage.getItem('oodle_pet_supabase_id')
+  if (!petId) return
+  try {
+    await supabase.from('pets').update({ propeller_expiry: expiry }).eq('id', petId)
+  } catch { /* column may not exist yet — fail silently */ }
 }
 
 // ── getCoins ──────────────────────────────────────────────
