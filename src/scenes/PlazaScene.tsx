@@ -206,12 +206,17 @@ export default function PlazaScene({ petData, onGoToRoom, isPremium, petSize }: 
   const prevBalRef = useRef(-1)
   useEffect(() => {
     const petName = petData.name
-    getLikeBalance().then(b => { prevBalRef.current = b }).catch(() => {})
+    getLikeBalance().then(b => {
+      prevBalRef.current = b
+      console.log('[LIKE POLL] started, initial balance:', prevBalRef.current)
+    }).catch(() => {})
     const id = setInterval(async () => {
       try {
         const newBal = await getLikeBalance()
+        console.log('[LIKE POLL] tick — newBal:', newBal, 'prev:', prevBalRef.current)
         if (prevBalRef.current >= 0 && newBal > prevBalRef.current) {
           const diff = newBal - prevBalRef.current
+          console.log('[LIKE POLL] LIKED! showing notification, diff:', diff)
           setLikeNotif(`❤️ +${diff} someone liked ${petName}!`)
           setTimeout(() => setLikeNotif(null), 3000)
         }
