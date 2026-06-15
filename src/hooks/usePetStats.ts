@@ -207,53 +207,39 @@ export function usePetStats({
     }
   }, [isFainted, animatorRef])
 
-  // ── Like balance: realtime + 30s polling fallback ─────
+  // ── Like balance: initial fetch + Realtime UPDATE ────
   useEffect(() => {
-    let prevBalance = 0
+    const petName = (() => {
+      try {
+        const raw = localStorage.getItem('oodle_pet_data')
+        if (!raw) return 'your pet'
+        return (JSON.parse(raw) as { name?: string }).name ?? 'your pet'
+      } catch { return 'your pet' }
+    })()
 
-    const fetchBalance = async () => {
-      const b = await getLikeBalance().catch(() => 0)
-      if (b > prevBalance && prevBalance > 0) {
-        const gained = b - prevBalance
-        showBubble(`+${gained} ❤️ someone liked you!`)
-      }
-      prevBalance = b
-      setLikeBalance(b)
-    }
-
-    fetchBalance()
-
-    // Poll every 30s as a guaranteed fallback for environments where
-    // Supabase Realtime is unavailable or the table lacks replication.
-    const pollId = setInterval(fetchBalance, 30000)
+    // One fetch on mount — no toast, just initialise the counter
+    getLikeBalance().then(b => setLikeBalance(b)).catch(() => {})
 
     const userId = useAuthStore.getState().userId
-    let channel: ReturnType<typeof supabase.channel> | null = null
-    if (userId) {
-      channel = supabase
-        .channel('like-balance-' + userId)
-        .on('postgres_changes', {
-          // '*' catches both INSERT (first like ever) and UPDATE (subsequent likes)
-          event:  '*',
-          schema: 'public',
-          table:  'like_balance',
-          filter: `user_id=eq.${userId}`,
-        }, payload => {
-          const newBal = (payload.new as { balance: number }).balance
-          setLikeBalance(prev => {
-            if (newBal > prev) {
-              showBubble(`+${newBal - prev} ❤️ someone liked you!`)
-            }
-            return newBal
-          })
-        })
-        .subscribe()
-    }
+    if (!userId) return
 
-    return () => {
-      clearInterval(pollId)
-      if (channel) supabase.removeChannel(channel)
-    }
+    const channel = supabase
+      .channel('like-balance-' + userId)
+      .on('postgres_changes', {
+        event:  'UPDATE',
+        schema: 'public',
+        table:  'like_balance',
+        filter: `user_id=eq.${userId}`,
+      }, payload => {
+        const newBal = (payload.new as { balance: number }).balance
+        setLikeBalance(prev => {
+          if (newBal > prev) showBubble(`Someone liked ${petName}! ❤️ +1`)
+          return newBal
+        })
+      })
+      .subscribe()
+
+    return () => { supabase.removeChannel(channel) }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -273,7 +259,7 @@ export function usePetStats({
         // Don't notify if the current user liked their own shout
         if (row.user_id === userId) return
         void getShoutOwner(row.shout_id).then(owner => {
-          if (owner === userId) showBubble('Someone liked your shout! ❤️')
+          if (owner === userId) showBubble('Someone liked your shout! 💬❤️')
         })
       })
       .subscribe()
