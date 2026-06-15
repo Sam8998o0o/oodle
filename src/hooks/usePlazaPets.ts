@@ -403,15 +403,16 @@ export function usePlazaPets(
       const ownSupabaseId = localStorage.getItem('oodle_pet_supabase_id')
       const ownUserId     = useAuthStore.getState().userId
 
-      // Pick up own pet's true original_created_at from DB and cache it locally
+      // Always use Supabase record for own pet's creation date — localStorage has no reliable date
       const ownRecord = records.find(r => r.id === ownSupabaseId || r.user_id === ownUserId)
       let resolvedOwnPet = ownPet
-      if (ownRecord?.original_created_at) {
-        localStorage.setItem('oodle_pet_original_created_at', ownRecord.original_created_at)
+      if (ownRecord) {
+        const trueDate = ownRecord.original_created_at ?? ownRecord.created_at
+        localStorage.setItem('oodle_pet_original_created_at', trueDate)
         resolvedOwnPet = {
           ...ownPet,
-          createdAt:        ownRecord.original_created_at,
-          originalCreatedAt: ownRecord.original_created_at,
+          createdAt:         trueDate,
+          originalCreatedAt: trueDate,
         }
       }
 
