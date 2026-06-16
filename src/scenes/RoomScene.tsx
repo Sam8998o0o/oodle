@@ -418,8 +418,13 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange, isPremiu
 
   // Show all-done celebration when all tasks complete (and not yet claimed)
   useEffect(() => {
+    const feedDone  = tasks.feed  >= 3
+    const likeDone  = tasks.likes >= 3
+    const plazaDone = tasks.plaza
+    console.log('[BONUS] tasks status:', feedDone, likeDone, plazaDone)
+    console.log('[BONUS] already claimed:', tasks.allDoneClaimed)
     if (tasks.allDoneClaimed) return
-    if (tasks.feed >= 3 && tasks.likes >= 5 && tasks.plaza) {
+    if (feedDone && likeDone && plazaDone) {
       setShowAllDone(true)
     }
   }, [tasks])
@@ -2057,7 +2062,7 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange, isPremiu
 
       {/* ── TASKS MODAL ─────────────────────────────────── */}
       {showTasks && (() => {
-        const allDone = tasks.feed >= 3 && tasks.likes >= 5 && tasks.plaza
+        const allDone = tasks.feed >= 3 && tasks.likes >= 3 && tasks.plaza
 
         const taskRows: Array<{ label: string; emoji: string; current: number; goal: number; done: boolean }> = [
           { label: 'FEED YOUR PET',   emoji: '🍖', current: tasks.feed,               goal: 3, done: tasks.feed  >= 3 },
