@@ -129,7 +129,7 @@ export function usePetStats({
         setStats(s => ({
           hunger: Math.max(0, s.hunger - 0.08),
           happy:  Math.max(0, s.happy  - 0.06),
-          energy: Math.max(0, s.energy - 0.11),
+          energy: Math.max(0, s.energy - 0.07),
         }))
       }
 
