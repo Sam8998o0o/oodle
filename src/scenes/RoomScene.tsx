@@ -1419,7 +1419,7 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange, isPremiu
         {/* Like-balance panel (replaces energy panel) */}
         <div className={styles.likePanel}>
           <div className={styles.energyRow}>
-            <span className={styles.energyLabel}>💬 SHOUT LIKES</span>
+            <span className={styles.energyLabel}>💬 LIKES</span>
             <span className={styles.energyValue}>{likeBalance}</span>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
