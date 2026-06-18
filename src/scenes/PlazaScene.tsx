@@ -1,6 +1,6 @@
 import { useRef, useState, useEffect, useCallback } from 'react'
 import type { PetCoords } from '../api/aiRecognize'
-import { thumbsUpPet, getTodayThumbsUpPetIds, unlikePet, fetchAds, getLikeBalance } from '../lib/petService'
+import { thumbsUpPet, getTodayThumbsUpPetIds, unlikePet, fetchAds, getLikeBalance, sendBreedRequest } from '../lib/petService'
 import type { AdRecord } from '../lib/petService'
 import { supabase } from '../lib/supabase'
 import PropellerHat from '../components/PropellerHat'
@@ -140,6 +140,8 @@ export default function PlazaScene({ petData, onGoToRoom, isPremium, petSize }: 
   const [shootingStar, setShootingStar] = useState(false)
   const [weather,      setWeather]      = useState<'clear' | 'rain' | 'thunder'>('clear')
   const [unlikedPets,  setUnlikedPets]  = useState<Set<string>>(new Set())
+  const [petBabies,    setPetBabies]    = useState<Record<string, string>>({})
+  const [breedStatusMap, setBreedStatusMap] = useState<Record<string, 'idle' | 'sending' | 'sent' | 'error'>>({})
 
   // ── Background image ──────────────────────────────────────
   useEffect(() => {
@@ -151,6 +153,27 @@ export default function PlazaScene({ petData, onGoToRoom, isPremium, petSize }: 
       document.documentElement.style.backgroundSize = ''
       document.documentElement.style.backgroundRepeat = ''
     }
+  }, [])
+
+  // ── Breeding: fetch baby pixel data for visible pets ──────
+  useEffect(() => {
+    const fetchBabies = async () => {
+      const now = new Date().toISOString()
+      const { data } = await supabase
+        .from('pets')
+        .select('id, baby_pixel_data, baby_expires_at')
+        .not('baby_pixel_data', 'is', null)
+        .gt('baby_expires_at', now)
+      if (!data) return
+      const map: Record<string, string> = {}
+      for (const row of data as { id: string; baby_pixel_data: string; baby_expires_at: string }[]) {
+        if (row.baby_pixel_data) map[row.id] = row.baby_pixel_data
+      }
+      setPetBabies(map)
+    }
+    fetchBabies().catch(() => {})
+    const interval = setInterval(() => fetchBabies().catch(() => {}), 60000)
+    return () => clearInterval(interval)
   }, [])
 
   // ── Weather ───────────────────────────────────────────────
@@ -908,6 +931,33 @@ export default function PlazaScene({ petData, onGoToRoom, isPremium, petSize }: 
                   height={pet.isOwn ? petSize : growthToSize(pet.growth_points)}
                   className={styles.petCanvas}
                 />
+                {petBabies[pet.id] && (
+                  <canvas
+                    width={20}
+                    height={20}
+                    style={{
+                      position: 'absolute',
+                      top: '50%',
+                      left: 'calc(100% + 4px)',
+                      transform: 'translateY(-50%)',
+                      imageRendering: 'pixelated',
+                      zIndex: 3,
+                      pointerEvents: 'none',
+                    }}
+                    ref={el => {
+                      if (!el) return
+                      const ctx = el.getContext('2d')
+                      if (!ctx) return
+                      const img = new Image()
+                      img.onload = () => {
+                        ctx.imageSmoothingEnabled = false
+                        ctx.clearRect(0, 0, 20, 20)
+                        ctx.drawImage(img, 0, 0, 20, 20)
+                      }
+                      img.src = petBabies[pet.id]
+                    }}
+                  />
+                )}
               </div>
             </div>
           )
@@ -954,6 +1004,41 @@ export default function PlazaScene({ petData, onGoToRoom, isPremium, petSize }: 
                   </div>
                 </>
               )}
+              {!selectedPet.isOwn && (() => {
+                const myPetId      = localStorage.getItem('oodle_pet_supabase_id')
+                const myCreatedRaw = localStorage.getItem('oodle_pet_original_created_at') ?? localStorage.getItem('oodle_pet_created_at')
+                const myDays       = myCreatedRaw ? Math.floor((Date.now() - new Date(myCreatedRaw).getTime()) / 86400000) : 0
+                const theirDays    = Math.floor((Date.now() - new Date(selectedPet.createdAt).getTime()) / 86400000)
+                if (!myPetId || myDays < 10 || theirDays < 10) return null
+                const status = breedStatusMap[selectedPet.id] ?? 'idle'
+                return (
+                  <div style={{ marginTop: '8px' }}>
+                    <button
+                      style={{
+                        width: '100%', fontFamily: 'var(--font-pixel)', fontSize: '8px',
+                        padding: '6px 0', background: status === 'sent' ? '#4ecca3' : status === 'error' ? '#e94560' : '#f5a623',
+                        color: '#000', border: '2px solid #000', cursor: status === 'idle' ? 'pointer' : 'default',
+                        boxShadow: '2px 2px 0 #000', letterSpacing: '1px',
+                      }}
+                      disabled={status !== 'idle'}
+                      onClick={() => {
+                        if (!myPetId || status !== 'idle') return
+                        setBreedStatusMap(m => ({ ...m, [selectedPet.id]: 'sending' }))
+                        sendBreedRequest(myPetId, selectedPet.id)
+                          .then(({ error }) => {
+                            setBreedStatusMap(m => ({ ...m, [selectedPet.id]: error ? 'error' : 'sent' }))
+                          })
+                          .catch(() => setBreedStatusMap(m => ({ ...m, [selectedPet.id]: 'error' })))
+                      }}
+                    >
+                      {status === 'idle'    && '🥚 BREED'}
+                      {status === 'sending' && 'SENDING...'}
+                      {status === 'sent'    && '✓ REQUEST SENT'}
+                      {status === 'error'   && 'NOT READY'}
+                    </button>
+                  </div>
+                )
+              })()}
             </div>
           </>
         )}

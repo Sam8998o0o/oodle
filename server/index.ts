@@ -4,6 +4,7 @@ import recognizeRouter       from './routes/recognize.js'
 import generatePetRouter     from './routes/generate-pet.js'
 import convertImageRouter    from './routes/convert-image-to-pet.js'
 import stripeRouter          from './routes/stripe.js'
+import breedRouter           from './routes/breed.js'
 
 const app = express()
 const PORT = 3001
@@ -16,6 +17,7 @@ app.use(express.json({ limit: '10mb' }))
 app.use('/api/recognize',            recognizeRouter)
 app.use('/api/generate-pet',         generatePetRouter)
 app.use('/api/convert-image-to-pet', convertImageRouter)
+app.use('/api/breed',                breedRouter)
 app.use('/api', stripeRouter)
 
 app.listen(PORT, () => {

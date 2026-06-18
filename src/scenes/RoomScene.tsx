@@ -1,7 +1,8 @@
 import { useRef, useState, useEffect, useCallback } from 'react'
 import { PetAnimator } from '../engine/PetAnimator'
 import type { PetCoords } from '../api/aiRecognize'
-import { savePet, getLikeBalance, saveTalent, saveTalentDrawing, killPet, checkPetDead, saveAccessory, getCoins, savePropellerExpiry, syncLoginStreak, claimDailyStreak } from '../lib/petService'
+import { savePet, getLikeBalance, saveTalent, saveTalentDrawing, killPet, checkPetDead, saveAccessory, getCoins, savePropellerExpiry, syncLoginStreak, claimDailyStreak, fetchMyEgg, warmEgg as warmEggFn, fetchMyBabyData, checkBreedRequests, respondBreedRequest } from '../lib/petService'
+import type { EggRecord, BreedRequestRecord } from '../lib/petService'
 import { supabase } from '../lib/supabase'
 import { useAuthStore } from '../lib/auth'
 import { generateShareCard } from '../lib/shareCard'
@@ -98,6 +99,9 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange, isPremiu
   const isPetClickRef    = useRef(false)
   const clickCountRef      = useRef<number>(0)
   const clickResetTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const eggCanvasRef       = useRef<HTMLCanvasElement | null>(null)
+  const babyCanvasRef      = useRef<HTMLCanvasElement | null>(null)
+  const babyPosRafRef      = useRef<number | null>(null)
 
   // ── Offline decay + day/night (hooks) ────────────────────
   const { initialStats, offlineFaintStage: initialOfflineFaintStage, shouldShowWelcomeBack } = useOfflineDecay()
@@ -291,6 +295,12 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange, isPremiu
   // ── Coins state ───────────────────────────────────────────
   const [coins, setCoins] = useState(0)
 
+  // ── Breeding state ────────────────────────────────────────
+  const [activeEgg,       setActiveEgg]       = useState<EggRecord | null>(null)
+  const [pendingBreedReqs, setPendingBreedReqs] = useState<BreedRequestRecord[]>([])
+  const [breedToast,      setBreedToast]      = useState<string | null>(null)
+  const [babyData,        setBabyData]        = useState<{ baby_pixel_data: string; baby_expires_at: string } | null>(null)
+
   const handleShareCard = useCallback(async () => {
     // Resolve petId — same pattern as handleCopyPetLink
     let petId = localStorage.getItem('oodle_pet_supabase_id')
@@ -470,6 +480,118 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange, isPremiu
       setTimeout(() => getCoins().then(c => setCoins(c)).catch(() => {}), 2500)
     }
   }, [])
+
+  // ── Breeding: fetch egg + baby on mount ───────────────────
+  useEffect(() => {
+    fetchMyEgg().then(egg => setActiveEgg(egg)).catch(() => {})
+    fetchMyBabyData().then(b => setBabyData(b)).catch(() => {})
+  }, [])
+
+  // ── Breeding: poll for pending breed requests every 60s ───
+  useEffect(() => {
+    const petId = localStorage.getItem('oodle_pet_supabase_id')
+    if (!petId) return
+    const poll = () => {
+      checkBreedRequests(petId)
+        .then(reqs => setPendingBreedReqs(reqs))
+        .catch(() => {})
+    }
+    poll()
+    const interval = setInterval(poll, 60000)
+    return () => clearInterval(interval)
+  }, [])
+
+  // ── Breeding: draw egg sprite on canvas ───────────────────
+  useEffect(() => {
+    if (!eggCanvasRef.current || !activeEgg) return
+    const canvas = eggCanvasRef.current
+    const ctx    = canvas.getContext('2d')
+    if (!ctx) return
+    const CELL = 4
+    const W    = 11 * CELL
+    const H    = 11 * CELL
+    canvas.width  = W
+    canvas.height = H
+    ctx.clearRect(0, 0, W, H)
+
+    const warm = activeEgg.warm_count
+    // shell colour progression: cool=blue, warm=orange, hot=red
+    const shellColor = warm === 0 ? '#5599ff' : warm === 1 ? '#ff9933' : '#ff3333'
+
+    // egg shape on 11×11 cell grid (hand-crafted fillRect calls)
+    const cells: [number, number][] = [
+      [3,1],[4,1],[5,1],[6,1],[7,1],
+      [2,2],[3,2],[4,2],[5,2],[6,2],[7,2],[8,2],
+      [1,3],[2,3],[3,3],[4,3],[5,3],[6,3],[7,3],[8,3],[9,3],
+      [1,4],[2,4],[3,4],[4,4],[5,4],[6,4],[7,4],[8,4],[9,4],
+      [1,5],[2,5],[3,5],[4,5],[5,5],[6,5],[7,5],[8,5],[9,5],
+      [1,6],[2,6],[3,6],[4,6],[5,6],[6,6],[7,6],[8,6],[9,6],
+      [2,7],[3,7],[4,7],[5,7],[6,7],[7,7],[8,7],
+      [3,8],[4,8],[5,8],[6,8],[7,8],
+    ]
+    ctx.fillStyle = shellColor
+    for (const [cx, cy] of cells) {
+      ctx.fillRect(cx * CELL, cy * CELL, CELL, CELL)
+    }
+
+    // crack lines when warm >= 1
+    if (warm >= 1) {
+      ctx.fillStyle = '#ffffff'
+      const cracks: [number, number][] = [[5,3],[5,4],[6,4],[4,5]]
+      for (const [cx, cy] of cracks) {
+        ctx.fillRect(cx * CELL, cy * CELL, CELL, CELL)
+      }
+    }
+    if (warm >= 2) {
+      ctx.fillStyle = '#ffffff'
+      const cracks2: [number, number][] = [[4,3],[6,5],[3,5],[7,4]]
+      for (const [cx, cy] of cracks2) {
+        ctx.fillRect(cx * CELL, cy * CELL, CELL, CELL)
+      }
+    }
+
+    // sparkle dots when fully warmed
+    if (warm >= 2) {
+      ctx.fillStyle = '#ffff00'
+      ctx.fillRect(2 * CELL, 2 * CELL, CELL, CELL)
+      ctx.fillRect(8 * CELL, 4 * CELL, CELL, CELL)
+      ctx.fillRect(3 * CELL, 7 * CELL, CELL, CELL)
+    }
+  }, [activeEgg])
+
+  // ── Breeding: draw baby image on canvas ───────────────────
+  useEffect(() => {
+    if (!babyCanvasRef.current || !babyData) return
+    const canvas = babyCanvasRef.current
+    const ctx    = canvas.getContext('2d')
+    if (!ctx) return
+    const img    = new Image()
+    img.onload = () => {
+      canvas.width  = 48
+      canvas.height = 48
+      ctx.imageSmoothingEnabled = false
+      ctx.drawImage(img, 0, 0, 48, 48)
+    }
+    img.src = babyData.baby_pixel_data
+  }, [babyData])
+
+  // ── Breeding: animate baby canvas position alongside pet ──
+  useEffect(() => {
+    if (!babyData || !babyCanvasRef.current) return
+    const canvas = babyCanvasRef.current
+    let running  = true
+    const tick   = () => {
+      if (!running) return
+      const x = walkXRef.current ?? 0
+      canvas.style.left = `${x + 56}px`
+      babyPosRafRef.current = requestAnimationFrame(tick)
+    }
+    babyPosRafRef.current = requestAnimationFrame(tick)
+    return () => {
+      running = false
+      if (babyPosRafRef.current !== null) cancelAnimationFrame(babyPosRafRef.current)
+    }
+  }, [babyData])
 
   // ── Growth: apply yesterday's feeding bonus/penalty on mount ─
   useEffect(() => {
@@ -1614,6 +1736,124 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange, isPremiu
         {bubbles.map(b => (
           <div key={b.id} style={{ position: 'absolute', left: b.x, top: b.y, fontSize: '28px', pointerEvents: 'none', zIndex: 8, transform: 'translateX(-50%)' }}>🫧</div>
         ))}
+
+        {/* ── Breeding UI block ─────────────────────────────── */}
+        {breedToast && (
+          <div style={{
+            position: 'absolute', top: '12px', left: '50%', transform: 'translateX(-50%)',
+            background: '#0f3460', border: '2px solid #e94560', padding: '8px 16px',
+            fontFamily: 'var(--font-pixel)', fontSize: '9px', color: '#eaeaea',
+            boxShadow: '4px 4px 0 #000', zIndex: 20, whiteSpace: 'nowrap',
+          }}>
+            {breedToast}
+          </div>
+        )}
+
+        {pendingBreedReqs.length > 0 && (
+          <div style={{
+            position: 'absolute', top: '48px', left: '50%', transform: 'translateX(-50%)',
+            background: '#16213e', border: '2px solid #4ecca3', padding: '10px 14px',
+            fontFamily: 'var(--font-pixel)', fontSize: '8px', color: '#eaeaea',
+            boxShadow: '4px 4px 0 #000', zIndex: 19, minWidth: '180px',
+          }}>
+            <div style={{ color: '#4ecca3', marginBottom: '8px', letterSpacing: '1px' }}>BREED REQUEST!</div>
+            {pendingBreedReqs.map(req => (
+              <div key={req.id} style={{ marginBottom: '8px' }}>
+                <div style={{ marginBottom: '4px', color: '#eaeaea' }}>
+                  {req.requester_pet?.name ?? 'Unknown'} wants to breed
+                </div>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <button
+                    style={{
+                      fontFamily: 'var(--font-pixel)', fontSize: '7px', padding: '4px 8px',
+                      background: '#4ecca3', color: '#000', border: '2px solid #000',
+                      cursor: 'pointer', boxShadow: '2px 2px 0 #000',
+                    }}
+                    onClick={() => {
+                      respondBreedRequest(req.id, true)
+                        .then(() => {
+                          setPendingBreedReqs(r => r.filter(x => x.id !== req.id))
+                          setBreedToast('ACCEPTED! EGG INCOMING...')
+                          setTimeout(() => {
+                            setBreedToast(null)
+                            fetchMyEgg().then(egg => setActiveEgg(egg)).catch(() => {})
+                          }, 3000)
+                        })
+                        .catch(() => {})
+                    }}
+                  >ACCEPT</button>
+                  <button
+                    style={{
+                      fontFamily: 'var(--font-pixel)', fontSize: '7px', padding: '4px 8px',
+                      background: '#e94560', color: '#fff', border: '2px solid #000',
+                      cursor: 'pointer', boxShadow: '2px 2px 0 #000',
+                    }}
+                    onClick={() => {
+                      respondBreedRequest(req.id, false)
+                        .then(() => setPendingBreedReqs(r => r.filter(x => x.id !== req.id)))
+                        .catch(() => {})
+                    }}
+                  >DECLINE</button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {activeEgg && !activeEgg.hatched && (
+          <div style={{
+            position: 'absolute', bottom: '12px', right: '12px',
+            background: '#16213e', border: '2px solid #f5a623', padding: '10px',
+            boxShadow: '4px 4px 0 #000', zIndex: 15, textAlign: 'center',
+          }}>
+            <canvas ref={eggCanvasRef} style={{ display: 'block', imageRendering: 'pixelated' }} />
+            <div style={{
+              fontFamily: 'var(--font-pixel)', fontSize: '7px', color: '#f5a623',
+              marginTop: '6px', letterSpacing: '1px',
+            }}>
+              WARM: {activeEgg.warm_count}/3
+            </div>
+            <button
+              style={{
+                marginTop: '6px', fontFamily: 'var(--font-pixel)', fontSize: '7px',
+                padding: '4px 10px', background: '#f5a623', color: '#000',
+                border: '2px solid #000', cursor: 'pointer', boxShadow: '2px 2px 0 #000',
+              }}
+              onClick={() => {
+                warmEggFn(activeEgg.id)
+                  .then(({ hatched }) => {
+                    if (hatched) {
+                      setActiveEgg(null)
+                      setBreedToast('EGG HATCHED! BABY ARRIVED!')
+                      setTimeout(() => setBreedToast(null), 4000)
+                      fetchMyBabyData().then(b => setBabyData(b)).catch(() => {})
+                    } else {
+                      setActiveEgg(prev => prev ? { ...prev, warm_count: prev.warm_count + 1 } : null)
+                    }
+                  })
+                  .catch(() => {})
+              }}
+            >
+              WARM EGG
+            </button>
+          </div>
+        )}
+
+        {babyData && (
+          <canvas
+            ref={babyCanvasRef}
+            width={48}
+            height={48}
+            style={{
+              position: 'absolute',
+              bottom: '10%',
+              imageRendering: 'pixelated',
+              zIndex: 10,
+              pointerEvents: 'none',
+            }}
+          />
+        )}
+        {/* ── End breeding UI block ─────────────────────────── */}
       </div>
 
       <div className={styles.actionBar} style={{ position: 'relative', justifyContent: 'center' }}>

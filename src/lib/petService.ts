@@ -636,3 +636,210 @@ export async function getPetById(petId: string): Promise<PetRecord | null> {
   if (error || !data) return null
   return data as PetRecord
 }
+
+// ══════════════════════════════════════════════════════════
+// Breeding system
+// ══════════════════════════════════════════════════════════
+
+export interface BreedRequestRecord {
+  id:               string
+  requester_pet_id: string
+  target_pet_id:    string
+  status:           string
+  created_at:       string
+  requester_pet?:   { name: string; pixel_data: string } | null
+}
+
+export interface EggRecord {
+  id:              string
+  owner_pet_id:    string
+  parent_pet_id_1: string
+  parent_pet_id_2: string
+  pixel_data:      string
+  warm_count:      number
+  hatched:         boolean
+  hatched_at:      string | null
+  baby_expires_at: string | null
+  created_at:      string
+}
+
+export async function sendBreedRequest(
+  myPetId:     string,
+  targetPetId: string,
+): Promise<{ error?: string }> {
+  const { data: myPet, error: petErr } = await supabase
+    .from('pets')
+    .select('created_at, last_breed_at')
+    .eq('id', myPetId)
+    .single()
+
+  if (petErr || !myPet) return { error: 'pet_not_found' }
+
+  const pet   = myPet as { created_at: string; last_breed_at: string | null }
+  const days  = Math.floor((Date.now() - new Date(pet.created_at).getTime()) / 86400000)
+  if (days < 10) return { error: 'too_young' }
+
+  if (pet.last_breed_at) {
+    const daysSince = (Date.now() - new Date(pet.last_breed_at).getTime()) / 86400000
+    if (daysSince < 7) return { error: 'cooldown' }
+  }
+
+  const { error } = await supabase
+    .from('breed_requests')
+    .insert({ requester_pet_id: myPetId, target_pet_id: targetPetId, status: 'pending' })
+
+  if (error) {
+    console.error('[petService] sendBreedRequest failed:', error.message)
+    return { error: 'insert_failed' }
+  }
+  return {}
+}
+
+export async function respondBreedRequest(requestId: string, accept: boolean): Promise<void> {
+  if (!accept) {
+    await supabase.from('breed_requests').update({ status: 'declined' }).eq('id', requestId)
+    return
+  }
+
+  await supabase.from('breed_requests').update({ status: 'accepted' }).eq('id', requestId)
+
+  const { data: req } = await supabase
+    .from('breed_requests')
+    .select('requester_pet_id, target_pet_id')
+    .eq('id', requestId)
+    .single()
+
+  if (!req) return
+  const breedReq = req as { requester_pet_id: string; target_pet_id: string }
+  await createEggs({ id: requestId, ...breedReq })
+}
+
+export async function createEggs(request: {
+  id:               string
+  requester_pet_id: string
+  target_pet_id:    string
+}): Promise<void> {
+  const { data: petsData } = await supabase
+    .from('pets')
+    .select('id, pixel_data')
+    .in('id', [request.requester_pet_id, request.target_pet_id])
+
+  if (!petsData || petsData.length < 2) return
+
+  const petsArr = petsData as { id: string; pixel_data: string }[]
+  const pet1    = petsArr.find(p => p.id === request.requester_pet_id)
+  const pet2    = petsArr.find(p => p.id === request.target_pet_id)
+  if (!pet1 || !pet2) return
+
+  try {
+    const res = await fetch('/api/breed/create-eggs', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ pet1PixelData: pet1.pixel_data, pet2PixelData: pet2.pixel_data }),
+    })
+    if (!res.ok) { console.error('[petService] createEggs API error:', res.status); return }
+
+    const { babyPixelData } = await res.json() as { babyPixelData?: string }
+    if (!babyPixelData) return
+
+    const eggBase = {
+      pixel_data:      babyPixelData,
+      warm_count:      0,
+      hatched:         false,
+      parent_pet_id_1: pet1.id,
+      parent_pet_id_2: pet2.id,
+    }
+
+    await Promise.all([
+      supabase.from('eggs').insert({ ...eggBase, owner_pet_id: pet1.id }),
+      supabase.from('eggs').insert({ ...eggBase, owner_pet_id: pet2.id }),
+      supabase.from('pets').update({ last_breed_at: new Date().toISOString() }).in('id', [pet1.id, pet2.id]),
+      supabase.from('breed_requests').update({ status: 'completed' }).eq('id', request.id),
+    ])
+  } catch (err) {
+    console.error('[petService] createEggs failed:', err)
+  }
+}
+
+export async function fetchMyEgg(): Promise<EggRecord | null> {
+  const petId = localStorage.getItem('oodle_pet_supabase_id')
+  if (!petId) return null
+
+  const { data, error } = await supabase
+    .from('eggs')
+    .select('*')
+    .eq('owner_pet_id', petId)
+    .eq('hatched', false)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+
+  if (error) { console.error('[petService] fetchMyEgg failed:', error.message); return null }
+  return (data as EggRecord | null) ?? null
+}
+
+export async function warmEgg(eggId: string): Promise<{ hatched: boolean }> {
+  const { data: egg, error } = await supabase
+    .from('eggs')
+    .select('warm_count, pixel_data, owner_pet_id')
+    .eq('id', eggId)
+    .single()
+
+  if (error || !egg) return { hatched: false }
+
+  const eggData = egg as { warm_count: number; pixel_data: string; owner_pet_id: string }
+
+  if (eggData.warm_count >= 2) {
+    await hatchEgg(eggId)
+    return { hatched: true }
+  }
+
+  await supabase.from('eggs').update({ warm_count: eggData.warm_count + 1 }).eq('id', eggId)
+  return { hatched: false }
+}
+
+export async function hatchEgg(eggId: string): Promise<void> {
+  const { data: egg, error } = await supabase
+    .from('eggs')
+    .select('pixel_data, owner_pet_id')
+    .eq('id', eggId)
+    .single()
+
+  if (error || !egg) return
+
+  const eggData       = egg as { pixel_data: string; owner_pet_id: string }
+  const babyExpiresAt = new Date(Date.now() + 7 * 86400000).toISOString()
+
+  await Promise.all([
+    supabase.from('eggs').update({ hatched: true, hatched_at: new Date().toISOString() }).eq('id', eggId),
+    supabase.from('pets').update({ baby_pixel_data: eggData.pixel_data, baby_expires_at: babyExpiresAt }).eq('id', eggData.owner_pet_id),
+  ])
+}
+
+export async function checkBreedRequests(myPetId: string): Promise<BreedRequestRecord[]> {
+  const { data, error } = await supabase
+    .from('breed_requests')
+    .select('*, requester_pet:requester_pet_id(name, pixel_data)')
+    .eq('target_pet_id', myPetId)
+    .eq('status', 'pending')
+
+  if (error) { console.error('[petService] checkBreedRequests failed:', error.message); return [] }
+  return (data ?? []) as BreedRequestRecord[]
+}
+
+export async function fetchMyBabyData(): Promise<{ baby_pixel_data: string; baby_expires_at: string } | null> {
+  const petId = localStorage.getItem('oodle_pet_supabase_id')
+  if (!petId) return null
+
+  const { data, error } = await supabase
+    .from('pets')
+    .select('baby_pixel_data, baby_expires_at')
+    .eq('id', petId)
+    .single()
+
+  if (error || !data) return null
+  const row = data as { baby_pixel_data: string | null; baby_expires_at: string | null }
+  if (!row.baby_pixel_data || !row.baby_expires_at) return null
+  if (Date.now() > new Date(row.baby_expires_at).getTime()) return null
+  return { baby_pixel_data: row.baby_pixel_data, baby_expires_at: row.baby_expires_at }
+}
