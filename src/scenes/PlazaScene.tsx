@@ -1060,9 +1060,9 @@ export default function PlazaScene({ petData, onGoToRoom, isPremium, petSize }: 
                 if      (status === 'sending')             label = 'SENDING...'
                 else if (status === 'sent')                label = '✓ REQUEST SENT'
                 else if (status === 'error')               label = 'NOT READY'
-                else if (!myPetId || myDays < 10)          label = '💕 BREED (Day 10 needed)'
-                else if (theirDays < 10)                   label = '💕 BREED (Pet too young)'
-                else if (onCooldown)                       label = `💕 BREED (${cooldownLeft}d left)`
+                else if (!myPetId || myDays < 10)          label = `💕 BREED (You need ${10 - myDays} more days)`
+                else if (theirDays < 10)                   label = `💕 BREED (Pet too young - ${10 - theirDays} days left)`
+                else if (onCooldown)                       label = `💕 BREED (Cooldown: ${cooldownLeft} days left)`
                 else                                       label = '💕 BREED'
 
                 return (
