@@ -142,6 +142,7 @@ export default function PlazaScene({ petData, onGoToRoom, isPremium, petSize }: 
   const [unlikedPets,  setUnlikedPets]  = useState<Set<string>>(new Set())
   const [petBabies,    setPetBabies]    = useState<Record<string, string>>({})
   const [breedStatusMap, setBreedStatusMap] = useState<Record<string, 'idle' | 'sending' | 'sent' | 'error'>>({})
+  const [myLastBreedAt, setMyLastBreedAt] = useState<string | null>(null)
 
   // ── Background image ──────────────────────────────────────
   useEffect(() => {
@@ -153,6 +154,21 @@ export default function PlazaScene({ petData, onGoToRoom, isPremium, petSize }: 
       document.documentElement.style.backgroundSize = ''
       document.documentElement.style.backgroundRepeat = ''
     }
+  }, [])
+
+  // ── Breeding: fetch my pet's cooldown on mount ───────────
+  useEffect(() => {
+    const petId = localStorage.getItem('oodle_pet_supabase_id')
+    if (!petId) return
+    supabase
+      .from('pets')
+      .select('last_breed_at')
+      .eq('id', petId)
+      .single()
+      .then(({ data }) => {
+        if (data) setMyLastBreedAt((data as { last_breed_at: string | null }).last_breed_at)
+      })
+      .catch(() => {})
   }, [])
 
   // ── Breeding: fetch baby pixel data for visible pets ──────
@@ -1024,27 +1040,46 @@ export default function PlazaScene({ petData, onGoToRoom, isPremium, petSize }: 
                 </>
               )}
               {!selectedPet.isOwn && (() => {
-                const myPetId      = localStorage.getItem('oodle_pet_supabase_id')
-                const myCreatedRaw = localStorage.getItem('oodle_pet_original_created_at') ?? localStorage.getItem('oodle_pet_created_at')
-                const myCreatedMs  = myCreatedRaw
+                const myPetId        = localStorage.getItem('oodle_pet_supabase_id')
+                const myCreatedRaw   = localStorage.getItem('oodle_pet_original_created_at') ?? localStorage.getItem('oodle_pet_created_at')
+                const myCreatedMs    = myCreatedRaw
                   ? (/^\d+$/.test(myCreatedRaw) ? parseInt(myCreatedRaw, 10) : new Date(myCreatedRaw).getTime())
                   : 0
-                const myDays       = myCreatedMs ? Math.floor((Date.now() - myCreatedMs) / 86400000) : 0
-                const theirDays    = Math.floor((Date.now() - new Date(selectedPet.createdAt).getTime()) / 86400000)
-                if (!myPetId || myDays < 10 || theirDays < 10) return null
-                const status = breedStatusMap[selectedPet.id] ?? 'idle'
+                const myDays         = myCreatedMs ? Math.floor((Date.now() - myCreatedMs) / 86400000) : 0
+                const theirDays      = Math.floor((Date.now() - new Date(selectedPet.createdAt).getTime()) / 86400000)
+                const cooldownLeft   = myLastBreedAt
+                  ? Math.max(0, Math.ceil(7 - (Date.now() - new Date(myLastBreedAt).getTime()) / 86400000))
+                  : 0
+                const onCooldown     = cooldownLeft > 0
+                const status         = breedStatusMap[selectedPet.id] ?? 'idle'
+                const eligible       = !!myPetId && myDays >= 10 && theirDays >= 10 && !onCooldown
+                const isDisabled     = !eligible || status !== 'idle'
+
+                let label: string
+                if      (status === 'sending')             label = 'SENDING...'
+                else if (status === 'sent')                label = '✓ REQUEST SENT'
+                else if (status === 'error')               label = 'NOT READY'
+                else if (!myPetId || myDays < 10)          label = '💕 BREED (Day 10 needed)'
+                else if (theirDays < 10)                   label = '💕 BREED (Pet too young)'
+                else if (onCooldown)                       label = `💕 BREED (${cooldownLeft}d left)`
+                else                                       label = '💕 BREED'
+
                 return (
                   <div style={{ marginTop: '8px' }}>
                     <button
                       style={{
                         width: '100%', fontFamily: 'var(--font-pixel)', fontSize: '8px',
-                        padding: '6px 0', background: status === 'sent' ? '#4ecca3' : status === 'error' ? '#e94560' : '#f5a623',
-                        color: '#000', border: '2px solid #000', cursor: status === 'idle' ? 'pointer' : 'default',
+                        padding: '6px 0',
+                        background: status === 'sent' ? '#4ecca3' : status === 'error' ? '#e94560' : isDisabled ? '#888' : '#f5a623',
+                        color: isDisabled && status === 'idle' ? '#ccc' : '#000',
+                        border: '2px solid #000',
+                        cursor: isDisabled ? 'not-allowed' : 'pointer',
                         boxShadow: '2px 2px 0 #000', letterSpacing: '1px',
+                        opacity: isDisabled && status === 'idle' ? 0.5 : 1,
                       }}
-                      disabled={status !== 'idle'}
+                      disabled={isDisabled}
                       onClick={() => {
-                        if (!myPetId || status !== 'idle') return
+                        if (!myPetId || isDisabled) return
                         setBreedStatusMap(m => ({ ...m, [selectedPet.id]: 'sending' }))
                         sendBreedRequest(myPetId, selectedPet.id)
                           .then(({ error }) => {
@@ -1053,10 +1088,7 @@ export default function PlazaScene({ petData, onGoToRoom, isPremium, petSize }: 
                           .catch(() => setBreedStatusMap(m => ({ ...m, [selectedPet.id]: 'error' })))
                       }}
                     >
-                      {status === 'idle'    && '🥚 BREED'}
-                      {status === 'sending' && 'SENDING...'}
-                      {status === 'sent'    && '✓ REQUEST SENT'}
-                      {status === 'error'   && 'NOT READY'}
+                      {label}
                     </button>
                   </div>
                 )
