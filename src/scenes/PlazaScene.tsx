@@ -223,6 +223,22 @@ export default function PlazaScene({ petData, onGoToRoom, isPremium, petSize }: 
     }).catch(() => {})
   }, [])
 
+  // ── Unlike: load all previously unliked pets on mount ─────
+  useEffect(() => {
+    const load = async () => {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return
+      const { data } = await supabase
+        .from('pet_unlikes')
+        .select('pet_id')
+        .eq('user_id', user.id)
+      if (data) {
+        setUnlikedPets(new Set((data as { pet_id: string }[]).map(r => r.pet_id)))
+      }
+    }
+    load().catch(() => {})
+  }, [])
+
   // ── Clear stale localStorage on Plaza mount ────────────────
   useEffect(() => {
     localStorage.removeItem('oodle_pets')
@@ -989,8 +1005,11 @@ export default function PlazaScene({ petData, onGoToRoom, isPremium, petSize }: 
                       style={{ flex: 1, background: unlikedPets.has(selectedPet.id) ? '#ccc' : '#e94560', color: '#fff' }}
                       onClick={async () => {
                         if (unlikedPets.has(selectedPet.id)) return
-                        await unlikePet(selectedPet.id)
-                        setUnlikedPets(prev => new Set([...prev, selectedPet.id]))
+                        try {
+                          await unlikePet(selectedPet.id)
+                        } finally {
+                          setUnlikedPets(prev => new Set([...prev, selectedPet.id]))
+                        }
                       }}
                       disabled={unlikedPets.has(selectedPet.id)}
                     >
