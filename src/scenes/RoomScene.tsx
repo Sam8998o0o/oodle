@@ -444,7 +444,8 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange, isPremiu
     try { return Math.min(100, Math.max(0, parseInt(localStorage.getItem('oodle_growth') ?? '0', 10))) }
     catch { return 0 }
   })
-  const petSize = Math.round(PET_SIZE_MIN + (growthPoints / 100) * (PET_SIZE_MAX - PET_SIZE_MIN))
+  const growthScale = dayCount <= 10 ? 0.7 : dayCount <= 20 ? 0.85 : 1.0
+  const petSize = Math.round((PET_SIZE_MIN + (growthPoints / 100) * (PET_SIZE_MAX - PET_SIZE_MIN)) * growthScale)
 
   const [winPos, setWinPos] = useState({ left: 0, top: 0, width: 0, height: 0 })
 
@@ -503,6 +504,16 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange, isPremiu
     }
     sync().catch(() => {})
   }, [setDayCount])
+
+  // ── Growth stage toast on threshold ───────────────────────
+  const shownGrowthToastRef = useRef(false)
+  useEffect(() => {
+    if (shownGrowthToastRef.current) return
+    if (dayCount === 11 || dayCount === 21) {
+      shownGrowthToastRef.current = true
+      showBubble(`✨ ${petData.name} is growing up!`)
+    }
+  }, [dayCount, petData.name, showBubble])
 
   // ── Breeding: fetch egg + baby on mount ───────────────────
   useEffect(() => {

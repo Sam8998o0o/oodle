@@ -62,8 +62,11 @@ interface Walker {
   speedY: number
 }
 
-function growthToSize(gp: number): number {
-  return Math.round(60 + (Math.min(100, Math.max(0, gp)) / 100) * 100)
+function growthToSize(gp: number, createdAt?: string): number {
+  const base = 60 + (Math.min(100, Math.max(0, gp)) / 100) * 100
+  const days = createdAt ? Math.max(1, Math.floor((Date.now() - new Date(createdAt).getTime()) / 86_400_000)) : 999
+  const scale = days <= 10 ? 0.7 : days <= 20 ? 0.85 : 1.0
+  return Math.round(base * scale)
 }
 
 function mergePets(existing: PlazaPet[], incoming: PlazaPet[]): PlazaPet[] {
@@ -173,7 +176,7 @@ export function usePlazaPets(
     const rH = room.offsetHeight
     if (rW === 0 || rH === 0) { spawnQueue.current.push(pet); return }
 
-    const size = pet.isOwn ? petSizeRef.current : growthToSize(pet.growth_points)
+    const size = pet.isOwn ? petSizeRef.current : growthToSize(pet.growth_points, pet.createdAt)
     canvas.width  = size
     canvas.height = size
     wrapper.style.width  = `${size}px`

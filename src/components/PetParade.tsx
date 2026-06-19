@@ -71,12 +71,15 @@ export default function PetParade() {
     pets.forEach((pet, i) => {
       const canvas = canvasRefs.current[i]
       if (!canvas) return
-      canvas.width  = PET_SIZE
-      canvas.height = PET_SIZE
+      const days = Math.max(1, Math.floor((Date.now() - new Date(pet.created_at).getTime()) / 86_400_000))
+      const scale = days <= 10 ? 0.7 : days <= 20 ? 0.85 : 1.0
+      const size = Math.round(PET_SIZE * scale)
+      canvas.width  = size
+      canvas.height = size
       const anim = new PetAnimator(canvas, {
         imageDataURL: pet.pixel_data,
         coords:       pet.coords ?? DEFAULT_COORDS,
-        size:         PET_SIZE,
+        size,
       })
       anim.setState('walk')
       anim.start()

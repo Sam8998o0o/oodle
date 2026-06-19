@@ -71,9 +71,11 @@ interface PlazaSceneProps {
   petSize: number
 }
 
-// Maps growth_points (0-100) to canvas size (60-160 px)
-function growthToSize(gp: number): number {
-  return Math.round(60 + (Math.min(100, Math.max(0, gp)) / 100) * 100)
+function growthToSize(gp: number, createdAt?: string): number {
+  const base = 60 + (Math.min(100, Math.max(0, gp)) / 100) * 100
+  const days = createdAt ? Math.max(1, Math.floor((Date.now() - new Date(createdAt).getTime()) / 86_400_000)) : 999
+  const scale = days <= 10 ? 0.7 : days <= 20 ? 0.85 : 1.0
+  return Math.round(base * scale)
 }
 
 function formatDate(iso: string): string {
@@ -941,7 +943,7 @@ export default function PlazaScene({ petData, onGoToRoom, isPremium, petSize }: 
               <div style={{ position: 'relative', display: 'inline-block' }}>
                 {(pet.accessory === 'propeller' || (pet.isOwn && hasTempPropeller) || (pet.propeller_expiry != null && Date.now() < pet.propeller_expiry)) && (() => {
                   const hatSize    = 36
-                  const canvasSize = pet.isOwn ? petSize : growthToSize(pet.growth_points)
+                  const canvasSize = pet.isOwn ? petSize : growthToSize(pet.growth_points, pet.createdAt)
                   // Own pet: use actual eye coords; others: use typical default
                   const eyeY   = pet.isOwn ? (petData.coords?.eyes?.[0]?.y ?? 0.28) : 0.28
                   const hatTop = Math.round((eyeY - 0.15) * canvasSize) - Math.round(hatSize * 0.9)
@@ -960,8 +962,8 @@ export default function PlazaScene({ petData, onGoToRoom, isPremium, petSize }: 
                       canvasMap.current.delete(pet.id)
                     }
                   }}
-                  width={pet.isOwn ? petSize : growthToSize(pet.growth_points)}
-                  height={pet.isOwn ? petSize : growthToSize(pet.growth_points)}
+                  width={pet.isOwn ? petSize : growthToSize(pet.growth_points, pet.createdAt)}
+                  height={pet.isOwn ? petSize : growthToSize(pet.growth_points, pet.createdAt)}
                   className={styles.petCanvas}
                 />
                 {petBabies[pet.id] && (
