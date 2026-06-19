@@ -105,7 +105,7 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange, isPremiu
 
   // ── Offline decay + day/night (hooks) ────────────────────
   const { initialStats, offlineFaintStage: initialOfflineFaintStage, shouldShowWelcomeBack } = useOfflineDecay()
-  const { isNight, isBedtime, isWeekend, dayCount, weather } = useDayNight()
+  const { isNight, isBedtime, isWeekend, dayCount, setDayCount, weather } = useDayNight()
   const [floatEmojis, setFloatEmojis] = useState<FloatEmoji[]>([])
   const [bubble, setBubble]           = useState<{ text: string; id: number } | null>(null)
   const isSleepingRef = useRef(false)
@@ -480,6 +480,29 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange, isPremiu
       setTimeout(() => getCoins().then(c => setCoins(c)).catch(() => {}), 2500)
     }
   }, [])
+
+  // ── Sync day_count from Supabase created_at on mount ─────
+  useEffect(() => {
+    const petId = localStorage.getItem('oodle_pet_supabase_id')
+    if (!petId) return
+    const sync = async () => {
+      const { data } = await supabase
+        .from('pets')
+        .select('created_at, day_count')
+        .eq('id', petId)
+        .single()
+      if (!data) return
+      const row          = data as { created_at: string; day_count: number | null }
+      const realDayCount = Math.floor((Date.now() - new Date(row.created_at).getTime()) / 86400000) + 1
+      // Keep localStorage in sync as an ISO string so breed eligibility can parse it reliably
+      localStorage.setItem('oodle_pet_original_created_at', row.created_at)
+      if (realDayCount > (row.day_count ?? 0)) {
+        await supabase.from('pets').update({ day_count: realDayCount }).eq('id', petId)
+      }
+      setDayCount(realDayCount)
+    }
+    sync().catch(() => {})
+  }, [setDayCount])
 
   // ── Breeding: fetch egg + baby on mount ───────────────────
   useEffect(() => {

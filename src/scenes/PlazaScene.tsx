@@ -1026,7 +1026,10 @@ export default function PlazaScene({ petData, onGoToRoom, isPremium, petSize }: 
               {!selectedPet.isOwn && (() => {
                 const myPetId      = localStorage.getItem('oodle_pet_supabase_id')
                 const myCreatedRaw = localStorage.getItem('oodle_pet_original_created_at') ?? localStorage.getItem('oodle_pet_created_at')
-                const myDays       = myCreatedRaw ? Math.floor((Date.now() - new Date(myCreatedRaw).getTime()) / 86400000) : 0
+                const myCreatedMs  = myCreatedRaw
+                  ? (/^\d+$/.test(myCreatedRaw) ? parseInt(myCreatedRaw, 10) : new Date(myCreatedRaw).getTime())
+                  : 0
+                const myDays       = myCreatedMs ? Math.floor((Date.now() - myCreatedMs) / 86400000) : 0
                 const theirDays    = Math.floor((Date.now() - new Date(selectedPet.createdAt).getTime()) / 86400000)
                 if (!myPetId || myDays < 10 || theirDays < 10) return null
                 const status = breedStatusMap[selectedPet.id] ?? 'idle'
