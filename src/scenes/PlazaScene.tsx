@@ -160,15 +160,16 @@ export default function PlazaScene({ petData, onGoToRoom, isPremium, petSize }: 
   useEffect(() => {
     const petId = localStorage.getItem('oodle_pet_supabase_id')
     if (!petId) return
-    supabase
-      .from('pets')
-      .select('last_breed_at')
-      .eq('id', petId)
-      .single()
-      .then(({ data }) => {
+    ;(async () => {
+      try {
+        const { data } = await supabase
+          .from('pets')
+          .select('last_breed_at')
+          .eq('id', petId)
+          .single()
         if (data) setMyLastBreedAt((data as { last_breed_at: string | null }).last_breed_at)
-      })
-      .catch(() => {})
+      } catch { /* ignore */ }
+    })()
   }, [])
 
   // ── Breeding: fetch baby pixel data for visible pets ──────
