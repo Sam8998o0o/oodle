@@ -444,7 +444,7 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange, isPremiu
     try { return Math.min(100, Math.max(0, parseInt(localStorage.getItem('oodle_growth') ?? '0', 10))) }
     catch { return 0 }
   })
-  const growthScale = dayCount <= 10 ? 0.7 : dayCount <= 20 ? 0.85 : 1.0
+  const growthScale = dayCount <= 2 ? 0.7 : dayCount <= 4 ? 0.85 : dayCount <= 6 ? 1.0 : dayCount <= 9 ? 1.15 : 1.3
   const petSize = Math.round((PET_SIZE_MIN + (growthPoints / 100) * (PET_SIZE_MAX - PET_SIZE_MIN)) * growthScale)
 
   const [winPos, setWinPos] = useState({ left: 0, top: 0, width: 0, height: 0 })
@@ -815,9 +815,12 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange, isPremiu
   const shownGrowthToastRef = useRef(false)
   useEffect(() => {
     if (shownGrowthToastRef.current) return
-    if (dayCount === 11 || dayCount === 21) {
+    if (dayCount === 3 || dayCount === 5 || dayCount === 7) {
       shownGrowthToastRef.current = true
       showBubble(`✨ ${petData.name} is growing up!`)
+    } else if (dayCount === 10) {
+      shownGrowthToastRef.current = true
+      showBubble(`✨ ${petData.name} reached MAX SIZE!`)
     }
   }, [dayCount, petData.name, showBubble])
 

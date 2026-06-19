@@ -72,7 +72,7 @@ export default function PetParade() {
       const canvas = canvasRefs.current[i]
       if (!canvas) return
       const days = Math.max(1, Math.floor((Date.now() - new Date(pet.created_at).getTime()) / 86_400_000))
-      const scale = days <= 10 ? 0.7 : days <= 20 ? 0.85 : 1.0
+      const scale = days <= 2 ? 0.7 : days <= 4 ? 0.85 : days <= 6 ? 1.0 : days <= 9 ? 1.15 : 1.3
       const size = Math.round(PET_SIZE * scale)
       canvas.width  = size
       canvas.height = size

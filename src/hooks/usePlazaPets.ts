@@ -65,7 +65,7 @@ interface Walker {
 function growthToSize(gp: number, createdAt?: string): number {
   const base = 60 + (Math.min(100, Math.max(0, gp)) / 100) * 100
   const days = createdAt ? Math.max(1, Math.floor((Date.now() - new Date(createdAt).getTime()) / 86_400_000)) : 999
-  const scale = days <= 10 ? 0.7 : days <= 20 ? 0.85 : 1.0
+  const scale = days <= 2 ? 0.7 : days <= 4 ? 0.85 : days <= 6 ? 1.0 : days <= 9 ? 1.15 : 1.3
   return Math.round(base * scale)
 }
 
