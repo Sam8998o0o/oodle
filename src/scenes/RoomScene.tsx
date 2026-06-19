@@ -505,16 +505,6 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange, isPremiu
     sync().catch(() => {})
   }, [setDayCount])
 
-  // ── Growth stage toast on threshold ───────────────────────
-  const shownGrowthToastRef = useRef(false)
-  useEffect(() => {
-    if (shownGrowthToastRef.current) return
-    if (dayCount === 11 || dayCount === 21) {
-      shownGrowthToastRef.current = true
-      showBubble(`✨ ${petData.name} is growing up!`)
-    }
-  }, [dayCount, petData.name, showBubble])
-
   // ── Breeding: fetch egg + baby on mount ───────────────────
   useEffect(() => {
     fetchMyEgg().then(egg => setActiveEgg(egg)).catch(() => {})
@@ -820,6 +810,16 @@ export default function RoomScene({ petData, onGoToPlaza, onSizeChange, isPremiu
     setBubble({ text, id })
     setTimeout(() => setBubble((b: { text: string; id: number } | null) => (b?.id === id ? null : b)), 6000)
   }, [])
+
+  // ── Growth stage toast on threshold ───────────────────────
+  const shownGrowthToastRef = useRef(false)
+  useEffect(() => {
+    if (shownGrowthToastRef.current) return
+    if (dayCount === 11 || dayCount === 21) {
+      shownGrowthToastRef.current = true
+      showBubble(`✨ ${petData.name} is growing up!`)
+    }
+  }, [dayCount, petData.name, showBubble])
 
   // ── Pet stats (hunger/happy/energy, food, faint — from hook) ─
   const {
